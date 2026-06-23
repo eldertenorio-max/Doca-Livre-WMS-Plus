@@ -18,20 +18,40 @@
 }
 
 .sidebar {
-  width: var(--sidebar-w);
+  width: var(--sidebar-w-collapsed);
   flex-shrink: 0;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
-  padding: 20px 16px;
+  padding: 16px 10px;
+  overflow-x: hidden;
   overflow-y: auto;
   max-height: 100vh;
   position: sticky;
   top: 0;
+  z-index: 50;
+  transition: width 0.28s ease, padding 0.28s ease, box-shadow 0.28s ease;
+}
+
+.sidebar:hover {
+  width: var(--sidebar-w);
+  padding: 20px 16px;
+  box-shadow: 8px 0 28px #00000066;
 }
 
 .sidebar h1 {
   margin: 0 0 4px;
   font-size: 1.25rem;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.22s ease, max-height 0.28s ease, margin 0.28s ease;
+}
+
+.sidebar:hover h1 {
+  opacity: 1;
+  max-height: 2rem;
+  margin: 0 0 4px;
 }
 
 .sidebar h3,
@@ -539,14 +559,43 @@
 
 .sidebar-header {
   margin-bottom: 8px;
+  text-align: center;
+}
+
+.sidebar:hover .sidebar-header {
+  text-align: left;
+}
+
+.sidebar-header .muted,
+.sidebar-header .saving-hint,
+.sidebar-header .error {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  overflow: hidden;
+  transition: opacity 0.22s ease, max-height 0.28s ease, margin 0.28s ease;
+}
+
+.sidebar:hover .sidebar-header .muted,
+.sidebar:hover .sidebar-header .saving-hint,
+.sidebar:hover .sidebar-header .error {
+  opacity: 1;
+  max-height: 4rem;
+  margin-top: 6px;
 }
 
 .sidebar-logo {
   display: block;
   width: 100%;
-  max-width: 168px;
+  max-width: 36px;
   height: auto;
-  margin-bottom: 12px;
+  margin: 0 auto 8px;
+  transition: max-width 0.28s ease, margin 0.28s ease;
+}
+
+.sidebar:hover .sidebar-logo {
+  max-width: 168px;
+  margin: 0 0 12px;
 }
 
 .sidebar-section {
@@ -562,15 +611,22 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 4px;
+  justify-content: center;
+  gap: 0;
+  padding: 10px 8px;
   border: none;
   background: transparent;
   color: var(--text);
   text-align: left;
   cursor: pointer;
   border-radius: 6px;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, gap 0.28s ease, padding 0.28s ease, justify-content 0.28s ease;
+}
+
+.sidebar:hover .sidebar-section-trigger {
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 14px 4px;
 }
 
 .sidebar-section-trigger:hover,
@@ -597,11 +653,22 @@
 }
 
 .sidebar-section-title {
-  flex: 1;
+  flex: 0;
+  width: 0;
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.22s ease, width 0.28s ease, flex 0.28s ease;
+}
+
+.sidebar:hover .sidebar-section-title {
+  flex: 1;
+  width: auto;
+  opacity: 1;
 }
 
 .sidebar-section-chevron {
@@ -609,7 +676,15 @@
   font-size: 1.1rem;
   color: var(--text-muted);
   transform: rotate(0deg);
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.22s ease, width 0.28s ease;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar:hover .sidebar-section-chevron {
+  opacity: 1;
+  width: auto;
 }
 
 .sidebar-section-chevron--open {
@@ -625,6 +700,14 @@
 
 .sidebar-section--open .sidebar-section-body {
   grid-template-rows: 1fr;
+}
+
+.sidebar:not(:hover) .sidebar-section-body {
+  grid-template-rows: 0fr !important;
+}
+
+.sidebar:not(:hover) .sidebar-section--open .sidebar-section-trigger {
+  background: transparent;
 }
 
 .sidebar-section-inner {
@@ -1005,5 +1088,49 @@
     width: 100%;
     max-height: none;
     position: static;
+    padding: 20px 16px;
+    box-shadow: none;
+  }
+
+  .sidebar h1,
+  .sidebar:hover h1 {
+    opacity: 1;
+    max-height: 2rem;
+    margin: 0 0 4px;
+  }
+
+  .sidebar-header .muted,
+  .sidebar-header .saving-hint,
+  .sidebar-header .error,
+  .sidebar-section-title,
+  .sidebar-section-chevron {
+    opacity: 1;
+    max-height: none;
+    width: auto;
+    flex: 1;
+    margin: revert;
+  }
+
+  .sidebar-logo {
+    max-width: 168px;
+    margin: 0 0 12px;
+  }
+
+  .sidebar-header {
+    text-align: left;
+  }
+
+  .sidebar-section-trigger {
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 14px 4px;
+  }
+
+  .sidebar:not(:hover) .sidebar-section-body {
+    grid-template-rows: 0fr;
+  }
+
+  .sidebar .sidebar-section--open .sidebar-section-body {
+    grid-template-rows: 1fr !important;
   }
 }

@@ -40,6 +40,7 @@ export function CollapsibleSidebarSection({ id, title, children, defaultOpen = f
         className="sidebar-section-trigger"
         onClick={handleClick}
         aria-expanded={open}
+        title={title}
       >
         <span className={`sidebar-section-icon sidebar-section-icon--${id}`}>
           <SectionIcon id={id} />

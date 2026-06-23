@@ -15,6 +15,7 @@
   --cell-porta: #484f58;
   --cell-nv5: #21262d;
   --sidebar-w: 360px;
+  --sidebar-w-collapsed: 72px;
   font-family: 'Segoe UI', system-ui, sans-serif;
   line-height: 1.45;
   color: var(--text);
