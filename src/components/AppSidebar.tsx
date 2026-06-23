@@ -7,6 +7,7 @@ import { ImprimirPanel } from './ImprimirPanel'
 import { SaidaPanel } from './SaidaPanel'
 import { ThemeToggle } from './ThemeToggle'
 import { SidebarModeToggle } from './SidebarModeToggle'
+import { useSidebarExpand } from '../hooks/useSidebarExpand'
 import type { Theme } from '../lib/theme'
 import type { ComponentProps } from 'react'
 
@@ -41,8 +42,14 @@ export function AppSidebar({
   canceladas,
   imprimir,
 }: Props) {
+  const { expanded, onMouseEnter, onMouseLeave } = useSidebarExpand(sidebarFixed)
+
   return (
-    <aside className={`sidebar${sidebarFixed ? ' sidebar--fixed' : ''}`}>
+    <aside
+      className={`sidebar${sidebarFixed ? ' sidebar--fixed' : ''}${expanded ? ' sidebar--expanded' : ''}`}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <div className="sidebar-block sidebar-header">
         <img
           src="/logo-ultrafrio-vertical-azul.svg"

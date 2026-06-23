@@ -17,6 +17,10 @@
   --cell-saida-flag: #f85149;
   --cell-porta: #484f58;
   --cell-nv5: #21262d;
+  --rack-upright: #1a56a8;
+  --rack-beam: #e87722;
+  --rack-bay: #ffffff;
+  --rack-gap: 3px;
   --overlay: rgb(0 0 0 / 0.67);
   --overlay-strong: rgb(0 0 0 / 0.73);
   --shadow-sidebar: 8px 0 28px rgb(0 0 0 / 0.4);
@@ -60,6 +64,10 @@
   --cell-saida-flag: #cf222e;
   --cell-porta: #afb8c1;
   --cell-nv5: #e1e4e8;
+  --rack-upright: #0969da;
+  --rack-beam: #bc4c00;
+  --rack-bay: #ffffff;
+  --rack-gap: 3px;
   --overlay: rgb(0 0 0 / 0.4);
   --overlay-strong: rgb(0 0 0 / 0.5);
   --shadow-sidebar: 8px 0 24px rgb(0 0 0 / 0.1);

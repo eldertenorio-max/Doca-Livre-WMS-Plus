@@ -14,7 +14,7 @@ import {
 import type { AddressId, AddressOccupancy } from '../types'
 import { useIsMobile } from '../hooks/useIsMobile'
 
-const CELL_GAP = 2
+const CELL_GAP = 3
 const MIN_CELL = 28
 const MAX_CELL = 58
 const MOBILE_MIN_CELL = 20
