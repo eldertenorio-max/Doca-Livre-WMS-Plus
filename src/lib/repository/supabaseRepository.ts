@@ -50,6 +50,10 @@ function mapNotas(
       quantidade: Number(it.quantidade),
       unidade: it.unidade,
       allocatedAddresses: endByItem.get(`${nf.id}:${it.item_index}`) ?? [],
+      ...(it.up ? { up: it.up } : {}),
+      ...(it.lote ? { lote: it.lote } : {}),
+      ...(it.data_fabricacao ? { dataFabricacao: it.data_fabricacao } : {}),
+      ...(it.data_validade ? { dataValidade: it.data_validade } : {}),
     })),
   }))
 }
@@ -188,6 +192,10 @@ export const supabaseRepository: EnderecamentoRepository = {
             descricao: it.descricao,
             quantidade: it.quantidade,
             unidade: it.unidade,
+            up: it.up || null,
+            lote: it.lote || null,
+            data_fabricacao: it.dataFabricacao || null,
+            data_validade: it.dataValidade || null,
           })),
         )
         if (insIt) throw new Error(insIt.message)

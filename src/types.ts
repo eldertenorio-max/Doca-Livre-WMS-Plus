@@ -7,6 +7,10 @@ export type NfeItem = {
   quantidade: number
   unidade: string
   allocatedAddresses: AddressId[]
+  up?: string
+  lote?: string
+  dataFabricacao?: string
+  dataValidade?: string
 }
 
 export type NotaFiscal = {
@@ -54,6 +58,10 @@ export type MovimentoItemSnapshot = {
   quantidade: number
   unidade: string
   addressIds: AddressId[]
+  up?: string
+  lote?: string
+  dataFabricacao?: string
+  dataValidade?: string
 }
 
 export type MovimentoRegistro = {

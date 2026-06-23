@@ -6,6 +6,11 @@ function normNumero(numero: string): string {
   return numero.trim().replace(/^0+/, '') || '0'
 }
 
+export function findNotaByNumero(notas: NotaFiscal[], numero: string): NotaFiscal | undefined {
+  const alvo = normNumero(numero)
+  return notas.find((n) => normNumero(n.numero) === alvo)
+}
+
 function mesmaNf(a: NfRef, b: NfRef): boolean {
   if (a.id && b.id && a.id === b.id) return true
   if (a.chave && b.chave && a.chave === b.chave) return true

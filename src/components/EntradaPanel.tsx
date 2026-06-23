@@ -1,4 +1,6 @@
 import { useState, type ChangeEvent } from 'react'
+import type { EntradaCampoId, EntradaCamposConfig, EntradaItemCampos } from '../lib/entradaCampos'
+import { ENTRADA_CAMPOS_LIST, entradaCamposAtivos } from '../lib/entradaCampos'
 import type { NfeItem, NotaFiscal } from '../types'
 import { allItemsAllocated } from '../lib/repository'
 import { formatAddressLabel } from '../layout/camaras'
@@ -8,9 +10,17 @@ type Props = {
   activeNfId: string | null
   activeItemIndex: number | null
   pendingCount: number
+  camposConfig: EntradaCamposConfig
+  camposDraft: EntradaCamposConfig
+  camposDirty: boolean
+  camposSavedHint: boolean
+  onToggleCampo: (id: EntradaCampoId) => void
+  onSaveCampos: () => void
   onUpload: (file: File) => void
+  onCadastrarManual: () => void
   onSelectNf: (id: string) => void
   onSelectItem: (index: number) => void
+  onUpdateItemCampos: (itemIndex: number, patch: EntradaItemCampos) => void
   onConfirmItem: () => void
   onFinishEntrada: () => void
   onCancelarEntrada: (nfId: string) => void
@@ -23,14 +33,27 @@ function itemStatus(item: NfeItem): 'pendente' | 'ok' {
   return 'ok'
 }
 
+function formatItemExtra(label: string, value: string | undefined): string | null {
+  if (!value?.trim()) return null
+  return `${label}: ${value}`
+}
+
 export function EntradaPanel({
   notas,
   activeNfId,
   activeItemIndex,
   pendingCount,
+  camposConfig,
+  camposDraft,
+  camposDirty,
+  camposSavedHint,
+  onToggleCampo,
+  onSaveCampos,
   onUpload,
+  onCadastrarManual,
   onSelectNf,
   onSelectItem,
+  onUpdateItemCampos,
   onConfirmItem,
   onFinishEntrada,
   onCancelarEntrada,
@@ -40,6 +63,10 @@ export function EntradaPanel({
   const [confirmarCancelar, setConfirmarCancelar] = useState<string | null>(null)
   const emAndamento = notas.filter((n) => n.status === 'em_andamento')
   const activeNf = notas.find((n) => n.id === activeNfId) ?? null
+  const activeItem =
+    activeNf && activeItemIndex != null
+      ? activeNf.items.find((it) => it.index === activeItemIndex) ?? null
+      : null
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -54,6 +81,38 @@ export function EntradaPanel({
           <input type="file" accept=".xml,text/xml,application/xml" hidden onChange={handleFile} />
           Subir XML da NF-e (entrada)
         </label>
+
+        <div className="entrada-campos-box">
+          <p className="entrada-campos-title">Informações extras na entrada</p>
+          <p className="muted entrada-campos-hint">Marque o que deseja preencher por item e salve.</p>
+          <ul className="entrada-campos-list">
+            {ENTRADA_CAMPOS_LIST.map((campo) => (
+              <li key={campo.id}>
+                <label className="entrada-campos-check">
+                  <input
+                    type="checkbox"
+                    checked={camposDraft[campo.id]}
+                    onChange={() => onToggleCampo(campo.id)}
+                  />
+                  <span>{campo.label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="entrada-campos-actions">
+            <button type="button" className="btn primary btn-sm" onClick={onSaveCampos} disabled={!camposDirty}>
+              Salvar opções
+            </button>
+            {camposSavedHint && <span className="entrada-campos-saved">Salvo</span>}
+          </div>
+        </div>
+
+        <button type="button" className="upload-btn upload-btn--muted" onClick={onCadastrarManual}>
+          Cadastrar NF manual
+        </button>
+        <p className="muted entrada-manual-hint">
+          Ou clique em um endereço vazio no painel para alocar a NF e o item na hora.
+        </p>
         {uploadError && <p className="error">{uploadError}</p>}
       </div>
 
@@ -104,6 +163,12 @@ export function EntradaPanel({
             {activeNf.items.map((item) => {
               const st = itemStatus(item)
               const isActive = activeItemIndex === item.index
+              const extras = [
+                formatItemExtra('UP', item.up),
+                formatItemExtra('Lote', item.lote),
+                formatItemExtra('Fab.', item.dataFabricacao),
+                formatItemExtra('Val.', item.dataValidade),
+              ].filter(Boolean)
               return (
                 <li key={item.index}>
                   <button
@@ -118,6 +183,9 @@ export function EntradaPanel({
                       <span className="muted">
                         {item.quantidade} {item.unidade} · {item.allocatedAddresses.length} end.
                       </span>
+                      {extras.length > 0 && (
+                        <span className="muted item-extra-line">{extras.join(' · ')}</span>
+                      )}
                     </span>
                   </button>
                   {item.allocatedAddresses.length > 0 && (
@@ -131,6 +199,60 @@ export function EntradaPanel({
               )
             })}
           </ul>
+
+          {activeItem && entradaCamposAtivos(camposConfig) && (
+            <div className="entrada-item-campos">
+              <h4>Dados do item {activeItem.codigo}</h4>
+              {camposConfig.up && (
+                <label className="entrada-campo-field">
+                  <span>UP</span>
+                  <input
+                    type="text"
+                    className="input-nf"
+                    value={activeItem.up ?? ''}
+                    onChange={(e) => onUpdateItemCampos(activeItem.index, { up: e.target.value })}
+                  />
+                </label>
+              )}
+              {camposConfig.lote && (
+                <label className="entrada-campo-field">
+                  <span>Lote</span>
+                  <input
+                    type="text"
+                    className="input-nf"
+                    value={activeItem.lote ?? ''}
+                    onChange={(e) => onUpdateItemCampos(activeItem.index, { lote: e.target.value })}
+                  />
+                </label>
+              )}
+              {camposConfig.dataFabricacao && (
+                <label className="entrada-campo-field">
+                  <span>Data de fabricação</span>
+                  <input
+                    type="date"
+                    className="input-nf"
+                    value={activeItem.dataFabricacao ?? ''}
+                    onChange={(e) =>
+                      onUpdateItemCampos(activeItem.index, { dataFabricacao: e.target.value })
+                    }
+                  />
+                </label>
+              )}
+              {camposConfig.dataValidade && (
+                <label className="entrada-campo-field">
+                  <span>Data de validade</span>
+                  <input
+                    type="date"
+                    className="input-nf"
+                    value={activeItem.dataValidade ?? ''}
+                    onChange={(e) =>
+                      onUpdateItemCampos(activeItem.index, { dataValidade: e.target.value })
+                    }
+                  />
+                </label>
+              )}
+            </div>
+          )}
 
           {activeItemIndex != null && (
             <div className="item-actions">

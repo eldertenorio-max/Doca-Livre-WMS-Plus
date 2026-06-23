@@ -42,11 +42,15 @@ export function AppSidebar({
   canceladas,
   imprimir,
 }: Props) {
-  const { expanded, onMouseEnter, onMouseLeave } = useSidebarExpand(sidebarFixed)
+  const { expanded, sidebarRef, onSidebarPointerDown, onMouseEnter, onMouseLeave } =
+    useSidebarExpand(sidebarFixed)
 
   return (
     <aside
+      ref={sidebarRef}
       className={`sidebar${sidebarFixed ? ' sidebar--fixed' : ''}${expanded ? ' sidebar--expanded' : ''}`}
+      title={!sidebarFixed && !expanded ? 'Clique para abrir o menu' : undefined}
+      onPointerDown={onSidebarPointerDown}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -77,7 +81,7 @@ export function AppSidebar({
         <SaidaPanel {...saida} />
       </CollapsibleSidebarSection>
 
-      <CollapsibleSidebarSection id="editar" title="Editar posição">
+      <CollapsibleSidebarSection id="editar" title="Movimentação">
         <EditarPosicaoPanel {...editar} />
       </CollapsibleSidebarSection>
 

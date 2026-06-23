@@ -1,0 +1,102 @@
+import type { AddressId, AppState, NfeItem, NotaFiscal } from '../types'
+import { upsertMovimentoEntrada } from './movimentos'
+import { mensagemNfDuplicada } from './nfDuplicate'
+
+export type ManualNfItemInput = {
+  codigo: string
+  descricao: string
+  quantidade: number
+  unidade: string
+}
+
+export type ManualNfInput = {
+  numero: string
+  serie?: string
+  emitente?: string
+  items: ManualNfItemInput[]
+}
+
+export function criarNotaManual(input: ManualNfInput): NotaFiscal {
+  const numero = input.numero.trim()
+  const items: NfeItem[] = input.items.map((it, index) => ({
+    index,
+    codigo: it.codigo.trim(),
+    descricao: it.descricao.trim(),
+    quantidade: it.quantidade,
+    unidade: it.unidade.trim() || 'UN',
+    allocatedAddresses: [],
+  }))
+
+  return {
+    id: `nf-manual-${numero}-${Date.now()}`,
+    numero,
+    serie: input.serie?.trim() ?? '',
+    chave: '',
+    emitente: input.emitente?.trim() || 'Cadastro manual',
+    dataEmissao: new Date().toISOString(),
+    items,
+    status: 'em_andamento',
+    createdAt: new Date().toISOString(),
+  }
+}
+
+export function validarManualNfInput(input: ManualNfInput): string | null {
+  if (!input.numero.trim()) return 'Informe o número da NF.'
+  if (input.items.length === 0) return 'Informe ao menos um item.'
+  const item = input.items[0]
+  if (!item.codigo.trim()) return 'Informe o código do item.'
+  if (!item.descricao.trim()) return 'Informe a descrição do item.'
+  if (!(item.quantidade > 0)) return 'Informe uma quantidade válida.'
+  return null
+}
+
+export function alocarEnderecoEmItem(
+  data: Pick<AppState, 'notas' | 'movimentos'>,
+  addressId: AddressId,
+  nfId: string,
+  itemIndex: number,
+): Pick<AppState, 'notas' | 'movimentos'> {
+  const notas = data.notas.map((nf) => ({
+    ...nf,
+    items: nf.items.map((it) => ({
+      ...it,
+      allocatedAddresses: it.allocatedAddresses.filter((a) => a !== addressId),
+    })),
+  }))
+
+  const notasFinal = notas.map((nf) => {
+    if (nf.id !== nfId) return nf
+    return {
+      ...nf,
+      items: nf.items.map((it) => {
+        if (it.index !== itemIndex) return it
+        if (it.allocatedAddresses.includes(addressId)) return it
+        return { ...it, allocatedAddresses: [...it.allocatedAddresses, addressId] }
+      }),
+    }
+  })
+
+  const updatedNf = notasFinal.find((n) => n.id === nfId)!
+  return {
+    notas: notasFinal,
+    movimentos: upsertMovimentoEntrada(data.movimentos, updatedNf),
+  }
+}
+
+export function adicionarNotaManual(
+  data: Pick<AppState, 'notas' | 'movimentos' | 'notasCanceladas'>,
+  input: ManualNfInput,
+): { notas: NotaFiscal[]; movimentos: AppState['movimentos']; nf: NotaFiscal } | { error: string } {
+  const validation = validarManualNfInput(input)
+  if (validation) return { error: validation }
+
+  const nf = criarNotaManual(input)
+  const dup = mensagemNfDuplicada(nf, data.notas, data.notasCanceladas)
+  if (dup) return { error: dup }
+
+  return {
+    notas: [nf, ...data.notas],
+    movimentos: upsertMovimentoEntrada(data.movimentos, nf),
+    nf,
+  }
+}

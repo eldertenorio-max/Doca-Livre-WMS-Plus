@@ -11,34 +11,15 @@ type Props = {
 
 export function CollapsibleSidebarSection({ id, title, children, defaultOpen = false }: Props) {
   const [open, setOpen] = useState(defaultOpen)
-  const [locked, setLocked] = useState(defaultOpen)
-
-  function handleEnter() {
-    setOpen(true)
-  }
-
-  function handleLeave() {
-    if (!locked) setOpen(false)
-  }
-
-  function handleClick() {
-    setLocked((prev) => {
-      const next = !prev
-      setOpen(next)
-      return next
-    })
-  }
 
   return (
     <section
       className={`sidebar-section ${open ? 'sidebar-section--open' : ''} sidebar-section--${id}`}
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
     >
       <button
         type="button"
         className="sidebar-section-trigger"
-        onClick={handleClick}
+        onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         title={title}
       >

@@ -1,60 +1,83 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useIsMobile } from './useIsMobile'
 
-/** Aguarda o mouse parar sobre a barra antes de abrir. */
-const OPEN_DELAY_MS = 320
-/** Tolerância ao sair sem querer antes de recolher. */
-const CLOSE_DELAY_MS = 550
+/** Tempo antes de recolher ao sair com o mouse (modo livre). */
+const CLOSE_DELAY_MS = 1600
 
 export function useSidebarExpand(sidebarFixed: boolean) {
   const mobile = useIsMobile()
   const [hoverExpanded, setHoverExpanded] = useState(false)
-  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const expanded = sidebarFixed || mobile || hoverExpanded
 
-  const clearTimers = useCallback(() => {
-    if (openTimer.current) clearTimeout(openTimer.current)
-    if (closeTimer.current) clearTimeout(closeTimer.current)
-    openTimer.current = null
-    closeTimer.current = null
-  }, [])
-
-  useEffect(() => () => clearTimers(), [clearTimers])
-
-  useEffect(() => {
-    if (sidebarFixed || mobile) {
-      clearTimers()
-      setHoverExpanded(false)
-    }
-  }, [sidebarFixed, mobile, clearTimers])
-
-  const onMouseEnter = useCallback(() => {
-    if (sidebarFixed || mobile) return
+  const clearCloseTimer = useCallback(() => {
     if (closeTimer.current) {
       clearTimeout(closeTimer.current)
       closeTimer.current = null
     }
-    if (hoverExpanded || openTimer.current) return
-    openTimer.current = setTimeout(() => {
-      setHoverExpanded(true)
-      openTimer.current = null
-    }, OPEN_DELAY_MS)
-  }, [sidebarFixed, mobile, hoverExpanded])
+  }, [])
 
-  const onMouseLeave = useCallback(() => {
-    if (sidebarFixed || mobile) return
-    if (openTimer.current) {
-      clearTimeout(openTimer.current)
-      openTimer.current = null
-    }
-    if (closeTimer.current) return
-    closeTimer.current = setTimeout(() => {
+  const collapse = useCallback(() => {
+    clearCloseTimer()
+    setHoverExpanded(false)
+  }, [clearCloseTimer])
+
+  const expand = useCallback(() => {
+    clearCloseTimer()
+    setHoverExpanded(true)
+  }, [clearCloseTimer])
+
+  useEffect(() => {
+    if (sidebarFixed || mobile) {
+      clearCloseTimer()
       setHoverExpanded(false)
-      closeTimer.current = null
-    }, CLOSE_DELAY_MS)
-  }, [sidebarFixed, mobile])
+    }
+  }, [sidebarFixed, mobile, clearCloseTimer])
 
-  return { expanded, onMouseEnter, onMouseLeave }
+  useEffect(() => () => clearCloseTimer(), [clearCloseTimer])
+
+  useEffect(() => {
+    if (!hoverExpanded || sidebarFixed || mobile) return
+
+    function handlePointerDown(e: PointerEvent) {
+      const el = sidebarRef.current
+      if (!el || el.contains(e.target as Node)) return
+      collapse()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [hoverExpanded, sidebarFixed, mobile, collapse])
+
+  const onSidebarPointerDown = useCallback(
+    (e: ReactPointerEvent) => {
+      if (sidebarFixed || mobile || hoverExpanded) return
+      if (e.button !== 0) return
+      expand()
+    },
+    [sidebarFixed, mobile, hoverExpanded, expand],
+  )
+
+  const onMouseEnter = useCallback(() => {
+    clearCloseTimer()
+  }, [clearCloseTimer])
+
+  const onMouseLeave = useCallback(
+    (e: React.MouseEvent) => {
+      if (sidebarFixed || mobile || !hoverExpanded) return
+      const related = e.relatedTarget as Node | null
+      if (related && sidebarRef.current?.contains(related)) return
+
+      clearCloseTimer()
+      closeTimer.current = setTimeout(() => {
+        collapse()
+        closeTimer.current = null
+      }, CLOSE_DELAY_MS)
+    },
+    [sidebarFixed, mobile, hoverExpanded, clearCloseTimer, collapse],
+  )
+
+  return { expanded, sidebarRef, onSidebarPointerDown, onMouseEnter, onMouseLeave }
 }

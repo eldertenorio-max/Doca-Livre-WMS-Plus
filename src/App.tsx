@@ -1,15 +1,18 @@
 import { useCallback, useMemo, useState } from 'react'
 import { AppSidebar } from './components/AppSidebar'
 import { DetailModal } from './components/DetailModal'
+import { ManualNfModal, type ManualNfModalResult } from './components/ManualNfModal'
 import { IntroSplash } from './components/IntroSplash'
 import { LayoutPanel } from './components/LayoutPanel'
 import { PrintLayoutDocument } from './components/PrintLayoutDocument'
 import { CAMARAS } from './layout/camaras'
 import { OcupadoAlert } from './components/OcupadoAlert'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
+import { useEntradaCamposConfig } from './hooks/useEntradaCamposConfig'
 import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
 import { allItemsAllocated } from './lib/repository'
+import { adicionarNotaManual, alocarEnderecoEmItem } from './lib/manualNf'
 import {
   aplicarSaidaItens,
   buscarNfPorNumero,
@@ -29,6 +32,7 @@ import {
 import { mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeXml } from './lib/parseNfeXml'
+import type { EntradaItemCampos } from './lib/entradaCampos'
 import type { AddressId, AddressOccupancy, NotaFiscal } from './types'
 import './App.css'
 
@@ -65,6 +69,7 @@ export default function App() {
   } = useEnderecamentoStore()
   const { theme, toggleTheme } = useTheme()
   const { sidebarFixed, toggleSidebarMode } = useSidebarMode()
+  const entradaCampos = useEntradaCamposConfig()
   const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -84,6 +89,8 @@ export default function App() {
     addressId: AddressId
     occ: AddressOccupancy
   } | null>(null)
+  const [manualNfModal, setManualNfModal] = useState<{ addressId?: AddressId } | null>(null)
+  const [manualNfError, setManualNfError] = useState<string | null>(null)
 
   const occupancy = useMemo(() => buildOccupancyMap(state.notas), [state.notas])
   const activeNf = state.notas.find((n) => n.id === state.activeNfId) ?? null
@@ -293,6 +300,12 @@ export default function App() {
       return
     }
 
+    if (!allocateMode && !editMode && !occ && mode === 'add') {
+      setManualNfError(null)
+      setManualNfModal({ addressId })
+      return
+    }
+
     if (occ) {
       if (allocateMode || editMode) {
         setOcupadoAlert({ addressId, occ })
@@ -348,6 +361,20 @@ export default function App() {
     setPendingSelection(new Set())
   }
 
+  function handleUpdateItemCampos(itemIndex: number, patch: EntradaItemCampos) {
+    if (!state.activeNfId) return
+    setState((s) => ({
+      ...s,
+      notas: s.notas.map((nf) => {
+        if (nf.id !== s.activeNfId) return nf
+        return {
+          ...nf,
+          items: nf.items.map((it) => (it.index === itemIndex ? { ...it, ...patch } : it)),
+        }
+      }),
+    }))
+  }
+
   function handleFinishEntrada() {
     if (!activeNf || !allItemsAllocated(activeNf)) return
     setState((s) => {
@@ -363,6 +390,71 @@ export default function App() {
       }
     })
     setPendingSelection(new Set())
+  }
+
+  async function handleManualNfConfirm(result: ManualNfModalResult) {
+    setManualNfError(null)
+    const addressId = manualNfModal?.addressId
+
+    if (addressId && occupancy.has(addressId)) {
+      setManualNfError('Este endereço já está ocupado.')
+      return
+    }
+
+    let nextState = state
+
+    if (result.kind === 'existing') {
+      if (!state.notas.some((n) => n.id === result.nfId)) {
+        setManualNfError('Nota fiscal não encontrada.')
+        return
+      }
+      if (addressId) {
+        const updated = alocarEnderecoEmItem(state, addressId, result.nfId, result.itemIndex)
+        nextState = { ...state, ...updated }
+      } else {
+        nextState = {
+          ...state,
+          activeNfId: result.nfId,
+          activeItemIndex: result.itemIndex,
+        }
+      }
+    } else {
+      const added = adicionarNotaManual(state, result.input)
+      if ('error' in added) {
+        setManualNfError(added.error)
+        return
+      }
+      if (addressId) {
+        const updated = alocarEnderecoEmItem(
+          { notas: added.notas, movimentos: added.movimentos },
+          addressId,
+          added.nf.id,
+          0,
+        )
+        nextState = {
+          ...state,
+          ...updated,
+          activeNfId: added.nf.id,
+          activeItemIndex: 0,
+        }
+      } else {
+        nextState = {
+          ...state,
+          notas: added.notas,
+          movimentos: added.movimentos,
+          activeNfId: added.nf.id,
+          activeItemIndex: 0,
+        }
+      }
+    }
+
+    setState(nextState)
+    if (addressId) {
+      setPendingSelection(new Set([addressId]))
+    }
+    await saveNow(nextState)
+    setManualNfModal(null)
+    setManualNfError(null)
   }
 
   function handleCancelarEntrada(nfId: string) {
@@ -587,13 +679,24 @@ export default function App() {
           activeNfId: state.activeNfId,
           activeItemIndex: state.activeItemIndex,
           pendingCount: pendingSelection.size,
+          camposConfig: entradaCampos.config,
+          camposDraft: entradaCampos.draft,
+          camposDirty: entradaCampos.dirty,
+          camposSavedHint: entradaCampos.savedHint,
+          onToggleCampo: entradaCampos.toggleDraft,
+          onSaveCampos: entradaCampos.saveDraft,
           onUpload: handleUpload,
           onSelectNf: handleSelectNf,
           onSelectItem: handleSelectItem,
+          onUpdateItemCampos: handleUpdateItemCampos,
           onConfirmItem: handleConfirmItem,
           onFinishEntrada: handleFinishEntrada,
           onCancelarEntrada: handleCancelarEntrada,
           onLimparSelecao: handleLimparSelecao,
+          onCadastrarManual: () => {
+            setManualNfError(null)
+            setManualNfModal({})
+          },
           uploadError,
         }}
         saida={{
@@ -667,6 +770,19 @@ export default function App() {
           addressId={ocupadoAlert.addressId}
           occupancy={ocupadoAlert.occ}
           onClose={() => setOcupadoAlert(null)}
+        />
+      )}
+
+      {manualNfModal && (
+        <ManualNfModal
+          addressId={manualNfModal.addressId ?? null}
+          notas={state.notas}
+          serverError={manualNfError}
+          onConfirm={handleManualNfConfirm}
+          onClose={() => {
+            setManualNfModal(null)
+            setManualNfError(null)
+          }}
         />
       )}
 

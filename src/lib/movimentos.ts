@@ -44,6 +44,10 @@ export function snapshotItensNf(nf: NotaFiscal, itemIndexes?: number[]): Movimen
       quantidade: it.quantidade,
       unidade: it.unidade,
       addressIds: [...it.allocatedAddresses],
+      ...(it.up ? { up: it.up } : {}),
+      ...(it.lote ? { lote: it.lote } : {}),
+      ...(it.dataFabricacao ? { dataFabricacao: it.dataFabricacao } : {}),
+      ...(it.dataValidade ? { dataValidade: it.dataValidade } : {}),
     }))
 }
 

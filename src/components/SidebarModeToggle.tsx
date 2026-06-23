@@ -9,7 +9,7 @@ export function SidebarModeToggle({ fixed, onToggle }: Props) {
       type="button"
       className="sidebar-mode-toggle"
       onClick={onToggle}
-      title={fixed ? 'Menu recolhe ao tirar o mouse (modo livre)' : 'Manter menu sempre aberto (modo fixo)'}
+      title={fixed ? 'Menu recolhe ao clicar fora (modo livre)' : 'Manter menu sempre aberto (modo fixo)'}
       aria-label={fixed ? 'Ativar menu livre' : 'Fixar menu lateral'}
       aria-pressed={fixed}
     >

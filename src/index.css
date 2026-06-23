@@ -20,7 +20,8 @@
   --rack-upright: #1a56a8;
   --rack-beam: #e87722;
   --rack-bay: #ffffff;
-  --rack-gap: 3px;
+  --rack-upright-w: 3px;
+  --rack-beam-w: 3px;
   --overlay: rgb(0 0 0 / 0.67);
   --overlay-strong: rgb(0 0 0 / 0.73);
   --shadow-sidebar: 8px 0 28px rgb(0 0 0 / 0.4);
@@ -37,7 +38,7 @@
   --item-active-bg: #3fb95022;
   --sel-outline: #56d364;
   --swatch-outline: #ffffff;
-  --sidebar-w: 360px;
+  --sidebar-w: 50vw;
   --sidebar-w-collapsed: 72px;
   font-family: 'Segoe UI', system-ui, sans-serif;
   line-height: 1.45;
@@ -67,7 +68,8 @@
   --rack-upright: #0969da;
   --rack-beam: #bc4c00;
   --rack-bay: #ffffff;
-  --rack-gap: 3px;
+  --rack-upright-w: 3px;
+  --rack-beam-w: 3px;
   --overlay: rgb(0 0 0 / 0.4);
   --overlay-strong: rgb(0 0 0 / 0.5);
   --shadow-sidebar: 8px 0 24px rgb(0 0 0 / 0.1);

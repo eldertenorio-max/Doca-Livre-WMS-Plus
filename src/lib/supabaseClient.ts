@@ -66,6 +66,10 @@ type ItemRow = {
   descricao: string
   quantidade: number
   unidade: string
+  up?: string | null
+  lote?: string | null
+  data_fabricacao?: string | null
+  data_validade?: string | null
 }
 
 type EndRow = {

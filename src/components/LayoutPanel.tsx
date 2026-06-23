@@ -14,7 +14,7 @@ import {
 import type { AddressId, AddressOccupancy } from '../types'
 import { useIsMobile } from '../hooks/useIsMobile'
 
-const CELL_GAP = 3
+const CELL_GAP = 0
 const MIN_CELL = 28
 const MAX_CELL = 58
 const MOBILE_MIN_CELL = 20
@@ -39,11 +39,10 @@ function computeCellSize(containerWidth: number, ruas: RuaConfig[], mobile: bool
   if (containerWidth <= 0) return mobile ? MOBILE_MIN_CELL : MIN_CELL
 
   const pad = mobile ? 8 : 24
-  const ruasGap = mobile ? 0 : 16
   const labelArea = mobile ? 26 : 30
   const maxCols = Math.max(...ruas.map((r) => r.colunas))
-  const numRuas = mobile ? 1 : ruas.length
-  const perRua = (containerWidth - pad - ruasGap * (numRuas - 1)) / numRuas - labelArea
+  /** Largura total para uma rua — a outra fica na rolagem horizontal. */
+  const perRua = containerWidth - pad - labelArea
   const size = Math.floor((perRua - (maxCols - 1) * CELL_GAP) / maxCols)
   const min = mobile ? MOBILE_MIN_CELL : MIN_CELL
   const max = mobile ? MOBILE_MAX_CELL : MAX_CELL
@@ -260,6 +259,15 @@ function RuaGrid({
                             {cellNfLabel(occ.nfNumero, cellSize)}
                           </span>
                         )}
+                        {kind === 'sem-nivel5' && (
+                          <span
+                            className="cell-unavailable-mark"
+                            style={{ fontSize: cellUnavailableMarkSize(cellSize) }}
+                            aria-hidden
+                          >
+                            ×
+                          </span>
+                        )}
                       </button>
                     )
                   })}
@@ -337,6 +345,13 @@ function cellNfFontSize(cellSize: number): number {
   if (cellSize >= 36) return 12
   if (cellSize >= 28) return 10
   return 9
+}
+
+function cellUnavailableMarkSize(cellSize: number): number {
+  if (cellSize >= 48) return 24
+  if (cellSize >= 36) return 20
+  if (cellSize >= 28) return 16
+  return 12
 }
 
 function cellNfLabel(numero: string, cellSize: number): string {
