@@ -140,20 +140,6 @@ export function enderecosDosItens(nf: NotaFiscal, itemIndexes: number[]): Addres
   return nf.items.filter((it) => pick.has(it.index)).flatMap((it) => it.allocatedAddresses)
 }
 
-export function restaurarSaidaNoNf(nf: NotaFiscal, mov: MovimentoRegistro): NotaFiscal {
-  if (mov.tipo !== 'saida') return nf
-  const byItem = new Map(mov.itens.map((it) => [it.itemIndex, it.addressIds]))
-  return {
-    ...nf,
-    items: nf.items.map((it) => {
-      const addrs = byItem.get(it.index)
-      if (!addrs?.length) return it
-      const merged = [...new Set([...it.allocatedAddresses, ...addrs])]
-      return { ...it, allocatedAddresses: merged }
-    }),
-  }
-}
-
 export function excluirMovimento(data: PersistedData, movId: string): PersistedData {
   const mov = data.movimentos.find((m) => m.id === movId)
   if (!mov) return data
@@ -167,8 +153,7 @@ export function excluirMovimento(data: PersistedData, movId: string): PersistedD
     }
   }
 
-  const notas = data.notas.map((n) => (n.id === mov.nfId ? restaurarSaidaNoNf(n, mov) : n))
-  return { movimentos, notas }
+  return { movimentos, notas: data.notas }
 }
 
 export function buscarNfPorNumero(notas: NotaFiscal[], numero: string): NotaFiscal | null {

@@ -643,6 +643,77 @@
   font-style: italic;
 }
 
+.hist-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hist-delete:hover {
+  background: #f8514922;
+  color: #f85149;
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #000000aa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 200;
+}
+
+.confirm-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  max-width: 340px;
+  width: 100%;
+}
+
+.confirm-box h4 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.confirm-box p {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+.confirm-warn {
+  color: #f0883e;
+  font-size: 0.82rem;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn-danger {
+  background: #da3633;
+  border-color: #da3633;
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-danger:hover {
+  filter: brightness(1.08);
+}
+
 @media (max-width: 900px) {
   .app-shell {
     flex-direction: column;
