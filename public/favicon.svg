@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ultrafrio">
-  <rect width="512" height="512" fill="#ffffff"/>
-  <g transform="translate(46 56) scale(0.38)">
+  <rect width="512" height="512" fill="#0f1419"/>
+  <g transform="translate(38 48) scale(0.41)">
     <polygon fill="#003879" points="703.89 0 703.89 340.61 605.1 395.06 605.1 510.91 800.86 396.36 800.86 61.21 703.89 0"/>
     <polygon fill="#004ecf" points="506.31 0 506.31 340.61 605.1 395.06 605.1 510.91 409.35 396.36 409.35 61.21 506.31 0"/>
     <polygon fill="#004ecf" points="297.78 84.91 160.75 221.94 297.78 358.97 297.78 84.91"/>
