@@ -18,7 +18,7 @@ const emptyState: AppState = {
 
 const SAVE_DEBOUNCE_MS = 400
 const REMOTE_RELOAD_DEBOUNCE_MS = 700
-const IGNORE_REMOTE_MS = 2500
+const IGNORE_REMOTE_MS = 4000
 const POLL_INTERVAL_MS = 20_000
 
 function pickRepository(): EnderecamentoRepository {
@@ -45,6 +45,66 @@ export function useEnderecamentoStore() {
   const ignoreRemoteUntil = useRef(0)
   const savingRef = useRef(false)
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<AppState | null>(null)
+
+  const persist = useCallback(async (next: AppState) => {
+    let repo = repoRef.current
+    ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_MS
+    savingRef.current = true
+    setSaving(true)
+    try {
+      await repo.saveData({
+        notas: next.notas,
+        movimentos: next.movimentos,
+        notasCanceladas: next.notasCanceladas,
+      })
+      repo.saveUiPrefs({
+        activeNfId: next.activeNfId,
+        activeItemIndex: next.activeItemIndex,
+      })
+      pendingSaveRef.current = null
+      setError(null)
+    } catch {
+      if (repo.mode === 'supabase') {
+        repo = localRepository
+        repoRef.current = repo
+        setStorageMode('local')
+        try {
+          await repo.saveData({
+            notas: next.notas,
+            movimentos: next.movimentos,
+            notasCanceladas: next.notasCanceladas,
+          })
+          repo.saveUiPrefs({
+            activeNfId: next.activeNfId,
+            activeItemIndex: next.activeItemIndex,
+          })
+          pendingSaveRef.current = null
+          setError('Nuvem indisponível — dados salvos só neste navegador.')
+          return
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Erro ao salvar dados.')
+          return
+        }
+      }
+      setError('Erro ao salvar dados.')
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
+  }, [])
+
+  const saveNow = useCallback(
+    async (next: AppState) => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+        saveTimer.current = null
+      }
+      pendingSaveRef.current = null
+      await persist(next)
+    },
+    [persist],
+  )
 
   const reloadFromRemote = useCallback(async () => {
     if (repoRef.current.mode !== 'supabase') return
@@ -154,61 +214,40 @@ export function useEnderecamentoStore() {
     }
   }, [loading, scheduleRemoteReload, storageMode])
 
-  const persist = useCallback(async (next: AppState) => {
-    let repo = repoRef.current
-    savingRef.current = true
-    setSaving(true)
-    try {
-      await repo.saveData({
-        notas: next.notas,
-        movimentos: next.movimentos,
-        notasCanceladas: next.notasCanceladas,
-      })
-      repo.saveUiPrefs({
-        activeNfId: next.activeNfId,
-        activeItemIndex: next.activeItemIndex,
-      })
-      ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_MS
-      setError(null)
-    } catch {
-      if (repo.mode === 'supabase') {
-        repo = localRepository
-        repoRef.current = repo
-        setStorageMode('local')
-        try {
-          await repo.saveData({
-            notas: next.notas,
-            movimentos: next.movimentos,
-            notasCanceladas: next.notasCanceladas,
-          })
-          repo.saveUiPrefs({
-            activeNfId: next.activeNfId,
-            activeItemIndex: next.activeItemIndex,
-          })
-          setError('Nuvem indisponível — dados salvos só neste navegador.')
-          return
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Erro ao salvar dados.')
-          return
-        }
-      }
-      setError('Erro ao salvar dados.')
-    } finally {
-      savingRef.current = false
-      setSaving(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (skipSave.current || loading) return
+    pendingSaveRef.current = state
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
+      pendingSaveRef.current = null
       void persist(state)
     }, SAVE_DEBOUNCE_MS)
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
   }, [state, loading, persist])
+
+  useEffect(() => {
+    const flushPendingSave = () => {
+      const pending = pendingSaveRef.current
+      if (!pending || skipSave.current || savingRef.current) return
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+        saveTimer.current = null
+      }
+      pendingSaveRef.current = null
+      void persist(pending)
+    }
+
+    window.addEventListener('pagehide', flushPendingSave)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushPendingSave()
+    })
+
+    return () => {
+      window.removeEventListener('pagehide', flushPendingSave)
+    }
+  }, [persist])
 
   const updateState = useCallback((updater: AppState | ((prev: AppState) => AppState)) => {
     setState((prev) => (typeof updater === 'function' ? updater(prev) : updater))
@@ -217,6 +256,7 @@ export function useEnderecamentoStore() {
   return {
     state,
     setState: updateState,
+    saveNow,
     loading,
     saving,
     syncing,

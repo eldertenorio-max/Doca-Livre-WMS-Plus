@@ -369,8 +369,8 @@
 .swatch--sel { background: var(--cell-sel); }
 .swatch--confirm { background: var(--cell-ocup); outline: 2px solid var(--cell-sel); }
 .swatch--ocup { background: var(--cell-ocup); }
-.swatch--saida { background: #d29922; }
-.swatch--saida-flag { background: #f0883e; outline: 2px solid var(--swatch-outline); }
+.swatch--saida { background: var(--cell-saida); }
+.swatch--saida-flag { background: var(--cell-saida-flag); outline: 2px solid var(--swatch-outline); }
 .swatch--editar { background: #a371f7; }
 .swatch--porta { background: var(--cell-porta); }
 .swatch--nv5 { background: var(--cell-nv5); border: 1px solid var(--border); }
@@ -577,13 +577,13 @@
 }
 
 .cell--saida {
-  outline: 2px solid #d29922;
+  outline: 2px solid var(--cell-saida);
   z-index: 1;
 }
 
 .cell--saida-flag {
-  outline: 3px solid #f0883e;
-  box-shadow: 0 0 0 1px #000;
+  outline: 3px solid var(--cell-saida-flag);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35), 0 0 10px rgb(248 81 73 / 0.35);
   z-index: 2;
 }
 
@@ -773,10 +773,27 @@
   color: var(--text);
 }
 
-.detail-product-qty {
-  font-size: 0.82rem;
+.detail-product-qty-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.detail-product-qty-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-muted);
-  margin-top: 2px;
+}
+
+.detail-product-qty-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .detail-modal .modal-section {
@@ -1593,7 +1610,7 @@
 }
 
 .addr-mini--saida .addr-flagged {
-  color: #f0883e;
+  color: var(--cell-saida-flag);
   font-weight: 600;
 }
 

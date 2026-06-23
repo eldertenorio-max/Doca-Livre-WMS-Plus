@@ -56,6 +56,7 @@ export default function App() {
   const {
     state,
     setState,
+    saveNow,
     loading,
     saving,
     syncing,
@@ -441,15 +442,17 @@ export default function App() {
     })
   }
 
-  function handleFinalizarSaida() {
+  async function handleFinalizarSaida() {
     if (!nfBuscaSaida || itensFlagados.size === 0) return
     const indexes = [...itensFlagados]
     const mov = criarMovimentoSaida(nfBuscaSaida, indexes)
-    setState((s) => ({
-      ...s,
-      notas: s.notas.map((n) => (n.id === nfBuscaSaida.id ? aplicarSaidaItens(n, indexes) : n)),
-      movimentos: [mov, ...s.movimentos],
-    }))
+    const nextState = {
+      ...state,
+      notas: state.notas.map((n) => (n.id === nfBuscaSaida.id ? aplicarSaidaItens(n, indexes) : n)),
+      movimentos: [mov, ...state.movimentos],
+    }
+    setState(nextState)
+    await saveNow(nextState)
     setNfBuscaSaidaId(null)
     setItensFlagados(new Set())
   }
@@ -484,42 +487,42 @@ export default function App() {
     setDetailAddress(null)
   }
 
-  function handleSalvarEditar() {
+  async function handleSalvarEditar() {
     if (!nfEditar || editItemIndex == null || editPendingSelection.size === 0) return
     const addresses = [...editPendingSelection]
     const currentItemIndex = editItemIndex
 
-    setState((s) => {
-      const notas = s.notas.map((nf) => {
-        if (nf.id !== nfEditar.id) {
-          return {
-            ...nf,
-            items: nf.items.map((it) => ({
-              ...it,
-              allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
-            })),
-          }
-        }
+    const notas = state.notas.map((nf) => {
+      if (nf.id !== nfEditar.id) {
         return {
           ...nf,
-          items: nf.items.map((it) => {
-            if (it.index !== currentItemIndex) {
-              return {
-                ...it,
-                allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
-              }
-            }
-            return { ...it, allocatedAddresses: addresses }
-          }),
+          items: nf.items.map((it) => ({
+            ...it,
+            allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
+          })),
         }
-      })
-      const updatedNf = notas.find((n) => n.id === nfEditar.id)!
+      }
       return {
-        ...s,
-        notas,
-        movimentos: upsertMovimentoEntrada(s.movimentos, updatedNf),
+        ...nf,
+        items: nf.items.map((it) => {
+          if (it.index !== currentItemIndex) {
+            return {
+              ...it,
+              allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
+            }
+          }
+          return { ...it, allocatedAddresses: addresses }
+        }),
       }
     })
+    const updatedNf = notas.find((n) => n.id === nfEditar.id)!
+    const nextState = {
+      ...state,
+      notas,
+      movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
+    }
+    setState(nextState)
+    await saveNow(nextState)
     setEditPendingSelection(new Set())
     setEditItemIndex(null)
   }
@@ -531,26 +534,28 @@ export default function App() {
     setBuscaEditarErro(null)
   }
 
-  function handleExcluirMovimento(movId: string) {
-    setState((s) => {
-      const result = excluirMovimento(
-        { notas: s.notas, movimentos: s.movimentos, notasCanceladas: s.notasCanceladas },
-        movId,
-      )
-      const mov = s.movimentos.find((m) => m.id === movId)
-      const nfRemoved = mov?.tipo === 'entrada'
-      return {
-        ...s,
-        notas: result.notas,
-        movimentos: result.movimentos,
-        notasCanceladas: result.notasCanceladas,
-        activeNfId: nfRemoved || !result.notas.some((n) => n.id === s.activeNfId) ? null : s.activeNfId,
-        activeItemIndex:
-          nfRemoved || !result.notas.some((n) => n.id === s.activeNfId) ? null : s.activeItemIndex,
-      }
-    })
+  async function handleExcluirMovimento(movId: string) {
+    const mov = state.movimentos.find((m) => m.id === movId)
+    const result = excluirMovimento(
+      { notas: state.notas, movimentos: state.movimentos, notasCanceladas: state.notasCanceladas },
+      movId,
+    )
+    const nfRemoved = mov?.tipo === 'entrada'
+    const nextState = {
+      ...state,
+      notas: result.notas,
+      movimentos: result.movimentos,
+      notasCanceladas: result.notasCanceladas,
+      activeNfId:
+        nfRemoved || !result.notas.some((n) => n.id === state.activeNfId) ? null : state.activeNfId,
+      activeItemIndex:
+        nfRemoved || !result.notas.some((n) => n.id === state.activeNfId)
+          ? null
+          : state.activeItemIndex,
+    }
+    setState(nextState)
+    await saveNow(nextState)
     if (nfBuscaSaidaId) {
-      const mov = state.movimentos.find((m) => m.id === movId)
       if (mov?.nfId === nfBuscaSaidaId && mov.tipo === 'entrada') {
         setNfBuscaSaidaId(null)
         setItensFlagados(new Set())

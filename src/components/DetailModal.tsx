@@ -38,9 +38,12 @@ export function DetailModal({ addressId, nota, onClose }: Props) {
                 <li key={it.index} className="detail-product-card">
                   <span className="detail-product-codigo">{it.codigo}</span>
                   <span className="detail-product-desc">{it.descricao}</span>
-                  <span className="detail-product-qty">
-                    {it.quantidade} {it.unidade}
-                  </span>
+                  <div className="detail-product-qty-row">
+                    <span className="detail-product-qty-label">Quantidade</span>
+                    <span className="detail-product-qty-value">
+                      {formatItemQuantidade(it.quantidade)} {it.unidade}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -98,4 +101,10 @@ export function DetailModal({ addressId, nota, onClose }: Props) {
       </div>
     </div>
   )
+}
+
+function formatItemQuantidade(qty: number): string {
+  return Number.isInteger(qty)
+    ? qty.toLocaleString('pt-BR')
+    : qty.toLocaleString('pt-BR', { maximumFractionDigits: 4 })
 }

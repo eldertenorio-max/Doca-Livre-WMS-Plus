@@ -13,6 +13,8 @@
   --cell-disp: #1f6feb;
   --cell-sel: #3fb950;
   --cell-ocup: #d29922;
+  --cell-saida: #d29922;
+  --cell-saida-flag: #f85149;
   --cell-porta: #484f58;
   --cell-nv5: #21262d;
   --overlay: rgb(0 0 0 / 0.67);
@@ -54,6 +56,8 @@
   --cell-disp: #54aeff;
   --cell-sel: #2da44e;
   --cell-ocup: #bf8700;
+  --cell-saida: #bf8700;
+  --cell-saida-flag: #cf222e;
   --cell-porta: #afb8c1;
   --cell-nv5: #e1e4e8;
   --overlay: rgb(0 0 0 / 0.4);
