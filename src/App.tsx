@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { AppSidebar } from './components/AppSidebar'
 import { DetailModal } from './components/DetailModal'
+import { IntroSplash } from './components/IntroSplash'
 import { LayoutPanel } from './components/LayoutPanel'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
 import { allItemsAllocated } from './lib/repository'
@@ -39,6 +40,7 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
 
 export default function App() {
   const { state, setState, loading, saving, error, clearError } = useEnderecamentoStore()
+  const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detailAddress, setDetailAddress] = useState<AddressId | null>(null)
@@ -274,12 +276,8 @@ export default function App() {
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
   const detailNota = detailOcc ? state.notas.find((n) => n.id === detailOcc.nfId) : null
 
-  if (loading) {
-    return (
-      <div className="app-loading">
-        <p>Carregando endereçamento…</p>
-      </div>
-    )
+  if (!introDone) {
+    return <IntroSplash loading={loading} onFinish={() => setIntroDone(true)} />
   }
 
   return (
