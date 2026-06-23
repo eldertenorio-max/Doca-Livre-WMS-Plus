@@ -49,7 +49,18 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
 }
 
 export default function App() {
-  const { state, setState, loading, saving, error, clearError } = useEnderecamentoStore()
+  const {
+    state,
+    setState,
+    loading,
+    saving,
+    error,
+    clearError,
+    storageMode,
+    migratedFromLocal,
+    importBackup,
+    exportBackup,
+  } = useEnderecamentoStore()
   const { theme, toggleTheme } = useTheme()
   const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
@@ -334,6 +345,61 @@ export default function App() {
     setPendingSelection(new Set())
   }
 
+  function handleCancelarEntrada(nfId: string) {
+    setState((s) => {
+      const mov = s.movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nfId)
+      const base = mov
+        ? excluirMovimento(
+            { notas: s.notas, movimentos: s.movimentos, notasCanceladas: s.notasCanceladas },
+            mov.id,
+          )
+        : {
+            notas: s.notas.filter((n) => n.id !== nfId),
+            movimentos: s.movimentos,
+            notasCanceladas: s.notasCanceladas,
+          }
+
+      const wasActive = s.activeNfId === nfId
+      const nextNf = wasActive
+        ? base.notas.find((n) => n.status === 'em_andamento') ?? null
+        : base.notas.find((n) => n.id === s.activeNfId) ?? null
+
+      return {
+        ...s,
+        notas: base.notas,
+        movimentos: base.movimentos,
+        notasCanceladas: base.notasCanceladas,
+        activeNfId: wasActive ? nextNf?.id ?? null : s.activeNfId,
+        activeItemIndex: wasActive ? nextNf?.items[0]?.index ?? null : s.activeItemIndex,
+      }
+    })
+    setPendingSelection(new Set())
+    setUploadError(null)
+  }
+
+  function handleLimparSelecao() {
+    if (!activeNf || state.activeItemIndex == null) return
+    const currentItemIndex = state.activeItemIndex
+    setPendingSelection(new Set())
+    setState((s) => {
+      const notas = s.notas.map((nf) => {
+        if (nf.id !== activeNf.id) return nf
+        return {
+          ...nf,
+          items: nf.items.map((it) =>
+            it.index === currentItemIndex ? { ...it, allocatedAddresses: [] } : it,
+          ),
+        }
+      })
+      const updatedNf = notas.find((n) => n.id === activeNf.id)!
+      return {
+        ...s,
+        notas,
+        movimentos: upsertMovimentoEntrada(s.movimentos, updatedNf),
+      }
+    })
+  }
+
   function handleBuscarSaida(numero: string) {
     setBuscaErro(null)
     const nf = buscarNfPorNumero(state.notas, numero)
@@ -463,6 +529,17 @@ export default function App() {
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
   const detailNota = detailOcc ? state.notas.find((n) => n.id === detailOcc.nfId) : null
 
+  function handleImportBackup(data: import('./types').PersistedData) {
+    importBackup(data)
+    setPendingSelection(new Set())
+    setEditPendingSelection(new Set())
+    setNfBuscaSaidaId(null)
+    setItensFlagados(new Set())
+    setNfEditarId(null)
+    setEditItemIndex(null)
+    setDetailAddress(null)
+  }
+
   if (!introDone) {
     return <IntroSplash loading={loading} onFinish={() => setIntroDone(true)} />
   }
@@ -472,6 +549,10 @@ export default function App() {
       <AppSidebar
         saving={saving}
         persistError={error}
+        storageMode={storageMode}
+        migratedFromLocal={migratedFromLocal}
+        onExportBackup={exportBackup}
+        onImportBackup={handleImportBackup}
         theme={theme}
         onToggleTheme={toggleTheme}
         entrada={{
@@ -484,6 +565,8 @@ export default function App() {
           onSelectItem: handleSelectItem,
           onConfirmItem: handleConfirmItem,
           onFinishEntrada: handleFinishEntrada,
+          onCancelarEntrada: handleCancelarEntrada,
+          onLimparSelecao: handleLimparSelecao,
           uploadError,
         }}
         saida={{

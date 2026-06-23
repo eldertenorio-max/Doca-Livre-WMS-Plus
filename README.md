@@ -11,7 +11,29 @@ npm run dev
 
 Opcional: copie `.env.example` para `.env` e preencha o Supabase. Sem `.env`, os dados ficam no **localStorage** do navegador.
 
-## Supabase
+## Por que os dados não aparecem em outro navegador?
+
+Sem **Supabase** configurado, tudo fica no **localStorage** do navegador — cada máquina/celular tem sua cópia separada.
+
+### Solução recomendada (nuvem)
+
+1. Crie um projeto em [supabase.com](https://supabase.com) (ou use o projeto `rmcsubgerhbaeyitegvt`)
+2. No **SQL Editor**, execute **nesta ordem**:
+   - `supabase/sql/create_ultrafrio_enderecamento.sql`
+   - `supabase/sql/create_ultrafrio_movimentos.sql`
+   - `supabase/sql/create_ultrafrio_notas_canceladas.sql`
+3. Em **Project Settings → API**, copie URL e `anon` key
+4. No **Render** (ou `.env` local), defina e **faça um novo deploy**:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+As variáveis do Vite entram no **build** — após alterar no Render, clique em **Manual Deploy**.
+
+### Alternativa rápida (backup manual)
+
+No menu do app: **Exportar** o backup na máquina antiga e **Importar** na nova.
+
+## Supabase (detalhes)
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
 2. No **SQL Editor**, execute `supabase/sql/create_ultrafrio_enderecamento.sql`

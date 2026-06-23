@@ -151,7 +151,16 @@ function RuaGrid({
                         title={title}
                         aria-label={title}
                         onClick={() => onCellClick(addressId, clickable || !!occ || pending)}
-                      />
+                      >
+                        {occ && (
+                          <span
+                            className="cell-nf"
+                            style={{ fontSize: cellNfFontSize(cellSize) }}
+                          >
+                            {cellNfLabel(occ.nfNumero, cellSize)}
+                          </span>
+                        )}
+                      </button>
                     )
                   })}
                 </div>
@@ -215,6 +224,19 @@ function CamaraSection({ cam, mobile, ...props }: { cam: CamaraConfig; mobile: b
       </div>
     </section>
   )
+}
+
+function cellNfFontSize(cellSize: number): number {
+  if (cellSize >= 48) return 9
+  if (cellSize >= 36) return 8
+  if (cellSize >= 28) return 7
+  return 6
+}
+
+function cellNfLabel(numero: string, cellSize: number): string {
+  if (cellSize >= 36) return numero
+  if (cellSize >= 28) return numero.length > 6 ? numero.slice(-6) : numero
+  return numero.length > 4 ? numero.slice(-4) : numero
 }
 
 function cellTooltip(

@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import type { NfeItem, NotaFiscal } from '../types'
 import { allItemsAllocated } from '../lib/repository'
 import { formatAddressLabel } from '../layout/camaras'
@@ -13,6 +13,8 @@ type Props = {
   onSelectItem: (index: number) => void
   onConfirmItem: () => void
   onFinishEntrada: () => void
+  onCancelarEntrada: (nfId: string) => void
+  onLimparSelecao: () => void
   uploadError: string | null
 }
 
@@ -31,8 +33,11 @@ export function EntradaPanel({
   onSelectItem,
   onConfirmItem,
   onFinishEntrada,
+  onCancelarEntrada,
+  onLimparSelecao,
   uploadError,
 }: Props) {
+  const [confirmarCancelar, setConfirmarCancelar] = useState<string | null>(null)
   const emAndamento = notas.filter((n) => n.status === 'em_andamento')
   const activeNf = notas.find((n) => n.id === activeNfId) ?? null
 
@@ -74,7 +79,16 @@ export function EntradaPanel({
 
       {activeNf && activeNf.status === 'em_andamento' && (
         <div className="sidebar-block nf-detail">
-          <h3>NF {activeNf.numero}</h3>
+          <div className="nf-detail-head">
+            <h3>NF {activeNf.numero}</h3>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setConfirmarCancelar(activeNf.id)}
+            >
+              Cancelar entrada
+            </button>
+          </div>
           {activeNf.nfCanceladaOrigemNumero && (
             <p className="vinculo-entrada-badge">
               Substitui NF cancelada <strong>{activeNf.nfCanceladaOrigemNumero}</strong>
@@ -121,9 +135,24 @@ export function EntradaPanel({
           {activeItemIndex != null && (
             <div className="item-actions">
               <p className="muted">{pendingCount} endereço(s) selecionado(s)</p>
-              <button type="button" className="btn primary" onClick={onConfirmItem} disabled={pendingCount === 0}>
-                Confirmar endereços do item
-              </button>
+              <div className="item-actions-row">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={onLimparSelecao}
+                  disabled={pendingCount === 0}
+                >
+                  Limpar tudo
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={onConfirmItem}
+                  disabled={pendingCount === 0}
+                >
+                  Confirmar endereços do item
+                </button>
+              </div>
             </div>
           )}
 
@@ -134,6 +163,39 @@ export function EntradaPanel({
           )}
         </div>
       )}
+
+      {confirmarCancelar && (() => {
+        const nf = notas.find((n) => n.id === confirmarCancelar)
+        if (!nf) return null
+        return (
+          <div className="confirm-backdrop" onClick={() => setConfirmarCancelar(null)}>
+            <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
+              <h4>Cancelar entrada?</h4>
+              <p>
+                NF <strong>{nf.numero}</strong>
+              </p>
+              <p className="confirm-warn">
+                A nota será removida, as posições marcadas serão liberadas e o registro de entrada será excluído do histórico.
+              </p>
+              <div className="confirm-actions">
+                <button type="button" className="btn" onClick={() => setConfirmarCancelar(null)}>
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => {
+                    onCancelarEntrada(nf.id)
+                    setConfirmarCancelar(null)
+                  }}
+                >
+                  Cancelar entrada
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }

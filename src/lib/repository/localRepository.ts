@@ -20,6 +20,10 @@ function loadBundle(): PersistedData {
   }
 }
 
+export function loadLocalPersistedData(): PersistedData {
+  return loadBundle()
+}
+
 function loadUiFromLegacy(): Pick<AppState, 'activeNfId' | 'activeItemIndex'> {
   const raw = localStorage.getItem(UI_KEY)
   if (raw) {

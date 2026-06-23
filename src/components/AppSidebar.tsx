@@ -1,16 +1,24 @@
 import { CollapsibleSidebarSection } from './CollapsibleSidebarSection'
 import { CanceladasPanel } from './CanceladasPanel'
+import { DataBackupPanel } from './DataBackupPanel'
+import { EditarPosicaoPanel } from './EditarPosicaoPanel'
 import { EntradaPanel } from './EntradaPanel'
 import { HistoricoPanel } from './HistoricoPanel'
-import { EditarPosicaoPanel } from './EditarPosicaoPanel'
 import { SaidaPanel } from './SaidaPanel'
+import { StorageBanner } from './StorageBanner'
 import { ThemeToggle } from './ThemeToggle'
+import type { StorageMode } from '../lib/repository/types'
+import type { PersistedData } from '../types'
 import type { Theme } from '../lib/theme'
 import type { ComponentProps } from 'react'
 
 type Props = {
   saving: boolean
   persistError: string | null
+  storageMode: StorageMode
+  migratedFromLocal: boolean
+  onExportBackup: () => PersistedData
+  onImportBackup: (data: PersistedData) => void
   theme: Theme
   onToggleTheme: () => void
   entrada: ComponentProps<typeof EntradaPanel>
@@ -20,7 +28,21 @@ type Props = {
   canceladas: ComponentProps<typeof CanceladasPanel>
 }
 
-export function AppSidebar({ saving, persistError, theme, onToggleTheme, entrada, saida, editar, historico, canceladas }: Props) {
+export function AppSidebar({
+  saving,
+  persistError,
+  storageMode,
+  migratedFromLocal,
+  onExportBackup,
+  onImportBackup,
+  theme,
+  onToggleTheme,
+  entrada,
+  saida,
+  editar,
+  historico,
+  canceladas,
+}: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-block sidebar-header">
@@ -33,6 +55,7 @@ export function AppSidebar({ saving, persistError, theme, onToggleTheme, entrada
         <p className="muted">Ultrafrio · entrada e saída por NF-e</p>
         {saving && <p className="saving-hint">Salvando…</p>}
         {persistError && <p className="error">{persistError}</p>}
+        <StorageBanner mode={storageMode} migrated={migratedFromLocal} />
       </div>
 
       <CollapsibleSidebarSection id="entrada" title="Entrada">
@@ -56,6 +79,7 @@ export function AppSidebar({ saving, persistError, theme, onToggleTheme, entrada
       </CollapsibleSidebarSection>
 
       <div className="sidebar-footer">
+        <DataBackupPanel onExport={onExportBackup} onImport={onImportBackup} />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
     </aside>

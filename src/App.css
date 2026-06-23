@@ -269,6 +269,50 @@
   margin-top: 12px;
 }
 
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.nf-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.nf-detail-head h3 {
+  margin: 0;
+}
+
+.item-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item-actions-row .btn.primary {
+  flex: 1;
+  min-width: 140px;
+}
+
+.item-actions-row .btn-ghost {
+  flex-shrink: 0;
+}
+
 .badge-concluida {
   margin-top: 12px;
   padding: 8px 10px;
@@ -467,6 +511,21 @@
   border-radius: 2px;
   padding: 0;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cell-nf {
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1;
+  text-align: center;
+  word-break: break-all;
+  padding: 1px;
+  pointer-events: none;
+  user-select: none;
 }
 
 .cell--disponivel {
@@ -1241,6 +1300,59 @@
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storage-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.storage-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.storage-banner--local {
+  background: var(--warning-bg, #9e6a0318);
+  border: 1px solid #d2992255;
+  color: var(--text);
+}
+
+.storage-banner--cloud {
+  background: var(--highlight-bg);
+  border: 1px solid var(--highlight-border);
+  color: var(--text-muted);
+}
+
+.data-backup {
+  width: 100%;
+}
+
+.data-backup-title {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.data-backup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.data-backup-actions .btn {
+  flex: 1;
 }
 
 .theme-toggle {
