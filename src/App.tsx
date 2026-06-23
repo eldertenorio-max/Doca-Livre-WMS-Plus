@@ -1,14 +1,23 @@
 import { useCallback, useMemo, useState } from 'react'
+import { AppSidebar } from './components/AppSidebar'
 import { DetailModal } from './components/DetailModal'
 import { LayoutPanel } from './components/LayoutPanel'
-import { NfSidebar } from './components/NfSidebar'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
 import { allItemsAllocated } from './lib/repository'
+import {
+  aplicarSaidaItens,
+  buscarNfPorNumero,
+  criarMovimentoEntrada,
+  criarMovimentoSaida,
+  enderecosDaNf,
+  enderecosDosItens,
+  excluirMovimento,
+} from './lib/movimentos'
 import { parseNfeXml } from './lib/parseNfeXml'
-import type { AddressId, AddressOccupancy } from './types'
+import type { AddressId, AddressOccupancy, AppTab, NotaFiscal } from './types'
 import './App.css'
 
-function buildOccupancyMap(notas: import('./types').NotaFiscal[]): Map<AddressId, AddressOccupancy> {
+function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy> {
   const map = new Map<AddressId, AddressOccupancy>()
   for (const nf of notas) {
     for (const item of nf.items) {
@@ -30,16 +39,43 @@ function buildOccupancyMap(notas: import('./types').NotaFiscal[]): Map<AddressId
 
 export default function App() {
   const { state, setState, loading, saving, error, clearError } = useEnderecamentoStore()
+  const [tab, setTab] = useState<AppTab>('entrada')
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detailAddress, setDetailAddress] = useState<AddressId | null>(null)
 
+  const [nfBuscaSaidaId, setNfBuscaSaidaId] = useState<string | null>(null)
+  const [itensFlagados, setItensFlagados] = useState<Set<number>>(new Set())
+  const [buscaErro, setBuscaErro] = useState<string | null>(null)
+
   const occupancy = useMemo(() => buildOccupancyMap(state.notas), [state.notas])
   const activeNf = state.notas.find((n) => n.id === state.activeNfId) ?? null
-  const allocateMode =
-    !!activeNf && activeNf.status !== 'concluida' && state.activeItemIndex != null
+  const nfBuscaSaida = nfBuscaSaidaId
+    ? state.notas.find((n) => n.id === nfBuscaSaidaId) ?? null
+    : null
 
-  const syncPendingFromItem = useCallback((nf: import('./types').NotaFiscal, itemIndex: number) => {
+  const allocateMode =
+    tab === 'entrada' &&
+    !!activeNf &&
+    activeNf.status === 'em_andamento' &&
+    state.activeItemIndex != null
+
+  const saidaAddresses = useMemo(() => {
+    if (tab !== 'saida' || !nfBuscaSaida) return new Set<AddressId>()
+    return new Set(enderecosDaNf(nfBuscaSaida))
+  }, [tab, nfBuscaSaida])
+
+  const saidaFlaggedAddresses = useMemo(() => {
+    if (!nfBuscaSaida || itensFlagados.size === 0) return new Set<AddressId>()
+    return new Set(enderecosDosItens(nfBuscaSaida, [...itensFlagados]))
+  }, [nfBuscaSaida, itensFlagados])
+
+  const movimentosOrdenados = useMemo(
+    () => [...state.movimentos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [state.movimentos],
+  )
+
+  const syncPendingFromItem = useCallback((nf: NotaFiscal, itemIndex: number) => {
     const item = nf.items[itemIndex]
     if (!item) {
       setPendingSelection(new Set())
@@ -65,6 +101,7 @@ export default function App() {
         activeItemIndex: 0,
       }))
       setPendingSelection(new Set())
+      setTab('entrada')
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Erro ao ler XML.')
     }
@@ -76,6 +113,7 @@ export default function App() {
     if (nf && nf.items[0]) syncPendingFromItem(nf, nf.items[0].index)
     else setPendingSelection(new Set())
     setDetailAddress(null)
+    setTab('entrada')
   }
 
   function handleSelectItem(index: number) {
@@ -154,25 +192,87 @@ export default function App() {
     }
   }
 
-  function handleFinishNf() {
+  function handleFinishEntrada() {
     if (!activeNf || !allItemsAllocated(activeNf)) return
+    const mov = criarMovimentoEntrada(activeNf)
     setState((s) => ({
       ...s,
       notas: s.notas.map((n) => (n.id === activeNf.id ? { ...n, status: 'concluida' as const } : n)),
+      movimentos: [mov, ...s.movimentos],
       activeItemIndex: null,
     }))
     setPendingSelection(new Set())
+    setTab('historico')
   }
 
-  function handleRemoveNf(id: string) {
+  function handleBuscarSaida(numero: string) {
+    setBuscaErro(null)
+    const nf = buscarNfPorNumero(state.notas, numero)
+    if (!nf) {
+      setBuscaErro('NF não encontrada.')
+      setNfBuscaSaidaId(null)
+      setItensFlagados(new Set())
+      return
+    }
+    setNfBuscaSaidaId(nf.id)
+    setItensFlagados(new Set())
+  }
+
+  function handleToggleItemSaida(index: number) {
+    setItensFlagados((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+
+  function handleFinalizarSaida() {
+    if (!nfBuscaSaida || itensFlagados.size === 0) return
+    const indexes = [...itensFlagados]
+    const mov = criarMovimentoSaida(nfBuscaSaida, indexes)
     setState((s) => ({
       ...s,
-      notas: s.notas.filter((n) => n.id !== id),
-      activeNfId: s.activeNfId === id ? null : s.activeNfId,
-      activeItemIndex: s.activeNfId === id ? null : s.activeItemIndex,
+      notas: s.notas.map((n) => (n.id === nfBuscaSaida.id ? aplicarSaidaItens(n, indexes) : n)),
+      movimentos: [mov, ...s.movimentos],
     }))
+    setNfBuscaSaidaId(null)
+    setItensFlagados(new Set())
+    setTab('historico')
+  }
+
+  function handleExcluirMovimento(movId: string) {
+    setState((s) => {
+      const result = excluirMovimento({ notas: s.notas, movimentos: s.movimentos }, movId)
+      const mov = s.movimentos.find((m) => m.id === movId)
+      const nfRemoved = mov?.tipo === 'entrada'
+      return {
+        ...s,
+        notas: result.notas,
+        movimentos: result.movimentos,
+        activeNfId: nfRemoved || !result.notas.some((n) => n.id === s.activeNfId) ? null : s.activeNfId,
+        activeItemIndex:
+          nfRemoved || !result.notas.some((n) => n.id === s.activeNfId) ? null : s.activeItemIndex,
+      }
+    })
+    if (nfBuscaSaidaId) {
+      const mov = state.movimentos.find((m) => m.id === movId)
+      if (mov?.nfId === nfBuscaSaidaId && mov.tipo === 'entrada') {
+        setNfBuscaSaidaId(null)
+        setItensFlagados(new Set())
+      }
+    }
     setPendingSelection(new Set())
     setDetailAddress(null)
+  }
+
+  function handleTabChange(next: AppTab) {
+    setTab(next)
+    if (next !== 'saida') {
+      setNfBuscaSaidaId(null)
+      setItensFlagados(new Set())
+      setBuscaErro(null)
+    }
   }
 
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
@@ -188,20 +288,35 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <NfSidebar
-        notas={state.notas}
-        activeNfId={state.activeNfId}
-        activeItemIndex={state.activeItemIndex}
-        pendingCount={pendingSelection.size}
+      <AppSidebar
+        tab={tab}
+        onTabChange={handleTabChange}
         saving={saving}
         persistError={error}
-        onUpload={handleUpload}
-        onSelectNf={handleSelectNf}
-        onSelectItem={handleSelectItem}
-        onConfirmItem={handleConfirmItem}
-        onFinishNf={handleFinishNf}
-        onRemoveNf={handleRemoveNf}
-        uploadError={uploadError}
+        entrada={{
+          notas: state.notas,
+          activeNfId: state.activeNfId,
+          activeItemIndex: state.activeItemIndex,
+          pendingCount: pendingSelection.size,
+          onUpload: handleUpload,
+          onSelectNf: handleSelectNf,
+          onSelectItem: handleSelectItem,
+          onConfirmItem: handleConfirmItem,
+          onFinishEntrada: handleFinishEntrada,
+          uploadError,
+        }}
+        saida={{
+          nfBusca: nfBuscaSaida,
+          itensFlagados,
+          onBuscar: handleBuscarSaida,
+          onToggleItem: handleToggleItemSaida,
+          onFinalizarSaida: handleFinalizarSaida,
+          buscaErro,
+        }}
+        historico={{
+          movimentos: movimentosOrdenados,
+          onExcluir: handleExcluirMovimento,
+        }}
       />
 
       <main className="main-panel">
@@ -210,6 +325,8 @@ export default function App() {
           pendingSelection={pendingSelection}
           activeNfNumero={activeNf?.numero ?? null}
           allocateMode={allocateMode}
+          saidaAddresses={saidaAddresses}
+          saidaFlaggedAddresses={saidaFlaggedAddresses}
           onCellClick={handleCellClick}
         />
       </main>

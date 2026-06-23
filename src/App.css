@@ -234,6 +234,13 @@
   font-weight: 600;
 }
 
+.btn.warning {
+  background: #d29922;
+  border-color: #d29922;
+  color: #fff;
+  font-weight: 600;
+}
+
 .btn.full {
   width: 100%;
   margin-top: 12px;
@@ -284,6 +291,8 @@
 .swatch--disp { background: var(--cell-disp); }
 .swatch--sel { background: var(--cell-sel); }
 .swatch--ocup { background: var(--cell-ocup); }
+.swatch--saida { background: #d29922; }
+.swatch--saida-flag { background: #f0883e; outline: 2px solid #fff; }
 .swatch--porta { background: var(--cell-porta); }
 .swatch--nv5 { background: var(--cell-nv5); border: 1px solid var(--border); }
 
@@ -405,6 +414,17 @@
   filter: brightness(1.1);
 }
 
+.cell--saida {
+  outline: 2px solid #d29922;
+  z-index: 1;
+}
+
+.cell--saida-flag {
+  outline: 3px solid #f0883e;
+  box-shadow: 0 0 0 1px #000;
+  z-index: 2;
+}
+
 .cell--porta,
 .cell--sem-nivel5 {
   cursor: default;
@@ -515,6 +535,112 @@
 .addr-current {
   color: #a371f7;
   font-weight: 600;
+}
+
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.saida-busca {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.input-nf {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.addr-mini--saida .addr-flagged {
+  color: #f0883e;
+  font-weight: 600;
+}
+
+.hist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hist-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 0.82rem;
+}
+
+.hist-card--entrada {
+  border-left: 3px solid var(--success);
+}
+
+.hist-card--saida {
+  border-left: 3px solid #d29922;
+}
+
+.hist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.hist-tipo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hist-tipo--entrada {
+  color: #3fb950;
+}
+
+.hist-tipo--saida {
+  color: #d29922;
+}
+
+.hist-emitente {
+  margin: 2px 0 4px;
+}
+
+.hist-hint {
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 @media (max-width: 900px) {

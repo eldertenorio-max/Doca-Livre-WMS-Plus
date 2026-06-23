@@ -14,6 +14,8 @@ type Props = {
   pendingSelection: Set<AddressId>
   activeNfNumero: string | null
   allocateMode: boolean
+  saidaAddresses?: Set<AddressId>
+  saidaFlaggedAddresses?: Set<AddressId>
   onCellClick: (addressId: AddressId, clickable: boolean) => void
 }
 
@@ -23,6 +25,8 @@ function RuaGrid({
   occupancy,
   pendingSelection,
   allocateMode,
+  saidaAddresses,
+  saidaFlaggedAddresses,
   onCellClick,
 }: {
   camaraId: number
@@ -80,6 +84,8 @@ function RuaGrid({
                     let className = `cell cell--${kind}`
                     if (occ) className += ' cell--ocupado'
                     if (pending) className += ' cell--selecionado'
+                    if (saidaFlaggedAddresses?.has(addressId)) className += ' cell--saida-flag'
+                    else if (saidaAddresses?.has(addressId)) className += ' cell--saida'
                     if (allocateMode && clickable && !occ) className += ' cell--alocavel'
 
                     return (
@@ -131,6 +137,8 @@ export function LayoutPanel(props: Props) {
         <span><i className="swatch swatch--disp" /> Disponível</span>
         <span><i className="swatch swatch--sel" /> Selecionando</span>
         <span><i className="swatch swatch--ocup" /> Ocupado (NF)</span>
+        <span><i className="swatch swatch--saida" /> Saída (NF buscada)</span>
+        <span><i className="swatch swatch--saida-flag" /> Item marcado p/ saída</span>
         <span><i className="swatch swatch--porta" /> Porta</span>
         <span><i className="swatch swatch--nv5" /> Nível 5 inexistente</span>
       </div>
@@ -152,6 +160,11 @@ export function LayoutPanel(props: Props) {
       {props.allocateMode && props.activeNfNumero && (
         <p className="layout-hint">
           Modo alocação: clique nos quadrados azuis para marcar endereços do item selecionado.
+        </p>
+      )}
+      {props.saidaAddresses && props.saidaAddresses.size > 0 && (
+        <p className="layout-hint">
+          Saída: endereços laranja indicam onde retirar os itens da NF buscada.
         </p>
       )}
     </div>

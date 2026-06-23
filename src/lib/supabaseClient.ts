@@ -60,4 +60,14 @@ type EndRow = {
   address_id: string
 }
 
-export type { NfRow, ItemRow, EndRow }
+type MovRow = {
+  id: string
+  tipo: 'entrada' | 'saida'
+  nf_id: string
+  nf_numero: string
+  emitente: string
+  created_at: string
+  payload: { itens: import('../types').MovimentoItemSnapshot[] }
+}
+
+export type { NfRow, ItemRow, EndRow, MovRow }

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRepository, type EnderecamentoRepository } from '../lib/repository'
 import { localRepository } from '../lib/repository/localRepository'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
-import type { AppState, NotaFiscal } from '../types'
+import type { AppState } from '../types'
 
 const emptyState: AppState = {
   notas: [],
+  movimentos: [],
   activeNfId: null,
   activeItemIndex: null,
 }
@@ -31,10 +32,10 @@ export function useEnderecamentoStore() {
       repoRef.current = repo
 
       try {
-        const notas = await repo.loadNotas()
+        const data = await repo.loadData()
         const ui = repo.loadUiPrefs()
         if (!cancelled) {
-          setState({ notas, ...ui })
+          setState({ ...data, ...ui })
           setError(null)
         }
         return
@@ -43,10 +44,10 @@ export function useEnderecamentoStore() {
           repo = localRepository
           repoRef.current = repo
           try {
-            const notas = await repo.loadNotas()
+            const data = await repo.loadData()
             const ui = repo.loadUiPrefs()
             if (!cancelled) {
-              setState({ notas, ...ui })
+              setState({ ...data, ...ui })
               setError(null)
             }
             return
@@ -57,9 +58,7 @@ export function useEnderecamentoStore() {
             return
           }
         }
-        if (!cancelled) {
-          setError('Erro ao carregar dados.')
-        }
+        if (!cancelled) setError('Erro ao carregar dados.')
       } finally {
         if (!cancelled) {
           skipSave.current = false
@@ -69,7 +68,6 @@ export function useEnderecamentoStore() {
     }
 
     void load()
-
     return () => {
       cancelled = true
     }
@@ -79,7 +77,7 @@ export function useEnderecamentoStore() {
     let repo = repoRef.current
     setSaving(true)
     try {
-      await repo.saveNotas(next.notas)
+      await repo.saveData({ notas: next.notas, movimentos: next.movimentos })
       repo.saveUiPrefs({
         activeNfId: next.activeNfId,
         activeItemIndex: next.activeItemIndex,
@@ -90,7 +88,7 @@ export function useEnderecamentoStore() {
         repo = localRepository
         repoRef.current = repo
         try {
-          await repo.saveNotas(next.notas)
+          await repo.saveData({ notas: next.notas, movimentos: next.movimentos })
           repo.saveUiPrefs({
             activeNfId: next.activeNfId,
             activeItemIndex: next.activeItemIndex,
@@ -110,12 +108,10 @@ export function useEnderecamentoStore() {
 
   useEffect(() => {
     if (skipSave.current || loading) return
-
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       void persist(state)
     }, 400)
-
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
@@ -134,5 +130,3 @@ export function useEnderecamentoStore() {
     clearError: () => setError(null),
   }
 }
-
-export type { NotaFiscal }

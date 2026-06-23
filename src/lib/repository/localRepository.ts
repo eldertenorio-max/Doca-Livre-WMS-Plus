@@ -1,50 +1,45 @@
-import type { AppState, NotaFiscal } from '../../types'
+import type { AppState, PersistedData } from '../../types'
 import type { EnderecamentoRepository } from './types'
 
-const DATA_KEY = 'ultrafrio-enderecamento-v1'
+const DATA_KEY = 'ultrafrio-enderecamento-v2'
+const LEGACY_KEY = 'ultrafrio-enderecamento-v1'
 const UI_KEY = 'ultrafrio-ui-prefs-v1'
 
-function loadBundle(): { notas: NotaFiscal[]; activeNfId: string | null; activeItemIndex: number | null } {
+function loadBundle(): PersistedData {
   try {
-    const raw = localStorage.getItem(DATA_KEY)
-    if (!raw) return { notas: [], activeNfId: null, activeItemIndex: null }
-    const parsed = JSON.parse(raw) as AppState
+    const raw = localStorage.getItem(DATA_KEY) ?? localStorage.getItem(LEGACY_KEY)
+    if (!raw) return { notas: [], movimentos: [] }
+    const parsed = JSON.parse(raw) as Partial<PersistedData & AppState>
     return {
       notas: parsed.notas ?? [],
-      activeNfId: parsed.activeNfId ?? null,
-      activeItemIndex: parsed.activeItemIndex ?? null,
+      movimentos: parsed.movimentos ?? [],
     }
   } catch {
-    return { notas: [], activeNfId: null, activeItemIndex: null }
+    return { notas: [], movimentos: [] }
   }
 }
 
 function loadUiFromLegacy(): Pick<AppState, 'activeNfId' | 'activeItemIndex'> {
-  const legacy = loadBundle()
   const raw = localStorage.getItem(UI_KEY)
   if (raw) {
     try {
       return JSON.parse(raw) as Pick<AppState, 'activeNfId' | 'activeItemIndex'>
     } catch {
-      /* fallback legacy */
+      /* ignore */
     }
   }
-  return { activeNfId: legacy.activeNfId, activeItemIndex: legacy.activeItemIndex }
+  return { activeNfId: null, activeItemIndex: null }
 }
 
 export const localRepository: EnderecamentoRepository = {
   mode: 'local',
 
-  async loadNotas() {
-    return loadBundle().notas
+  async loadData() {
+    return loadBundle()
   },
 
-  async saveNotas(notas) {
-    const ui = loadUiFromLegacy()
-    localStorage.setItem(
-      DATA_KEY,
-      JSON.stringify({ notas, activeNfId: ui.activeNfId, activeItemIndex: ui.activeItemIndex }),
-    )
+  async saveData(data) {
+    localStorage.setItem(DATA_KEY, JSON.stringify(data))
   },
 
   loadUiPrefs() {

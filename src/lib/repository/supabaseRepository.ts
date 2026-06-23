@@ -1,5 +1,5 @@
-import type { NotaFiscal } from '../../types'
-import { getSupabase, type EndRow, type ItemRow, type NfRow } from '../supabaseClient'
+import type { MovimentoRegistro, NotaFiscal } from '../../types'
+import { getSupabase, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
 import type { EnderecamentoRepository } from './types'
 
 const UI_KEY = 'ultrafrio-ui-prefs-v1'
@@ -14,78 +14,105 @@ function loadUiPrefsLocal(): { activeNfId: string | null; activeItemIndex: numbe
   }
 }
 
+function mapNotas(
+  rows: NfRow[],
+  itemRows: ItemRow[],
+  endRows: EndRow[],
+): NotaFiscal[] {
+  const endByItem = new Map<string, string[]>()
+  for (const e of endRows) {
+    const key = `${e.nf_id}:${e.item_index}`
+    const list = endByItem.get(key) ?? []
+    list.push(e.address_id)
+    endByItem.set(key, list)
+  }
+
+  const itensByNf = new Map<string, ItemRow[]>()
+  for (const it of itemRows) {
+    const list = itensByNf.get(it.nf_id) ?? []
+    list.push(it)
+    itensByNf.set(it.nf_id, list)
+  }
+
+  return rows.map((nf) => ({
+    id: nf.id,
+    numero: nf.numero,
+    serie: nf.serie,
+    chave: nf.chave,
+    emitente: nf.emitente,
+    dataEmissao: nf.data_emissao,
+    status: nf.status,
+    createdAt: nf.created_at,
+    items: (itensByNf.get(nf.id) ?? []).map((it) => ({
+      index: it.item_index,
+      codigo: it.codigo,
+      descricao: it.descricao,
+      quantidade: Number(it.quantidade),
+      unidade: it.unidade,
+      allocatedAddresses: endByItem.get(`${nf.id}:${it.item_index}`) ?? [],
+    })),
+  }))
+}
+
+function mapMovimentos(rows: MovRow[]): MovimentoRegistro[] {
+  return rows.map((m) => ({
+    id: m.id,
+    tipo: m.tipo,
+    nfId: m.nf_id,
+    nfNumero: m.nf_numero,
+    emitente: m.emitente,
+    createdAt: m.created_at,
+    itens: m.payload?.itens ?? [],
+  }))
+}
+
 export const supabaseRepository: EnderecamentoRepository = {
   mode: 'supabase',
 
-  async loadNotas() {
+  async loadData() {
     const sb = getSupabase()
 
     const { data: nfs, error: nfErr } = await sb
       .from('ultrafrio_notas_fiscais')
       .select('*')
       .order('created_at', { ascending: false })
-
     if (nfErr) throw new Error(nfErr.message)
 
     const rows = (nfs ?? []) as NfRow[]
-    if (!rows.length) return []
-
     const ids = rows.map((n) => n.id)
 
-    const { data: itens, error: itErr } = await sb
-      .from('ultrafrio_nf_itens')
-      .select('*')
-      .in('nf_id', ids)
-      .order('item_index')
+    let itemRows: ItemRow[] = []
+    let endRows: EndRow[] = []
+    if (ids.length) {
+      const { data: itens, error: itErr } = await sb
+        .from('ultrafrio_nf_itens')
+        .select('*')
+        .in('nf_id', ids)
+        .order('item_index')
+      if (itErr) throw new Error(itErr.message)
+      itemRows = (itens ?? []) as ItemRow[]
 
-    if (itErr) throw new Error(itErr.message)
-
-    const { data: ends, error: endErr } = await sb
-      .from('ultrafrio_enderecamentos')
-      .select('*')
-      .in('nf_id', ids)
-
-    if (endErr) throw new Error(endErr.message)
-
-    const itemRows = (itens ?? []) as ItemRow[]
-    const endRows = (ends ?? []) as EndRow[]
-
-    const endByItem = new Map<string, string[]>()
-    for (const e of endRows) {
-      const key = `${e.nf_id}:${e.item_index}`
-      const list = endByItem.get(key) ?? []
-      list.push(e.address_id)
-      endByItem.set(key, list)
+      const { data: ends, error: endErr } = await sb
+        .from('ultrafrio_enderecamentos')
+        .select('*')
+        .in('nf_id', ids)
+      if (endErr) throw new Error(endErr.message)
+      endRows = (ends ?? []) as EndRow[]
     }
 
-    const itensByNf = new Map<string, ItemRow[]>()
-    for (const it of itemRows) {
-      const list = itensByNf.get(it.nf_id) ?? []
-      list.push(it)
-      itensByNf.set(it.nf_id, list)
-    }
+    const { data: movs, error: movErr } = await sb
+      .from('ultrafrio_movimentos')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (movErr) throw new Error(movErr.message)
 
-    return rows.map((nf): NotaFiscal => ({
-      id: nf.id,
-      numero: nf.numero,
-      serie: nf.serie,
-      chave: nf.chave,
-      emitente: nf.emitente,
-      dataEmissao: nf.data_emissao,
-      status: nf.status,
-      createdAt: nf.created_at,
-      items: (itensByNf.get(nf.id) ?? []).map((it) => ({
-        index: it.item_index,
-        codigo: it.codigo,
-        descricao: it.descricao,
-        quantidade: Number(it.quantidade),
-        unidade: it.unidade,
-        allocatedAddresses: endByItem.get(`${nf.id}:${it.item_index}`) ?? [],
-      })),
-    }))
+    return {
+      notas: mapNotas(rows, itemRows, endRows),
+      movimentos: mapMovimentos((movs ?? []) as MovRow[]),
+    }
   },
 
-  async saveNotas(notas) {
+  async saveData({ notas, movimentos }) {
     const sb = getSupabase()
     const keepIds = notas.map((n) => n.id)
 
@@ -96,16 +123,15 @@ export const supabaseRepository: EnderecamentoRepository = {
         const { error } = await sb.from('ultrafrio_notas_fiscais').delete().in('id', allIds)
         if (error) throw new Error(error.message)
       }
-      return
-    }
-
-    const { data: existing } = await sb.from('ultrafrio_notas_fiscais').select('id')
-    const toDelete = ((existing ?? []) as { id: string }[])
-      .map((r) => r.id)
-      .filter((id) => !keepIds.includes(id))
-    if (toDelete.length) {
-      const { error } = await sb.from('ultrafrio_notas_fiscais').delete().in('id', toDelete)
-      if (error) throw new Error(error.message)
+    } else {
+      const { data: existing } = await sb.from('ultrafrio_notas_fiscais').select('id')
+      const toDelete = ((existing ?? []) as { id: string }[])
+        .map((r) => r.id)
+        .filter((id) => !keepIds.includes(id))
+      if (toDelete.length) {
+        const { error } = await sb.from('ultrafrio_notas_fiscais').delete().in('id', toDelete)
+        if (error) throw new Error(error.message)
+      }
     }
 
     for (const nf of notas) {
@@ -147,11 +173,33 @@ export const supabaseRepository: EnderecamentoRepository = {
           address_id,
         })),
       )
-
       if (rows.length) {
         const { error: insEnd } = await sb.from('ultrafrio_enderecamentos').insert(rows)
         if (insEnd) throw new Error(insEnd.message)
       }
+    }
+
+    const keepMov = movimentos.map((m) => m.id)
+    const { data: existingMov } = await sb.from('ultrafrio_movimentos').select('id')
+    const toDelMov = ((existingMov ?? []) as { id: string }[])
+      .map((r) => r.id)
+      .filter((id) => !keepMov.includes(id))
+    if (toDelMov.length) {
+      const { error } = await sb.from('ultrafrio_movimentos').delete().in('id', toDelMov)
+      if (error) throw new Error(error.message)
+    }
+
+    for (const mov of movimentos) {
+      const { error } = await sb.from('ultrafrio_movimentos').upsert({
+        id: mov.id,
+        tipo: mov.tipo,
+        nf_id: mov.nfId,
+        nf_numero: mov.nfNumero,
+        emitente: mov.emitente,
+        created_at: mov.createdAt,
+        payload: { itens: mov.itens },
+      })
+      if (error) throw new Error(error.message)
     }
   },
 
