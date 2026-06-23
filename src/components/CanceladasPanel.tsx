@@ -124,7 +124,7 @@ export function CanceladasPanel({
       <>
         <label className="upload-btn upload-btn--muted">
           <input type="file" accept=".xml,text/xml,application/xml" hidden onChange={handleFile} />
-          Subir XML da NF-e cancelada
+          Subir XML da NF-e cancelada (nota ou evento)
         </label>
         {uploadError && <p className="error">{uploadError}</p>}
         <p className="muted canceladas-empty">Nenhuma NF cancelada registrada.</p>
@@ -137,7 +137,7 @@ export function CanceladasPanel({
     <>
       <label className="upload-btn upload-btn--muted">
         <input type="file" accept=".xml,text/xml,application/xml" hidden onChange={handleFile} />
-        Subir XML da NF-e cancelada
+        Subir XML da NF-e cancelada (nota ou evento)
       </label>
       {uploadError && <p className="error">{uploadError}</p>}
 

@@ -396,7 +396,7 @@
 
 .camara-header h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
 }
 
 .camara-header span {
@@ -460,7 +460,7 @@
 }
 
 .layout-panel--mobile .camara-header h2 {
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .layout-panel--mobile .cell {
@@ -469,7 +469,7 @@
 
 .rua-title {
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   margin-bottom: 6px;
 }
 
@@ -1053,22 +1053,22 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 8mm;
-  padding-bottom: 4mm;
+  gap: 12px;
+  margin-bottom: 5mm;
+  padding-bottom: 2mm;
   border-bottom: 1px solid #333;
 }
 
 .print-page-header h1 {
   margin: 0;
-  font-size: 16pt;
+  font-size: 14pt;
   font-weight: 700;
   color: #000;
 }
 
 .print-page-sub {
-  margin: 2px 0 0;
-  font-size: 11pt;
+  margin: 1px 0 0;
+  font-size: 10pt;
   color: #444;
 }
 
@@ -1087,11 +1087,12 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
+  padding: 1mm 0;
 }
 
 .print-page-footer {
-  margin-top: 6mm;
-  padding-top: 3mm;
+  margin-top: 4mm;
+  padding-top: 2mm;
   border-top: 1px solid #ccc;
 }
 
@@ -1157,7 +1158,7 @@
 .print-axis {
   text-align: center;
   color: #333;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .print-axis--row {

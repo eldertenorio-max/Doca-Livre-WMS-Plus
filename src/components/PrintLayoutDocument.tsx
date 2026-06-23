@@ -8,26 +8,34 @@ import {
   type RuaConfig,
 } from '../layout/camaras'
 
-const CELL_GAP = 2
+const CELL_GAP = 1
+
+/** Área útil A4 paisagem com margem ~8mm e cabeçalho/rodapé compactos. */
+const PRINT_PAGE_WIDTH_MM = 285
+const PRINT_PAGE_HEIGHT_MM = 178
+
+function computePrintCellSize(colunas: number): number {
+  const labelW = 10
+  const gapsW = (colunas - 1) * CELL_GAP
+  const gapsH = (NIVEIS.length - 1) * CELL_GAP
+  const byWidth = Math.floor((PRINT_PAGE_WIDTH_MM - labelW - 4 - gapsW) / colunas)
+  const byHeight = Math.floor((PRINT_PAGE_HEIGHT_MM - 6 - gapsH) / NIVEIS.length)
+  return Math.max(10, Math.min(byWidth, byHeight))
+}
+
+function printAxisFont(cellSize: number): number {
+  return Math.max(10, Math.min(15, Math.round(cellSize * 0.65)))
+}
 
 type Props = {
   camaraIds: number[]
 }
 
-function computePrintCellSize(colunas: number): number {
-  const maxCols = colunas
-  const labelArea = 28
-  const usableWidthMm = 273
-  const usableHeightMm = 160
-  const byWidth = Math.floor((usableWidthMm - labelArea - 6 - (maxCols - 1) * CELL_GAP) / maxCols)
-  const byHeight = Math.floor((usableHeightMm - 24 - (NIVEIS.length - 1) * CELL_GAP) / NIVEIS.length)
-  return Math.min(byWidth, byHeight, 14)
-}
-
 function PrintRuaGrid({ camaraId, config, cellSize }: { camaraId: number; config: RuaConfig; cellSize: number }) {
-  const labelW = Math.max(22, Math.round(cellSize * 0.9))
-  const headerH = Math.max(14, Math.round(cellSize * 0.75))
-  const axisFont = cellSize >= 10 ? 9 : 8
+  const labelW = Math.max(12, Math.round(cellSize * 0.72))
+  const headerH = Math.max(8, Math.round(cellSize * 0.55))
+  const axisFont = printAxisFont(cellSize)
+  const portaFont = Math.max(9, Math.round(cellSize * 0.42))
 
   return (
     <div className="print-rua-grid">
@@ -96,7 +104,7 @@ function PrintRuaGrid({ camaraId, config, cellSize }: { camaraId: number; config
               className="print-porta-label"
               style={{
                 ...portaOverlayStyleMm(config.porta, cellSize, CELL_GAP),
-                fontSize: cellSize >= 10 ? 8 : 7,
+                fontSize: portaFont,
               }}
             >
               PORTA

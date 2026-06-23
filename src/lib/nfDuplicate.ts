@@ -35,3 +35,15 @@ export function mensagemNfDuplicada(
 
   return null
 }
+
+/** Só bloqueia se a cancelada já existir — NF ativa no estoque pode ser vinculada depois. */
+export function mensagemNfCanceladaDuplicada(
+  nf: NfRef,
+  notasCanceladas: NotaFiscalCancelada[],
+): string | null {
+  const dupCancelada = notasCanceladas.find((c) => mesmaNf(c, nf))
+  if (dupCancelada) {
+    return `Esta NF já está registrada como cancelada (NF ${dupCancelada.numero}).`
+  }
+  return null
+}

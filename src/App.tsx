@@ -25,7 +25,8 @@ import {
   syncVinculosNotas,
   vincularNotaCancelada,
 } from './lib/nfCanceladas'
-import { mensagemNfDuplicada } from './lib/nfDuplicate'
+import { mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
+import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeXml } from './lib/parseNfeXml'
 import type { AddressId, AddressOccupancy, NotaFiscal } from './types'
 import './App.css'
@@ -177,8 +178,8 @@ export default function App() {
     clearError()
     try {
       const text = await file.text()
-      const parsed = parseNfeXml(text)
-      const dup = mensagemNfDuplicada(parsed, state.notas, state.notasCanceladas)
+      const parsed = parseCanceladaXml(text, state.notas)
+      const dup = mensagemNfCanceladaDuplicada(parsed, state.notasCanceladas)
       if (dup) {
         setUploadCanceladaError(dup)
         return
