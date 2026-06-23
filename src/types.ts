@@ -94,6 +94,7 @@ export type AppState = {
   notas: NotaFiscal[]
   notasCanceladas: NotaFiscalCancelada[]
   movimentos: MovimentoRegistro[]
+  emitentes: string[]
   activeNfId: string | null
   activeItemIndex: number | null
 }
@@ -102,4 +103,5 @@ export type PersistedData = {
   notas: NotaFiscal[]
   notasCanceladas: NotaFiscalCancelada[]
   movimentos: MovimentoRegistro[]
+  emitentes: string[]
 }

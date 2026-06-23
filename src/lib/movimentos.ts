@@ -168,10 +168,15 @@ export function excluirMovimento(data: PersistedData, movId: string): PersistedD
         ? { ...c, vinculoNfNovaId: null, vinculoNfNovaNumero: null }
         : c,
     )
-    return syncVinculosNotas({ movimentos, notas, notasCanceladas })
+    return syncVinculosNotas({ movimentos, notas, notasCanceladas, emitentes: data.emitentes })
   }
 
-  return { movimentos, notas: data.notas, notasCanceladas: data.notasCanceladas }
+  return {
+    movimentos,
+    notas: data.notas,
+    notasCanceladas: data.notasCanceladas,
+    emitentes: data.emitentes,
+  }
 }
 
 export function buscarNfPorNumero(notas: NotaFiscal[], numero: string): NotaFiscal | null {

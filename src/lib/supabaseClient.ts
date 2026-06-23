@@ -109,4 +109,10 @@ type CanceladaRow = {
   }
 }
 
-export type { NfRow, ItemRow, EndRow, MovRow, CanceladaRow }
+type EmitenteRow = {
+  nome_key: string
+  nome: string
+  updated_at: string
+}
+
+export type { NfRow, ItemRow, EndRow, MovRow, CanceladaRow, EmitenteRow }

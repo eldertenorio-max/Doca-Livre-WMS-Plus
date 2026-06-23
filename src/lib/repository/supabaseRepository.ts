@@ -1,5 +1,6 @@
 import type { MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../../types'
-import { getSupabase, type CanceladaRow, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
+import { emitenteKey, normalizarEmitente } from '../emitentesRegistry'
+import { getSupabase, type CanceladaRow, type EmitenteRow, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
 import type { EnderecamentoRepository } from './types'
 
 const UI_KEY = 'ultrafrio-ui-prefs-v1'
@@ -101,6 +102,20 @@ async function loadCanceladas(sb: ReturnType<typeof getSupabase>): Promise<NotaF
   return mapCanceladas((data ?? []) as CanceladaRow[])
 }
 
+async function loadEmitentes(sb: ReturnType<typeof getSupabase>): Promise<string[]> {
+  const { data, error } = await sb
+    .from('ultrafrio_emitentes')
+    .select('nome')
+    .order('updated_at', { ascending: false })
+  if (error) {
+    if (error.message.includes('does not exist') || error.code === 'PGRST205') return []
+    throw new Error(error.message)
+  }
+  return ((data ?? []) as Pick<EmitenteRow, 'nome'>[])
+    .map((row) => normalizarEmitente(row.nome))
+    .filter((nome): nome is string => nome !== null)
+}
+
 export const supabaseRepository: EnderecamentoRepository = {
   mode: 'supabase',
 
@@ -142,11 +157,13 @@ export const supabaseRepository: EnderecamentoRepository = {
     if (movErr) throw new Error(movErr.message)
 
     const notasCanceladas = await loadCanceladas(sb)
+    const emitentes = await loadEmitentes(sb)
 
     return {
       notas: mapNotas(rows, itemRows, endRows),
       movimentos: mapMovimentos((movs ?? []) as MovRow[]),
       notasCanceladas,
+      emitentes,
     }
   },
 
@@ -274,6 +291,26 @@ export const supabaseRepository: EnderecamentoRepository = {
         },
       })
       if (error && !error.message.includes('does not exist')) throw new Error(error.message)
+    }
+  },
+
+  async registrarEmitente(nome: string) {
+    const n = normalizarEmitente(nome)
+    const key = emitenteKey(nome)
+    if (!n || !key) return
+
+    const sb = getSupabase()
+    const { error } = await sb.from('ultrafrio_emitentes').upsert(
+      {
+        nome_key: key,
+        nome: n,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'nome_key' },
+    )
+    if (error) {
+      if (error.message.includes('does not exist') || error.code === 'PGRST205') return
+      throw new Error(error.message)
     }
   },
 

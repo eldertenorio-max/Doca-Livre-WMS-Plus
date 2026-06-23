@@ -5,6 +5,7 @@ import { ensureSupabaseConfig } from '../lib/supabaseConfig'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
 import { subscribeEnderecamentoChanges } from '../lib/supabaseRealtime'
 import { prepareLoadedData } from '../lib/persistence'
+import { mesclarEmitentesSugeridos, normalizarEmitente } from '../lib/emitentesRegistry'
 import type { AppState, PersistedData } from '../types'
 import type { StorageMode } from '../lib/repository/types'
 
@@ -12,6 +13,7 @@ const emptyState: AppState = {
   notas: [],
   notasCanceladas: [],
   movimentos: [],
+  emitentes: [],
   activeNfId: null,
   activeItemIndex: null,
 }
@@ -146,7 +148,7 @@ export function useEnderecamentoStore() {
 
       try {
         const remote = await repo.loadData()
-        const { data, migratedFromLocal: migrated } = prepareLoadedData(remote, {
+        let { data, migratedFromLocal: migrated } = prepareLoadedData(remote, {
           allowLocalMigration: repo.mode === 'supabase',
         })
         const ui = repo.loadUiPrefs()
@@ -157,6 +159,12 @@ export function useEnderecamentoStore() {
             movimentos: data.movimentos,
             notasCanceladas: data.notasCanceladas,
           })
+          for (const nf of data.notas) await repo.registrarEmitente(nf.emitente)
+          for (const c of data.notasCanceladas) await repo.registrarEmitente(c.emitente)
+          data = {
+            ...data,
+            emitentes: await repo.loadData().then((d) => d.emitentes).catch(() => data.emitentes),
+          }
           clearLocalPersistedData()
           ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_MS
         }
@@ -253,10 +261,27 @@ export function useEnderecamentoStore() {
     setState((prev) => (typeof updater === 'function' ? updater(prev) : updater))
   }, [])
 
+  const registrarEmitente = useCallback(async (nome: string) => {
+    const n = normalizarEmitente(nome)
+    if (!n) return
+
+    try {
+      await repoRef.current.registrarEmitente(nome)
+    } catch {
+      /* mantém sugestão local se a nuvem falhar momentaneamente */
+    }
+
+    setState((prev) => ({
+      ...prev,
+      emitentes: mesclarEmitentesSugeridos([n], prev.emitentes),
+    }))
+  }, [])
+
   return {
     state,
     setState: updateState,
     saveNow,
+    registrarEmitente,
     loading,
     saving,
     syncing,

@@ -1,5 +1,6 @@
 import { migrarRuasNosDados, sincronizarMovimentosEntrada } from './movimentos'
 import { syncVinculosNotas } from './nfCanceladas'
+import { emitentesFromPersisted } from './emitentesRegistry'
 import { getStorageMode } from './repository'
 import { loadLocalPersistedData } from './repository/localRepository'
 import { isSupabaseConfigured } from './supabaseClient'
@@ -14,7 +15,11 @@ export function isPersistedEmpty(data: PersistedData): boolean {
 }
 
 export function normalizePersistedData(data: PersistedData): PersistedData {
-  return syncVinculosNotas(sincronizarMovimentosEntrada(migrarRuasNosDados(data)))
+  const base = syncVinculosNotas(sincronizarMovimentosEntrada(migrarRuasNosDados(data)))
+  return {
+    ...base,
+    emitentes: base.emitentes?.length ? base.emitentes : emitentesFromPersisted(base),
+  }
 }
 
 export function prepareLoadedData(

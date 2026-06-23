@@ -6,6 +6,7 @@ alter table public.ultrafrio_nf_itens replica identity full;
 alter table public.ultrafrio_enderecamentos replica identity full;
 alter table public.ultrafrio_movimentos replica identity full;
 alter table public.ultrafrio_notas_canceladas replica identity full;
+alter table public.ultrafrio_emitentes replica identity full;
 
 do $$
 declare
@@ -16,7 +17,8 @@ begin
     'ultrafrio_nf_itens',
     'ultrafrio_enderecamentos',
     'ultrafrio_movimentos',
-    'ultrafrio_notas_canceladas'
+    'ultrafrio_notas_canceladas',
+    'ultrafrio_emitentes'
   ]
   loop
     if not exists (

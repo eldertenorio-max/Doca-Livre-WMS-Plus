@@ -5,7 +5,8 @@ export type StorageMode = 'local' | 'supabase'
 export type EnderecamentoRepository = {
   mode: StorageMode
   loadData: () => Promise<PersistedData>
-  saveData: (data: PersistedData) => Promise<void>
+  saveData: (data: Omit<PersistedData, 'emitentes'>) => Promise<void>
+  registrarEmitente: (nome: string) => Promise<void>
   loadUiPrefs: () => Pick<AppState, 'activeNfId' | 'activeItemIndex'>
   saveUiPrefs: (prefs: Pick<AppState, 'activeNfId' | 'activeItemIndex'>) => void
 }

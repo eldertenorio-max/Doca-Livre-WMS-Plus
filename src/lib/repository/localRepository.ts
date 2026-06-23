@@ -1,4 +1,5 @@
 import type { AppState, PersistedData } from '../../types'
+import { emitentesFromPersisted } from '../emitentesRegistry'
 import type { EnderecamentoRepository } from './types'
 
 const DATA_KEY = 'ultrafrio-enderecamento-v3'
@@ -8,15 +9,19 @@ const UI_KEY = 'ultrafrio-ui-prefs-v1'
 function loadBundle(): PersistedData {
   try {
     const raw = localStorage.getItem(DATA_KEY) ?? localStorage.getItem(LEGACY_KEY) ?? localStorage.getItem('ultrafrio-enderecamento-v1')
-    if (!raw) return { notas: [], movimentos: [], notasCanceladas: [] }
+    if (!raw) return { notas: [], movimentos: [], notasCanceladas: [], emitentes: [] }
     const parsed = JSON.parse(raw) as Partial<PersistedData & AppState>
-    return {
+    const base = {
       notas: parsed.notas ?? [],
       movimentos: parsed.movimentos ?? [],
       notasCanceladas: parsed.notasCanceladas ?? [],
     }
+    return {
+      ...base,
+      emitentes: emitentesFromPersisted(base),
+    }
   } catch {
-    return { notas: [], movimentos: [], notasCanceladas: [] }
+    return { notas: [], movimentos: [], notasCanceladas: [], emitentes: [] }
   }
 }
 
@@ -51,6 +56,10 @@ export const localRepository: EnderecamentoRepository = {
 
   async saveData(data) {
     localStorage.setItem(DATA_KEY, JSON.stringify(data))
+  },
+
+  async registrarEmitente() {
+    /* modo local: emitentes derivados das notas em loadData */
   },
 
   loadUiPrefs() {

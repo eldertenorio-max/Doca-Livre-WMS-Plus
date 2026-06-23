@@ -14,7 +14,9 @@ No **SQL Editor** do Supabase, execute **nesta ordem** (copie e cole cada arquiv
 1. `supabase/sql/create_ultrafrio_enderecamento.sql`
 2. `supabase/sql/create_ultrafrio_movimentos.sql`
 3. `supabase/sql/create_ultrafrio_notas_canceladas.sql`
-4. `supabase/sql/enable_realtime.sql` ← necessário para atualizar sem recarregar a página
+4. `supabase/sql/create_ultrafrio_emitentes.sql` ← sugestões de emitente no cadastro manual
+5. `supabase/sql/movimentos_historico_soft_delete.sql` (se ainda não rodou)
+6. `supabase/sql/enable_realtime.sql` ← necessário para atualizar sem recarregar a página
 
 ---
 
@@ -76,7 +78,8 @@ Se este navegador já tinha dados no `localStorage` e a nuvem estava vazia, na p
 | Sintoma | Solução |
 |---------|---------|
 | Ainda mostra “só neste navegador” | Variáveis não estão no build do Render → confira env vars e faça **novo deploy** |
-| Erro ao salvar / nuvem indisponível | Rode os 4 SQLs no Supabase; confira URL e chave |
+| Erro ao salvar / nuvem indisponível | Rode os SQLs no Supabase; confira URL e chave |
+| Sugestões de emitente vazias | Rode `create_ultrafrio_emitentes.sql` |
 | Outro PC não atualiza na hora | Rode `enable_realtime.sql`; recarregue a página |
 | Dados diferentes em dois PCs | Um deles pode estar sem Supabase (modo local) — confira o banner no topo |
 

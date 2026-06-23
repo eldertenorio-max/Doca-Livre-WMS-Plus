@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AppSidebar } from './components/AppSidebar'
 import { DetailModal } from './components/DetailModal'
 import { ManualNfModal, type ManualNfModalResult } from './components/ManualNfModal'
@@ -13,7 +13,7 @@ import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
 import { allItemsAllocated } from './lib/repository'
 import { adicionarNotaManual, alocarEnderecoEmItem } from './lib/manualNf'
-import { mesclarEmitentesSugeridos, getEmitentesSugeridos, registrarEmitente } from './lib/emitentesRegistry'
+import { mesclarEmitentesSugeridos } from './lib/emitentesRegistry'
 import {
   aplicarSaidaItens,
   buscarNfPorNumero,
@@ -63,6 +63,7 @@ export default function App() {
     state,
     setState,
     saveNow,
+    registrarEmitente,
     loading,
     saving,
     syncing,
@@ -165,21 +166,12 @@ export default function App() {
   const emitentesSugeridos = useMemo(
     () =>
       mesclarEmitentesSugeridos(
-        getEmitentesSugeridos(),
+        state.emitentes,
         state.notas.map((n) => n.emitente),
         state.notasCanceladas.map((c) => c.emitente),
       ),
-    [state.notas, state.notasCanceladas, manualNfModal],
+    [state.emitentes, state.notas, state.notasCanceladas, manualNfModal],
   )
-
-  const emitentesSeedDone = useRef(false)
-
-  useEffect(() => {
-    if (loading || emitentesSeedDone.current) return
-    emitentesSeedDone.current = true
-    for (const nf of state.notas) registrarEmitente(nf.emitente)
-    for (const c of state.notasCanceladas) registrarEmitente(c.emitente)
-  }, [loading, state.notas, state.notasCanceladas])
 
   const syncPendingFromItem = useCallback((nf: NotaFiscal, itemIndex: number) => {
     const item = nf.items[itemIndex]
@@ -496,13 +488,19 @@ export default function App() {
       const mov = findMovimentoEntradaAtivo(s.movimentos, nfId)
       const base = mov
         ? excluirMovimento(
-            { notas: s.notas, movimentos: s.movimentos, notasCanceladas: s.notasCanceladas },
+            {
+              notas: s.notas,
+              movimentos: s.movimentos,
+              notasCanceladas: s.notasCanceladas,
+              emitentes: s.emitentes,
+            },
             mov.id,
           )
         : {
             notas: s.notas.filter((n) => n.id !== nfId),
             movimentos: s.movimentos,
             notasCanceladas: s.notasCanceladas,
+            emitentes: s.emitentes,
           }
 
       const wasActive = s.activeNfId === nfId
@@ -663,7 +661,12 @@ export default function App() {
   async function handleExcluirMovimento(movId: string) {
     const mov = state.movimentos.find((m) => m.id === movId)
     const result = excluirMovimento(
-      { notas: state.notas, movimentos: state.movimentos, notasCanceladas: state.notasCanceladas },
+      {
+        notas: state.notas,
+        movimentos: state.movimentos,
+        notasCanceladas: state.notasCanceladas,
+        emitentes: state.emitentes,
+      },
       movId,
     )
     const nfRemoved = mov?.tipo === 'entrada'

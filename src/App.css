@@ -1256,6 +1256,15 @@
   grid-template-rows: 1fr;
 }
 
+.sidebar-section:not(.sidebar-section--open) .sidebar-section-inner {
+  visibility: hidden;
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .sidebar:not(.sidebar--expanded):not(.sidebar--fixed) .sidebar-section-body {
   grid-template-rows: 0fr !important;
 }
@@ -1281,10 +1290,14 @@
 .sidebar-section-inner {
   overflow: hidden;
   min-height: 0;
-  padding: 0 2px 14px;
 }
 
 .sidebar-section--open .sidebar-section-inner {
+  visibility: visible;
+  opacity: 1;
+  max-height: none;
+  padding: 0 2px 14px;
+  pointer-events: auto;
   animation: section-content-in 0.28s ease-out;
 }
 
@@ -2229,7 +2242,7 @@
     margin: 0 0 12px;
   }
 
-  .sidebar:not(.sidebar--expanded):not(.sidebar--fixed) .sidebar-section-inner {
+  .sidebar:not(.sidebar--expanded):not(.sidebar--fixed) .sidebar-section--open .sidebar-section-inner {
     visibility: visible;
     opacity: 1;
     max-height: none;
