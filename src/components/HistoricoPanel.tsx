@@ -10,74 +10,65 @@ type Props = {
 export function HistoricoPanel({ movimentos, onExcluir }: Props) {
   const [confirmar, setConfirmar] = useState<MovimentoRegistro | null>(null)
 
-  if (movimentos.length === 0) {
-    return (
-      <div className="sidebar-block">
-        <p className="muted">Nenhum registro de entrada ou saída ainda.</p>
-      </div>
-    )
-  }
-
   function handleConfirmar() {
     if (!confirmar) return
     onExcluir(confirmar.id)
     setConfirmar(null)
   }
 
+  if (movimentos.length === 0) {
+    return <p className="muted">Nenhum registro de entrada ou saída ainda.</p>
+  }
+
   return (
     <>
-      <div className="sidebar-block">
-        <h3>Histórico</h3>
-        <ul className="hist-list">
-          {movimentos.map((mov) => {
-            const totalEnd = mov.itens.reduce((s, it) => s + it.addressIds.length, 0)
-            return (
-              <li key={mov.id} className={`hist-card hist-card--${mov.tipo}`}>
-                <div className="hist-head">
-                  <span className={`hist-tipo hist-tipo--${mov.tipo}`}>
-                    {mov.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                  </span>
-                  <button
-                    type="button"
-                    className="hist-delete"
-                    title={mov.tipo === 'entrada' ? 'Excluir entrada' : 'Excluir saída'}
-                    onClick={() => setConfirmar(mov)}
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-                <strong>NF {mov.nfNumero}</strong>
-                <p className="muted hist-emitente">{mov.emitente || '—'}</p>
-                <p className="muted">
-                  {formatDate(mov.createdAt)} · {mov.itens.length} item(ns) · {totalEnd} end.
-                </p>
-                <ul className="addr-mini">
-                  {mov.itens.flatMap((it) =>
-                    it.addressIds.map((a) => (
-                      <li key={`${mov.id}-${it.itemIndex}-${a}`}>
-                        {it.codigo} — {formatAddressLabel(a)}
-                      </li>
-                    )),
-                  )}
-                </ul>
-                {mov.tipo === 'entrada' && (
-                  <p className="hist-hint">Excluir libera todas as posições desta entrada.</p>
+      <ul className="hist-list">
+        {movimentos.map((mov) => {
+          const totalEnd = mov.itens.reduce((s, it) => s + it.addressIds.length, 0)
+          return (
+            <li key={mov.id} className={`hist-card hist-card--${mov.tipo}`}>
+              <div className="hist-head">
+                <span className={`hist-tipo hist-tipo--${mov.tipo}`}>
+                  {mov.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                </span>
+                <button
+                  type="button"
+                  className="hist-delete"
+                  title={mov.tipo === 'entrada' ? 'Excluir entrada' : 'Excluir saída'}
+                  onClick={() => setConfirmar(mov)}
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+              <strong>NF {mov.nfNumero}</strong>
+              <p className="muted hist-emitente">{mov.emitente || '—'}</p>
+              <p className="muted">
+                {formatDate(mov.createdAt)} · {mov.itens.length} item(ns) · {totalEnd} end.
+              </p>
+              <ul className="addr-mini">
+                {mov.itens.flatMap((it) =>
+                  it.addressIds.map((a) => (
+                    <li key={`${mov.id}-${it.itemIndex}-${a}`}>
+                      {it.codigo} — {formatAddressLabel(a)}
+                    </li>
+                  )),
                 )}
-                {mov.tipo === 'saida' && (
-                  <p className="hist-hint">Excluir remove apenas o registro do histórico.</p>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+              </ul>
+              {mov.tipo === 'entrada' && (
+                <p className="hist-hint">Excluir libera todas as posições desta entrada.</p>
+              )}
+              {mov.tipo === 'saida' && (
+                <p className="hist-hint">Excluir remove apenas o registro do histórico.</p>
+              )}
+            </li>
+          )
+        })}
+      </ul>
 
       {confirmar && (
         <div className="confirm-backdrop" onClick={() => setConfirmar(null)}>
           <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
-            <h4>
-              Excluir {confirmar.tipo === 'entrada' ? 'entrada' : 'saída'}?
-            </h4>
+            <h4>Excluir {confirmar.tipo === 'entrada' ? 'entrada' : 'saída'}?</h4>
             <p>
               NF <strong>{confirmar.nfNumero}</strong>
             </p>

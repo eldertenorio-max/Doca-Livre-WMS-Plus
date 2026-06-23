@@ -52,8 +52,6 @@ export type AddressOccupancy = {
   unidade: string
 }
 
-export type AppTab = 'entrada' | 'saida' | 'historico'
-
 export type AppState = {
   notas: NotaFiscal[]
   movimentos: MovimentoRegistro[]

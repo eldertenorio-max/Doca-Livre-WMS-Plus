@@ -34,7 +34,6 @@ export function SaidaPanel({
   return (
     <>
       <div className="sidebar-block">
-        <h3>Saída de mercadoria</h3>
         <p className="muted">Digite o número da NF para ver onde retirar os itens.</p>
         <div className="saida-busca">
           <input

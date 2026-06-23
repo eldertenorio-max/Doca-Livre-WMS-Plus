@@ -14,7 +14,7 @@ import {
   upsertMovimentoEntrada,
 } from './lib/movimentos'
 import { parseNfeXml } from './lib/parseNfeXml'
-import type { AddressId, AddressOccupancy, AppTab, NotaFiscal } from './types'
+import type { AddressId, AddressOccupancy, NotaFiscal } from './types'
 import './App.css'
 
 function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy> {
@@ -39,7 +39,6 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
 
 export default function App() {
   const { state, setState, loading, saving, error, clearError } = useEnderecamentoStore()
-  const [tab, setTab] = useState<AppTab>('entrada')
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detailAddress, setDetailAddress] = useState<AddressId | null>(null)
@@ -55,15 +54,14 @@ export default function App() {
     : null
 
   const allocateMode =
-    tab === 'entrada' &&
     !!activeNf &&
     activeNf.status === 'em_andamento' &&
     state.activeItemIndex != null
 
   const saidaAddresses = useMemo(() => {
-    if (tab !== 'saida' || !nfBuscaSaida) return new Set<AddressId>()
+    if (!nfBuscaSaida) return new Set<AddressId>()
     return new Set(enderecosDaNf(nfBuscaSaida))
-  }, [tab, nfBuscaSaida])
+  }, [nfBuscaSaida])
 
   const saidaFlaggedAddresses = useMemo(() => {
     if (!nfBuscaSaida || itensFlagados.size === 0) return new Set<AddressId>()
@@ -102,7 +100,6 @@ export default function App() {
         activeItemIndex: 0,
       }))
       setPendingSelection(new Set())
-      setTab('entrada')
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Erro ao ler XML.')
     }
@@ -114,7 +111,6 @@ export default function App() {
     if (nf && nf.items[0]) syncPendingFromItem(nf, nf.items[0].index)
     else setPendingSelection(new Set())
     setDetailAddress(null)
-    setTab('entrada')
   }
 
   function handleSelectItem(index: number) {
@@ -213,7 +209,6 @@ export default function App() {
       }
     })
     setPendingSelection(new Set())
-    setTab('historico')
   }
 
   function handleBuscarSaida(numero: string) {
@@ -249,7 +244,6 @@ export default function App() {
     }))
     setNfBuscaSaidaId(null)
     setItensFlagados(new Set())
-    setTab('historico')
   }
 
   function handleExcluirMovimento(movId: string) {
@@ -277,15 +271,6 @@ export default function App() {
     setDetailAddress(null)
   }
 
-  function handleTabChange(next: AppTab) {
-    setTab(next)
-    if (next !== 'saida') {
-      setNfBuscaSaidaId(null)
-      setItensFlagados(new Set())
-      setBuscaErro(null)
-    }
-  }
-
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
   const detailNota = detailOcc ? state.notas.find((n) => n.id === detailOcc.nfId) : null
 
@@ -300,8 +285,6 @@ export default function App() {
   return (
     <div className="app-shell">
       <AppSidebar
-        tab={tab}
-        onTabChange={handleTabChange}
         saving={saving}
         persistError={error}
         entrada={{
