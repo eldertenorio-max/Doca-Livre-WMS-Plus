@@ -27,37 +27,53 @@ export const CAMARAS: CamaraConfig[] = [
     id: 7,
     tipo: 'Refrigerado',
     ruas: [
-      { rua: 3, colunas: 15, porta: { cols: [2, 3], niveis: [1, 2] } },
-      { rua: 4, colunas: 15, porta: { cols: [2, 3], niveis: [1, 2] } },
+      { rua: 1, colunas: 15, porta: { cols: [2, 3], niveis: [1, 2] } },
+      { rua: 2, colunas: 15, porta: { cols: [2, 3], niveis: [1, 2] } },
     ],
   },
   {
     id: 8,
     tipo: 'Refrigerado',
     ruas: [
-      { rua: 5, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
-      { rua: 6, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
+      { rua: 1, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
+      { rua: 2, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
     ],
   },
   {
     id: 9,
     tipo: 'Refrigerado',
     ruas: [
-      { rua: 9, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
-      { rua: 10, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
+      { rua: 1, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
+      { rua: 2, colunas: 15, porta: { cols: [2, 3], niveis: [1, 3] } },
     ],
   },
   {
     id: 10,
     tipo: 'Refrigerado',
     ruas: [
-      { rua: 7, colunas: 15 },
-      { rua: 8, colunas: 15 },
+      { rua: 1, colunas: 15 },
+      { rua: 2, colunas: 15 },
     ],
   },
 ]
 
 export const NIVEIS = [5, 4, 3, 2, 1] as const
+
+/** Mapeamento de ruas antigas → novas (câmaras 7–10 passaram a usar Rua 1 e 2). */
+const LEGACY_RUA_REMAP: Record<number, Record<number, number>> = {
+  7: { 3: 1, 4: 2 },
+  8: { 5: 1, 6: 2 },
+  9: { 9: 1, 10: 2 },
+  10: { 7: 1, 8: 2 },
+}
+
+export function remapLegacyAddressId(id: string): string {
+  const p = parseAddressId(id)
+  if (!p) return id
+  const newRua = LEGACY_RUA_REMAP[p.camara]?.[p.rua]
+  if (!newRua) return id
+  return makeAddressId(p.camara, newRua, p.nivel, p.col)
+}
 
 export function makeAddressId(camara: number, rua: number, nivel: number, col: number): string {
   return `C${camara}-R${rua}-N${nivel}-P${col}`

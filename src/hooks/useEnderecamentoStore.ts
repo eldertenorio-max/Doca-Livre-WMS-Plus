@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRepository, type EnderecamentoRepository } from '../lib/repository'
 import { localRepository } from '../lib/repository/localRepository'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
-import { sincronizarMovimentosEntrada } from '../lib/movimentos'
+import { migrarRuasNosDados, sincronizarMovimentosEntrada } from '../lib/movimentos'
 import type { AppState } from '../types'
 
 const emptyState: AppState = {
@@ -33,7 +33,7 @@ export function useEnderecamentoStore() {
       repoRef.current = repo
 
       try {
-        const data = sincronizarMovimentosEntrada(await repo.loadData())
+        const data = sincronizarMovimentosEntrada(migrarRuasNosDados(await repo.loadData()))
         const ui = repo.loadUiPrefs()
         if (!cancelled) {
           setState({ ...data, ...ui })
@@ -45,7 +45,7 @@ export function useEnderecamentoStore() {
           repo = localRepository
           repoRef.current = repo
           try {
-            const data = sincronizarMovimentosEntrada(await repo.loadData())
+            const data = sincronizarMovimentosEntrada(migrarRuasNosDados(await repo.loadData()))
             const ui = repo.loadUiPrefs()
             if (!cancelled) {
               setState({ ...data, ...ui })

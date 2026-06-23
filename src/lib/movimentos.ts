@@ -1,4 +1,30 @@
 import type { AddressId, MovimentoItemSnapshot, MovimentoRegistro, NotaFiscal, PersistedData } from '../types'
+import { remapLegacyAddressId } from '../layout/camaras'
+
+/** Atualiza IDs de endereço salvos antes da troca de numeração das ruas. */
+export function migrarRuasNosDados(data: PersistedData): PersistedData {
+  let changed = false
+
+  const notas = data.notas.map((nf) => ({
+    ...nf,
+    items: nf.items.map((it) => {
+      const allocatedAddresses = it.allocatedAddresses.map(remapLegacyAddressId)
+      if (allocatedAddresses.some((a, i) => a !== it.allocatedAddresses[i])) changed = true
+      return { ...it, allocatedAddresses }
+    }),
+  }))
+
+  const movimentos = data.movimentos.map((mov) => ({
+    ...mov,
+    itens: mov.itens.map((it) => {
+      const addressIds = it.addressIds.map(remapLegacyAddressId)
+      if (addressIds.some((a, i) => a !== it.addressIds[i])) changed = true
+      return { ...it, addressIds }
+    }),
+  }))
+
+  return changed ? { notas, movimentos } : data
+}
 
 export function nfTemEnderecos(nf: NotaFiscal): boolean {
   return nf.items.some((it) => it.allocatedAddresses.length > 0)
