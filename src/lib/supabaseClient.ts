@@ -87,6 +87,7 @@ type MovRow = {
   created_at: string
   payload: {
     itens: import('../types').MovimentoItemSnapshot[]
+    justificativaSaida?: import('../types').JustificativaSaidaId
     excluido?: boolean
     excluidoEm?: string | null
   }

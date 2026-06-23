@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { MovimentoRegistro, NotaFiscalCancelada } from '../types'
+import { labelJustificativaSaida } from '../lib/justificativaSaida'
 import { formatAddressLabel } from '../layout/camaras'
 
 type HistFiltro = 'todos' | 'entrada' | 'saida' | 'canceladas'
@@ -80,6 +81,7 @@ export function HistoricoPanel({ movimentos, canceladas }: Props) {
 
 function MovimentoCard({ mov }: { mov: MovimentoRegistro }) {
   const totalEnd = mov.itens.reduce((s, it) => s + it.addressIds.length, 0)
+  const motivoSaida = mov.tipo === 'saida' ? labelJustificativaSaida(mov.justificativaSaida) : null
 
   return (
     <li className={`hist-card hist-card--${mov.tipo}${mov.excluido ? ' hist-card--excluido' : ''}`}>
@@ -90,6 +92,7 @@ function MovimentoCard({ mov }: { mov: MovimentoRegistro }) {
         {mov.excluido && <span className="hist-excluido-badge">Excluído</span>}
       </div>
       <strong>NF {mov.nfNumero}</strong>
+      {motivoSaida && <p className="hist-motivo-saida">Motivo: {motivoSaida}</p>}
       <p className="muted hist-emitente">{mov.emitente || '—'}</p>
       <p className="muted">
         {formatDate(mov.createdAt)}

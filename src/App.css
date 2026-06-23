@@ -895,6 +895,50 @@
   overflow-y: auto;
 }
 
+.manual-nf-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.manual-nf-item-block {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.manual-nf-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.manual-nf-item-head h4 {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.manual-nf-item-remove {
+  flex-shrink: 0;
+}
+
+.manual-nf-add-item {
+  margin-top: 10px;
+}
+
+.manual-nf-multi-hint {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+}
+
+.manual-nf-form--nf {
+  margin-bottom: 4px;
+}
+
 .manual-nf-actions {
   display: flex;
   justify-content: flex-end;
@@ -908,7 +952,8 @@
   margin: 12px 0 0;
 }
 
-.entrada-manual-hint {
+.entrada-manual-hint,
+.entrada-upload-hint {
   margin: 10px 0 0;
   font-size: 0.82rem;
 }
@@ -1899,6 +1944,41 @@
   margin-top: 10px;
 }
 
+.saida-justificativa {
+  margin: 12px 0;
+  padding: 0;
+  border: 0;
+}
+
+.saida-justificativa-title {
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.saida-justificativa-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.saida-justificativa-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.saida-justificativa-option input {
+  flex-shrink: 0;
+  margin: 0;
+}
+
 .input-nf {
   flex: 1;
   padding: 8px 10px;
@@ -2000,6 +2080,12 @@
 
 .hist-emitente {
   margin: 2px 0 4px;
+}
+
+.hist-motivo-saida {
+  margin: 4px 0 2px;
+  font-size: 0.82rem;
+  color: var(--text);
 }
 
 .hist-hint {

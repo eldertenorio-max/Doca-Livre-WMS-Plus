@@ -16,7 +16,7 @@ type Props = {
   camposSavedHint: boolean
   onToggleCampo: (id: EntradaCampoId) => void
   onSaveCampos: () => void
-  onUpload: (file: File) => void
+  onUpload: (files: File[]) => void | Promise<void>
   onCadastrarManual: () => void
   onSelectNf: (id: string) => void
   onSelectItem: (index: number) => void
@@ -69,8 +69,8 @@ export function EntradaPanel({
       : null
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) onUpload(file)
+    const files = e.target.files ? Array.from(e.target.files) : []
+    if (files.length > 0) void onUpload(files)
     e.target.value = ''
   }
 
@@ -78,9 +78,16 @@ export function EntradaPanel({
     <>
       <div className="sidebar-block">
         <label className="upload-btn">
-          <input type="file" accept=".xml,text/xml,application/xml" hidden onChange={handleFile} />
+          <input
+            type="file"
+            accept=".xml,text/xml,application/xml"
+            multiple
+            hidden
+            onChange={handleFile}
+          />
           Subir XML da NF-e (entrada)
         </label>
+        <p className="muted entrada-upload-hint">Selecione um ou vários XMLs. NFs repetidas são ignoradas.</p>
 
         <div className="entrada-campos-box">
           <p className="entrada-campos-title">Informações extras na entrada</p>
@@ -110,9 +117,6 @@ export function EntradaPanel({
         <button type="button" className="upload-btn upload-btn--muted" onClick={onCadastrarManual}>
           Cadastrar NF manual
         </button>
-        <p className="muted entrada-manual-hint">
-          Ou clique em um endereço vazio no painel para alocar a NF e o item na hora.
-        </p>
         {uploadError && <p className="error">{uploadError}</p>}
       </div>
 

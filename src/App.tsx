@@ -12,7 +12,7 @@ import { useEntradaCamposConfig } from './hooks/useEntradaCamposConfig'
 import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
 import { allItemsAllocated } from './lib/repository'
-import { adicionarNotaManual, alocarEnderecoEmItem } from './lib/manualNf'
+import { adicionarNotaManual } from './lib/manualNf'
 import { mesclarEmitentesSugeridos } from './lib/emitentesRegistry'
 import {
   aplicarSaidaItens,
@@ -35,7 +35,7 @@ import { mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDupli
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeXml } from './lib/parseNfeXml'
 import type { EntradaItemCampos } from './lib/entradaCampos'
-import type { AddressId, AddressOccupancy, NotaFiscal } from './types'
+import type { AddressId, AddressOccupancy, JustificativaSaidaId, NotaFiscal } from './types'
 import './App.css'
 
 function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy> {
@@ -92,7 +92,7 @@ export default function App() {
     addressId: AddressId
     occ: AddressOccupancy
   } | null>(null)
-  const [manualNfModal, setManualNfModal] = useState<{ addressId?: AddressId } | null>(null)
+  const [manualNfModalOpen, setManualNfModalOpen] = useState(false)
   const [manualNfError, setManualNfError] = useState<string | null>(null)
 
   const occupancy = useMemo(() => buildOccupancyMap(state.notas), [state.notas])
@@ -170,7 +170,7 @@ export default function App() {
         state.notas.map((n) => n.emitente),
         state.notasCanceladas.map((c) => c.emitente),
       ),
-    [state.emitentes, state.notas, state.notasCanceladas, manualNfModal],
+    [state.emitentes, state.notas, state.notasCanceladas, manualNfModalOpen],
   )
 
   const syncPendingFromItem = useCallback((nf: NotaFiscal, itemIndex: number) => {
@@ -182,28 +182,66 @@ export default function App() {
     setPendingSelection(new Set(item.allocatedAddresses))
   }, [])
 
-  async function handleUpload(file: File) {
+  async function handleUpload(files: File[]) {
     setUploadError(null)
     clearError()
-    try {
-      const text = await file.text()
-      const nf = parseNfeXml(text)
-      const dup = mensagemNfDuplicada(nf, state.notas, state.notasCanceladas)
-      if (dup) {
-        setUploadError(dup)
-        return
+    if (files.length === 0) return
+
+    const imported: NotaFiscal[] = []
+    const skipped: string[] = []
+    const errors: string[] = []
+    const acumulado = [...state.notas]
+    let movimentos = state.movimentos
+
+    for (const file of files) {
+      try {
+        const text = await file.text()
+        const nf = parseNfeXml(text)
+        const dup = mensagemNfDuplicada(nf, acumulado, state.notasCanceladas)
+        if (dup) {
+          skipped.push(`NF ${nf.numero} (${file.name}): ${dup}`)
+          continue
+        }
+        imported.push(nf)
+        acumulado.unshift(nf)
+        movimentos = upsertMovimentoEntrada(movimentos, nf)
+        registrarEmitente(nf.emitente)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Erro ao ler XML.'
+        errors.push(`${file.name}: ${msg}`)
       }
+    }
+
+    if (imported.length > 0) {
       setState((s) => ({
         ...s,
-        notas: [nf, ...s.notas],
-        movimentos: upsertMovimentoEntrada(s.movimentos, nf),
-        activeNfId: nf.id,
+        notas: [...imported, ...s.notas],
+        movimentos,
+        activeNfId: imported[0].id,
         activeItemIndex: 0,
       }))
-      registrarEmitente(nf.emitente)
       setPendingSelection(new Set())
-    } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Erro ao ler XML.')
+    }
+
+    const feedback: string[] = []
+    if (imported.length > 0) {
+      feedback.push(
+        imported.length === 1
+          ? `NF ${imported[0].numero} importada.`
+          : `${imported.length} NFs importadas.`,
+      )
+    }
+    if (skipped.length > 0) {
+      feedback.push(`Ignoradas (${skipped.length}): ${skipped.join(' · ')}`)
+    }
+    if (errors.length > 0) {
+      feedback.push(`Erros (${errors.length}): ${errors.join(' · ')}`)
+    }
+
+    if (imported.length === 0 && feedback.length > 0) {
+      setUploadError(feedback.join(' '))
+    } else if (skipped.length > 0 || errors.length > 0) {
+      setUploadError(feedback.join(' '))
     }
   }
 
@@ -325,12 +363,6 @@ export default function App() {
       return
     }
 
-    if (!allocateMode && !editMode && !occ && mode === 'add') {
-      setManualNfError(null)
-      setManualNfModal({ addressId })
-      return
-    }
-
     if (occ) {
       if (allocateMode || editMode) {
         setOcupadoAlert({ addressId, occ })
@@ -419,12 +451,6 @@ export default function App() {
 
   async function handleManualNfConfirm(result: ManualNfModalResult) {
     setManualNfError(null)
-    const addressId = manualNfModal?.addressId
-
-    if (addressId && occupancy.has(addressId)) {
-      setManualNfError('Este endereço já está ocupado.')
-      return
-    }
 
     let nextState = state
 
@@ -433,15 +459,10 @@ export default function App() {
         setManualNfError('Nota fiscal não encontrada.')
         return
       }
-      if (addressId) {
-        const updated = alocarEnderecoEmItem(state, addressId, result.nfId, result.itemIndex)
-        nextState = { ...state, ...updated }
-      } else {
-        nextState = {
-          ...state,
-          activeNfId: result.nfId,
-          activeItemIndex: result.itemIndex,
-        }
+      nextState = {
+        ...state,
+        activeNfId: result.nfId,
+        activeItemIndex: result.itemIndex,
       }
     } else {
       const added = adicionarNotaManual(state, result.input)
@@ -450,36 +471,19 @@ export default function App() {
         return
       }
       registrarEmitente(result.input.emitente ?? '')
-      if (addressId) {
-        const updated = alocarEnderecoEmItem(
-          { notas: added.notas, movimentos: added.movimentos },
-          addressId,
-          added.nf.id,
-          0,
-        )
-        nextState = {
-          ...state,
-          ...updated,
-          activeNfId: added.nf.id,
-          activeItemIndex: 0,
-        }
-      } else {
-        nextState = {
-          ...state,
-          notas: added.notas,
-          movimentos: added.movimentos,
-          activeNfId: added.nf.id,
-          activeItemIndex: 0,
-        }
+      nextState = {
+        ...state,
+        notas: added.notas,
+        movimentos: added.movimentos,
+        activeNfId: added.nf.id,
+        activeItemIndex: 0,
       }
     }
 
     setState(nextState)
-    if (addressId) {
-      setPendingSelection(new Set([addressId]))
-    }
+    setPendingSelection(new Set())
     await saveNow(nextState)
-    setManualNfModal(null)
+    setManualNfModalOpen(false)
     setManualNfError(null)
   }
 
@@ -566,10 +570,10 @@ export default function App() {
     })
   }
 
-  async function handleFinalizarSaida() {
+  async function handleFinalizarSaida(justificativaSaida: JustificativaSaidaId) {
     if (!nfBuscaSaida || itensFlagados.size === 0) return
     const indexes = [...itensFlagados]
-    const mov = criarMovimentoSaida(nfBuscaSaida, indexes)
+    const mov = criarMovimentoSaida(nfBuscaSaida, indexes, justificativaSaida)
     const nextState = {
       ...state,
       notas: state.notas.map((n) => (n.id === nfBuscaSaida.id ? aplicarSaidaItens(n, indexes) : n)),
@@ -738,7 +742,7 @@ export default function App() {
           onLimparSelecao: handleLimparSelecao,
           onCadastrarManual: () => {
             setManualNfError(null)
-            setManualNfModal({})
+            setManualNfModalOpen(true)
           },
           uploadError,
         }}
@@ -816,15 +820,14 @@ export default function App() {
         />
       )}
 
-      {manualNfModal && (
+      {manualNfModalOpen && (
         <ManualNfModal
-          addressId={manualNfModal.addressId ?? null}
           notas={state.notas}
           emitentesSugeridos={emitentesSugeridos}
           serverError={manualNfError}
           onConfirm={handleManualNfConfirm}
           onClose={() => {
-            setManualNfModal(null)
+            setManualNfModalOpen(false)
             setManualNfError(null)
           }}
         />

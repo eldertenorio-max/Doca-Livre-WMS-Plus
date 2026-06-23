@@ -1,15 +1,22 @@
 import { useId, useState } from 'react'
-import type { AddressId, NotaFiscal } from '../types'
-import { formatAddressLabel } from '../layout/camaras'
+import type { NotaFiscal } from '../types'
 import { findNotaByNumero } from '../lib/nfDuplicate'
 import type { ManualNfInput } from '../lib/manualNf'
+import { validarManualNfInput } from '../lib/manualNf'
 
 export type ManualNfModalResult =
   | { kind: 'existing'; nfId: string; itemIndex: number }
   | { kind: 'new'; input: ManualNfInput }
 
+type ManualItemDraft = {
+  id: string
+  codigo: string
+  descricao: string
+  quantidade: string
+  unidade: string
+}
+
 type Props = {
-  addressId?: AddressId | null
   notas: NotaFiscal[]
   emitentesSugeridos: string[]
   serverError?: string | null
@@ -17,8 +24,26 @@ type Props = {
   onClose: () => void
 }
 
+function createItemDraft(): ManualItemDraft {
+  return {
+    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    codigo: '',
+    descricao: '',
+    quantidade: '1',
+    unidade: 'UN',
+  }
+}
+
+function parseItemsDraft(items: ManualItemDraft[]): ManualNfInput['items'] {
+  return items.map((item) => ({
+    codigo: item.codigo,
+    descricao: item.descricao,
+    quantidade: Number(item.quantidade.replace(',', '.')),
+    unidade: item.unidade,
+  }))
+}
+
 export function ManualNfModal({
-  addressId,
   notas,
   emitentesSugeridos,
   serverError,
@@ -31,12 +56,15 @@ export function ManualNfModal({
   const [showCreate, setShowCreate] = useState(false)
   const [serie, setSerie] = useState('')
   const [emitente, setEmitente] = useState('')
-  const [codigo, setCodigo] = useState('')
-  const [descricao, setDescricao] = useState('')
-  const [quantidade, setQuantidade] = useState('1')
-  const [unidade, setUnidade] = useState('UN')
+  const [items, setItems] = useState<ManualItemDraft[]>(() => [createItemDraft()])
   const [error, setError] = useState<string | null>(null)
   const emitentesListId = useId()
+
+  function resetCreateForm() {
+    setSerie('')
+    setEmitente('')
+    setItems([createItemDraft()])
+  }
 
   function handleBuscar() {
     setError(null)
@@ -49,14 +77,19 @@ export function ManualNfModal({
     setSearched(nf ?? null)
     setSelectedItemIndex(nf?.items[0]?.index ?? null)
     setShowCreate(!nf)
-    if (!nf) {
-      setSerie('')
-      setEmitente('')
-      setCodigo('')
-      setDescricao('')
-      setQuantidade('1')
-      setUnidade('UN')
-    }
+    if (!nf) resetCreateForm()
+  }
+
+  function updateItem(id: string, patch: Partial<Omit<ManualItemDraft, 'id'>>) {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  }
+
+  function addItem() {
+    setItems((prev) => [...prev, createItemDraft()])
+  }
+
+  function removeItem(id: string) {
+    setItems((prev) => (prev.length <= 1 ? prev : prev.filter((item) => item.id !== id)))
   }
 
   function handleConfirm() {
@@ -69,42 +102,28 @@ export function ManualNfModal({
 
     if (searched && !showCreate) {
       if (selectedItemIndex == null) {
-        setError('Selecione o item que ficará neste endereço.')
+        setError('Selecione o item da NF.')
         return
       }
       onConfirm({ kind: 'existing', nfId: searched.id, itemIndex: selectedItemIndex })
       return
     }
 
-    const qty = Number(quantidade.replace(',', '.'))
     const input: ManualNfInput = {
       numero: numero.trim(),
       serie,
       emitente,
-      items: [{ codigo, descricao, quantidade: qty, unidade }],
+      items: parseItemsDraft(items),
     }
 
-    if (!input.numero) {
-      setError('Informe o número da NF.')
-      return
-    }
-    if (!codigo.trim()) {
-      setError('Informe o código do item.')
-      return
-    }
-    if (!descricao.trim()) {
-      setError('Informe a descrição do item.')
-      return
-    }
-    if (!(qty > 0)) {
-      setError('Informe uma quantidade válida.')
+    const validation = validarManualNfInput(input)
+    if (validation) {
+      setError(validation)
       return
     }
 
     onConfirm({ kind: 'new', input })
   }
-
-  const alocarEndereco = addressId != null
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
@@ -117,26 +136,15 @@ export function ManualNfModal({
       >
         <header className="modal-header">
           <div>
-            <h2 id="manual-nf-title">
-              {alocarEndereco ? 'Alocar endereço manualmente' : 'Cadastrar NF manual'}
-            </h2>
+            <h2 id="manual-nf-title">Cadastrar NF manual</h2>
             <p className="muted manual-nf-sub">
-              {alocarEndereco
-                ? 'Informe a nota fiscal e o item que ficará nesta posição.'
-                : 'Cadastre a nota e o item sem XML — depois aloque nos endereços no painel.'}
+              Cadastre a nota e os itens sem XML — depois aloque nos endereços no painel.
             </p>
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </header>
-
-        {alocarEndereco && (
-          <section className="manual-nf-address">
-            <span className="manual-nf-address-label">Endereço</span>
-            <strong>{formatAddressLabel(addressId)}</strong>
-          </section>
-        )}
 
         <section className="modal-section modal-section--first">
           <h3>Nota fiscal</h3>
@@ -161,7 +169,7 @@ export function ManualNfModal({
 
         {searched && !showCreate && (
           <section className="modal-section">
-            <h3>Item neste endereço</h3>
+            <h3>Item da NF</h3>
             <p className="muted">
               NF {searched.numero}
               {searched.emitente ? ` · ${searched.emitente}` : ''}
@@ -198,13 +206,13 @@ export function ManualNfModal({
             {searched === null && (
               <p className="muted">NF {numero.trim()} não está no sistema. Preencha os dados abaixo.</p>
             )}
-            <div className="manual-nf-form">
+            <div className="manual-nf-form manual-nf-form--nf">
               <label className="manual-nf-field">
                 <span>Série</span>
                 <input type="text" className="input-nf" value={serie} onChange={(e) => setSerie(e.target.value)} />
               </label>
               <label className="manual-nf-field manual-nf-field--wide">
-                <span>Emitente</span>
+                <span>Remetente</span>
                 <input
                   type="text"
                   className="input-nf"
@@ -222,34 +230,70 @@ export function ManualNfModal({
                   </datalist>
                 )}
               </label>
-              <label className="manual-nf-field">
-                <span>Código do item</span>
-                <input type="text" className="input-nf" value={codigo} onChange={(e) => setCodigo(e.target.value)} />
-              </label>
-              <label className="manual-nf-field manual-nf-field--wide">
-                <span>Descrição</span>
-                <input
-                  type="text"
-                  className="input-nf"
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                />
-              </label>
-              <label className="manual-nf-field">
-                <span>Quantidade</span>
-                <input
-                  type="text"
-                  className="input-nf"
-                  inputMode="decimal"
-                  value={quantidade}
-                  onChange={(e) => setQuantidade(e.target.value)}
-                />
-              </label>
-              <label className="manual-nf-field">
-                <span>Unidade</span>
-                <input type="text" className="input-nf" value={unidade} onChange={(e) => setUnidade(e.target.value)} />
-              </label>
             </div>
+
+            <div className="manual-nf-items">
+              {items.map((item, index) => (
+                <div key={item.id} className="manual-nf-item-block">
+                  <div className="manual-nf-item-head">
+                    <h4>Item {index + 1}</h4>
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm manual-nf-item-remove"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                  <div className="manual-nf-form">
+                    <label className="manual-nf-field">
+                      <span>Código do item</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        value={item.codigo}
+                        onChange={(e) => updateItem(item.id, { codigo: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field manual-nf-field--wide">
+                      <span>Descrição</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        value={item.descricao}
+                        onChange={(e) => updateItem(item.id, { descricao: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field">
+                      <span>Quantidade</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        inputMode="decimal"
+                        value={item.quantidade}
+                        onChange={(e) => updateItem(item.id, { quantidade: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field">
+                      <span>Unidade</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        value={item.unidade}
+                        onChange={(e) => updateItem(item.id, { unidade: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button type="button" className="btn btn-ghost btn-sm manual-nf-add-item" onClick={addItem}>
+              + Adicionar item
+            </button>
+
             {searched && (
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowCreate(false)}>
                 Voltar para NF existente
@@ -266,7 +310,7 @@ export function ManualNfModal({
             Cancelar
           </button>
           <button type="button" className="btn primary" onClick={handleConfirm}>
-            {alocarEndereco ? 'Confirmar alocação' : 'Cadastrar NF'}
+            Cadastrar NF
           </button>
         </div>
       </div>

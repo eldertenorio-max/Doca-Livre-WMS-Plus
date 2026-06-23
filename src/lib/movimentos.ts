@@ -1,4 +1,11 @@
-import type { AddressId, MovimentoItemSnapshot, MovimentoRegistro, NotaFiscal, PersistedData } from '../types'
+import type {
+  AddressId,
+  JustificativaSaidaId,
+  MovimentoItemSnapshot,
+  MovimentoRegistro,
+  NotaFiscal,
+  PersistedData,
+} from '../types'
 import { remapLegacyAddressId } from '../layout/camaras'
 import { syncVinculosNotas } from './nfCanceladas'
 
@@ -121,7 +128,11 @@ export function sincronizarMovimentosEntrada(data: PersistedData): PersistedData
   return changed ? { ...data, movimentos } : data
 }
 
-export function criarMovimentoSaida(nf: NotaFiscal, itemIndexes: number[]): MovimentoRegistro {
+export function criarMovimentoSaida(
+  nf: NotaFiscal,
+  itemIndexes: number[],
+  justificativaSaida: JustificativaSaidaId,
+): MovimentoRegistro {
   return {
     id: `mov-saida-${nf.id}-${Date.now()}`,
     tipo: 'saida',
@@ -129,6 +140,7 @@ export function criarMovimentoSaida(nf: NotaFiscal, itemIndexes: number[]): Movi
     nfNumero: nf.numero,
     emitente: nf.emitente,
     createdAt: new Date().toISOString(),
+    justificativaSaida,
     itens: snapshotItensNf(nf, itemIndexes),
   }
 }

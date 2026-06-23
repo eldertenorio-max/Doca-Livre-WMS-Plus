@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import type { NotaFiscal } from '../types'
+import { useEffect, useState } from 'react'
+import type { JustificativaSaidaId, NotaFiscal } from '../types'
 import { enderecosDosItens, nfTemEnderecos } from '../lib/movimentos'
+import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
 import { formatAddressLabel } from '../layout/camaras'
 
 type Props = {
@@ -8,7 +9,7 @@ type Props = {
   itensFlagados: Set<number>
   onBuscar: (numero: string) => void
   onToggleItem: (index: number) => void
-  onFinalizarSaida: () => void
+  onFinalizarSaida: (justificativa: JustificativaSaidaId) => void
   onCancelarSaida: () => void
   buscaErro: string | null
 }
@@ -24,6 +25,11 @@ export function SaidaPanel({
 }: Props) {
   const [numero, setNumero] = useState('')
   const [confirmarCancelar, setConfirmarCancelar] = useState(false)
+  const [justificativa, setJustificativa] = useState<JustificativaSaidaId | null>(null)
+
+  useEffect(() => {
+    setJustificativa(null)
+  }, [nfBusca?.id])
 
   function handleBuscar() {
     onBuscar(numero.trim())
@@ -105,7 +111,33 @@ export function SaidaPanel({
               <p className="muted">
                 {itensFlagados.size} item(ns) · {enderecosFlagados.length} endereço(s) serão liberados
               </p>
-              <button type="button" className="btn warning full" onClick={onFinalizarSaida}>
+
+              <fieldset className="saida-justificativa">
+                <legend className="saida-justificativa-title">Motivo da saída</legend>
+                <ul className="saida-justificativa-list">
+                  {JUSTIFICATIVAS_SAIDA.map((opt) => (
+                    <li key={opt.id}>
+                      <label className="saida-justificativa-option">
+                        <input
+                          type="radio"
+                          name="justificativa-saida"
+                          value={opt.id}
+                          checked={justificativa === opt.id}
+                          onChange={() => setJustificativa(opt.id)}
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+
+              <button
+                type="button"
+                className="btn warning full"
+                disabled={!justificativa}
+                onClick={() => justificativa && onFinalizarSaida(justificativa)}
+              >
                 Finalizar saída — NF {nfBusca.numero}
               </button>
             </div>

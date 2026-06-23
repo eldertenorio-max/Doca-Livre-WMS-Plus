@@ -43,10 +43,15 @@ export function criarNotaManual(input: ManualNfInput): NotaFiscal {
 export function validarManualNfInput(input: ManualNfInput): string | null {
   if (!input.numero.trim()) return 'Informe o número da NF.'
   if (input.items.length === 0) return 'Informe ao menos um item.'
-  const item = input.items[0]
-  if (!item.codigo.trim()) return 'Informe o código do item.'
-  if (!item.descricao.trim()) return 'Informe a descrição do item.'
-  if (!(item.quantidade > 0)) return 'Informe uma quantidade válida.'
+
+  for (let i = 0; i < input.items.length; i++) {
+    const item = input.items[i]
+    const label = input.items.length > 1 ? ` (item ${i + 1})` : ''
+    if (!item.codigo.trim()) return `Informe o código do item${label}.`
+    if (!item.descricao.trim()) return `Informe a descrição do item${label}.`
+    if (!(item.quantidade > 0)) return `Informe uma quantidade válida${label}.`
+  }
+
   return null
 }
 

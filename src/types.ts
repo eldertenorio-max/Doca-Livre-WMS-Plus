@@ -54,6 +54,14 @@ export type NotaFiscalCancelada = {
 
 export type MovimentoTipo = 'entrada' | 'saida'
 
+export type JustificativaSaidaId =
+  | 'venda'
+  | 'transferencia'
+  | 'descarga'
+  | 'devolucao_remessa'
+  | 'acerto_estoque'
+  | 'revenda'
+
 export type MovimentoItemSnapshot = {
   itemIndex: number
   codigo: string
@@ -75,6 +83,8 @@ export type MovimentoRegistro = {
   emitente: string
   createdAt: string
   itens: MovimentoItemSnapshot[]
+  /** Motivo da saída (venda, transferência, etc.). */
+  justificativaSaida?: JustificativaSaidaId
   /** Registro mantido no histórico após exclusão na aba Movimentação. */
   excluido?: boolean
   excluidoEm?: string

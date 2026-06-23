@@ -68,6 +68,7 @@ function mapMovimentos(rows: MovRow[]): MovimentoRegistro[] {
     emitente: m.emitente,
     createdAt: m.created_at,
     itens: m.payload?.itens ?? [],
+    ...(m.payload?.justificativaSaida ? { justificativaSaida: m.payload.justificativaSaida } : {}),
     ...(m.payload?.excluido ? { excluido: true } : {}),
     ...(m.payload?.excluidoEm ? { excluidoEm: m.payload.excluidoEm } : {}),
   }))
@@ -104,7 +105,7 @@ async function loadCanceladas(sb: ReturnType<typeof getSupabase>): Promise<NotaF
 
 async function loadEmitentes(sb: ReturnType<typeof getSupabase>): Promise<string[]> {
   const { data, error } = await sb
-    .from('ultrafrio_emitentes')
+    .from('ultrafrio_cadastro_remetentes')
     .select('nome')
     .order('updated_at', { ascending: false })
   if (error) {
@@ -258,6 +259,7 @@ export const supabaseRepository: EnderecamentoRepository = {
         created_at: mov.createdAt,
         payload: {
           itens: mov.itens,
+          ...(mov.justificativaSaida ? { justificativaSaida: mov.justificativaSaida } : {}),
           ...(mov.excluido ? { excluido: true, excluidoEm: mov.excluidoEm ?? null } : {}),
         },
       })
@@ -300,7 +302,7 @@ export const supabaseRepository: EnderecamentoRepository = {
     if (!n || !key) return
 
     const sb = getSupabase()
-    const { error } = await sb.from('ultrafrio_emitentes').upsert(
+    const { error } = await sb.from('ultrafrio_cadastro_remetentes').upsert(
       {
         nome_key: key,
         nome: n,

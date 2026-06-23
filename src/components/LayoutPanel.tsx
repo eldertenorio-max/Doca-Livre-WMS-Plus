@@ -236,8 +236,8 @@ function RuaGrid({
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
                     if (paintMode && (clickable || pending)) className += ' cell--pintavel'
 
-                    const title = cellTooltip(addressId, kind, occ, pending)
-                    const canInteract = clickable || !!occ || pending
+                    const title = cellTooltip(addressId, kind, allocateMode, occ, pending)
+                    const canInteract = !!occ || pending || (allocateMode && clickable)
 
                     return (
                       <button
@@ -347,6 +347,7 @@ function cellNfLabel(numero: string, cellSize: number): string {
 function cellTooltip(
   addressId: AddressId,
   kind: CellKind,
+  allocateMode: boolean,
   occ?: AddressOccupancy,
   pending?: boolean,
 ): string {
@@ -356,7 +357,8 @@ function cellTooltip(
   if (kind === 'porta') return `${label} — Porta`
   if (kind === 'bloqueado') return `${label} — Indisponível`
   if (kind === 'sem-nivel5') return `${label} — Nível 5 inexistente`
-  return `${label} — Disponível (clique para alocar)`
+  if (allocateMode) return `${label} — Disponível (clique para selecionar)`
+  return `${label} — Disponível`
 }
 
 export function LayoutPanel(props: Props) {
