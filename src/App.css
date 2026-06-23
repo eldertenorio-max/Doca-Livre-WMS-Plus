@@ -676,6 +676,127 @@
   font-size: 0.9rem;
 }
 
+/* Modal de detalhe do endereço */
+.detail-modal {
+  padding: 0;
+  overflow: hidden;
+}
+
+.detail-modal-top {
+  position: relative;
+  padding: 20px 20px 16px;
+  background: linear-gradient(180deg, var(--highlight-bg-strong) 0%, transparent 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-modal-top .modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.detail-nf-hero {
+  padding-right: 28px;
+}
+
+.detail-nf-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.detail-nf-numero {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--accent-hover);
+}
+
+.detail-nf-emitente {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.detail-product-block {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.detail-product-block h3 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-product-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-product-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, var(--bg-panel));
+}
+
+.detail-product-codigo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.detail-product-desc {
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.detail-product-qty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.detail-modal .modal-section {
+  margin: 0;
+  padding: 14px 20px;
+  border-top: none;
+}
+
+.detail-modal .modal-section--last {
+  padding-bottom: 20px;
+}
+
+.detail-address-line {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.detail-modal .modal-section .meta-list {
+  margin-bottom: 0;
+}
+
 .detail-items,
 .addr-list-scroll {
   margin: 0;
@@ -1053,28 +1174,28 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 5mm;
-  padding-bottom: 2mm;
+  gap: 10px;
+  margin-bottom: 3mm;
+  padding-bottom: 1.5mm;
   border-bottom: 1px solid #333;
 }
 
 .print-page-header h1 {
   margin: 0;
-  font-size: 14pt;
+  font-size: 16pt;
   font-weight: 700;
   color: #000;
 }
 
 .print-page-sub {
   margin: 1px 0 0;
-  font-size: 10pt;
+  font-size: 11pt;
   color: #444;
 }
 
 .print-page-meta {
   text-align: right;
-  font-size: 8pt;
+  font-size: 9pt;
   color: #666;
   display: flex;
   flex-direction: column;
@@ -1084,14 +1205,14 @@
 .print-page-body {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 0;
-  padding: 1mm 0;
+  padding: 0;
 }
 
 .print-page-footer {
-  margin-top: 4mm;
+  margin-top: 3mm;
   padding-top: 2mm;
   border-top: 1px solid #ccc;
 }
@@ -1099,22 +1220,23 @@
 .print-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 16px;
-  font-size: 8pt;
-  color: #444;
-  margin-bottom: 4mm;
+  gap: 12px 20px;
+  font-size: 10pt;
+  color: #333;
+  margin-bottom: 2.5mm;
 }
 
 .print-legend span {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  font-weight: 600;
 }
 
 .print-swatch {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 1px;
 }
 
@@ -1141,9 +1263,10 @@
 
 .print-duplex-hint {
   margin: 0;
-  font-size: 8pt;
-  color: #555;
+  font-size: 9.5pt;
+  color: #444;
   text-align: center;
+  font-weight: 500;
 }
 
 .print-rua-grid {
@@ -1152,7 +1275,7 @@
 
 .print-col-headers {
   display: grid;
-  margin-bottom: 1mm;
+  margin-bottom: 0.5mm;
 }
 
 .print-axis {
@@ -1167,7 +1290,7 @@
 
 .print-rua-body {
   display: flex;
-  gap: 1.5mm;
+  gap: 1mm;
 }
 
 .print-row-labels {

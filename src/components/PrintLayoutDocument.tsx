@@ -8,23 +8,45 @@ import {
   type RuaConfig,
 } from '../layout/camaras'
 
-const CELL_GAP = 1
+const CELL_GAP = 0
 
-/** Área útil A4 paisagem com margem ~8mm e cabeçalho/rodapé compactos. */
-const PRINT_PAGE_WIDTH_MM = 285
-const PRINT_PAGE_HEIGHT_MM = 178
+/** A4 paisagem com margem 5mm — área útil para o grid no corpo da folha. */
+const PRINT_BODY_WIDTH_MM = 287
+const PRINT_BODY_HEIGHT_MM = 186
 
-function computePrintCellSize(colunas: number): number {
-  const labelW = 10
+function printGridMetrics(colunas: number, cellSize: number) {
+  const labelW = Math.max(9, Math.round(cellSize * 0.52))
+  const headerH = Math.max(6, Math.round(cellSize * 0.42))
   const gapsW = (colunas - 1) * CELL_GAP
   const gapsH = (NIVEIS.length - 1) * CELL_GAP
-  const byWidth = Math.floor((PRINT_PAGE_WIDTH_MM - labelW - 4 - gapsW) / colunas)
-  const byHeight = Math.floor((PRINT_PAGE_HEIGHT_MM - 6 - gapsH) / NIVEIS.length)
-  return Math.max(10, Math.min(byWidth, byHeight))
+  const gridW = labelW + 3 + colunas * cellSize + gapsW
+  const gridH = headerH + NIVEIS.length * cellSize + gapsH
+  return { labelW, headerH, gridW, gridH }
+}
+
+function computePrintCellSize(colunas: number): number {
+  const gapsW = (colunas - 1) * CELL_GAP
+  const gapsH = (NIVEIS.length - 1) * CELL_GAP
+  const overheadW = 12
+
+  let cell = (PRINT_BODY_WIDTH_MM - overheadW - gapsW) / colunas
+
+  for (let i = 0; i < 4; i++) {
+    const { headerH } = printGridMetrics(colunas, cell)
+    const byHeight = (PRINT_BODY_HEIGHT_MM - headerH - gapsH) / NIVEIS.length
+    if (byHeight >= cell) break
+    cell = byHeight
+  }
+
+  while (printGridMetrics(colunas, cell).gridW > PRINT_BODY_WIDTH_MM && cell > 10) {
+    cell = Math.round((cell - 0.1) * 10) / 10
+  }
+
+  return Math.max(10, Math.round(cell * 10) / 10)
 }
 
 function printAxisFont(cellSize: number): number {
-  return Math.max(10, Math.min(15, Math.round(cellSize * 0.65)))
+  return Math.max(12, Math.min(18, Math.round(cellSize * 0.72)))
 }
 
 type Props = {
@@ -32,17 +54,16 @@ type Props = {
 }
 
 function PrintRuaGrid({ camaraId, config, cellSize }: { camaraId: number; config: RuaConfig; cellSize: number }) {
-  const labelW = Math.max(12, Math.round(cellSize * 0.72))
-  const headerH = Math.max(8, Math.round(cellSize * 0.55))
+  const { labelW, headerH } = printGridMetrics(config.colunas, cellSize)
   const axisFont = printAxisFont(cellSize)
-  const portaFont = Math.max(9, Math.round(cellSize * 0.42))
+  const portaFont = Math.max(10, Math.round(cellSize * 0.48))
 
   return (
     <div className="print-rua-grid">
       <div
         className="print-col-headers"
         style={{
-          marginLeft: labelW + 6,
+          marginLeft: labelW + 3,
           gridTemplateColumns: `repeat(${config.colunas}, ${cellSize}mm)`,
           gap: `${CELL_GAP}mm`,
         }}

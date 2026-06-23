@@ -27,7 +27,7 @@ export function ImprimirPanel({
       el.id = styleId
       document.head.appendChild(el)
     }
-    el.textContent = `@page { size: A4 ${orientacao}; margin: 8mm; }`
+    el.textContent = `@page { size: A4 ${orientacao}; margin: 5mm; }`
     window.print()
   }
 

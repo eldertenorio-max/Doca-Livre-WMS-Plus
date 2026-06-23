@@ -15,27 +15,32 @@ export function DetailModal({ addressId, nota, onClose }: Props) {
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <header className="modal-header">
-          <div>
-            <h2>Endereço {formatAddressLabel(addressId)}</h2>
-            <p className="muted">NF {nota.numero} · {nota.emitente}</p>
-          </div>
+      <div className="modal detail-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <header className="detail-modal-top">
           <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">
             ×
           </button>
+
+          <div className="detail-nf-hero">
+            <span className="detail-nf-label">Nota fiscal</span>
+            <p className="detail-nf-numero">NF {nota.numero}</p>
+            <p className="detail-nf-emitente">{nota.emitente}</p>
+          </div>
         </header>
 
-        <section className="modal-section">
+        <section className="detail-product-block">
           <h3>Produto neste endereço</h3>
           {itensNf.length === 0 ? (
             <p className="muted">Nenhum item vinculado.</p>
           ) : (
-            <ul className="detail-items">
+            <ul className="detail-product-list">
               {itensNf.map((it) => (
-                <li key={it.index}>
-                  <strong>{it.codigo}</strong> — {it.descricao}
-                  <span className="muted"> · {it.quantidade} {it.unidade}</span>
+                <li key={it.index} className="detail-product-card">
+                  <span className="detail-product-codigo">{it.codigo}</span>
+                  <span className="detail-product-desc">{it.descricao}</span>
+                  <span className="detail-product-qty">
+                    {it.quantidade} {it.unidade}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -43,11 +48,25 @@ export function DetailModal({ addressId, nota, onClose }: Props) {
         </section>
 
         <section className="modal-section">
-          <h3>Dados da NF {nota.numero}</h3>
+          <h3>Endereço</h3>
+          <p className="detail-address-line">{formatAddressLabel(addressId)}</p>
+        </section>
+
+        <section className="modal-section">
+          <h3>Dados da nota</h3>
           <dl className="meta-list">
-            <div><dt>Série</dt><dd>{nota.serie || '—'}</dd></div>
-            <div><dt>Status</dt><dd>{nota.status === 'concluida' ? 'Concluída' : 'Em andamento'}</dd></div>
-            <div><dt>Chave</dt><dd className="chave">{nota.chave || '—'}</dd></div>
+            <div>
+              <dt>Série</dt>
+              <dd>{nota.serie || '—'}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{nota.status === 'concluida' ? 'Concluída' : 'Em andamento'}</dd>
+            </div>
+            <div>
+              <dt>Chave</dt>
+              <dd className="chave">{nota.chave || '—'}</dd>
+            </div>
           </dl>
         </section>
 
@@ -62,14 +81,15 @@ export function DetailModal({ addressId, nota, onClose }: Props) {
           </ul>
         </section>
 
-        <section className="modal-section">
+        <section className="modal-section modal-section--last">
           <h3>Todos os itens da NF</h3>
           <ul className="detail-items">
             {nota.items.map((it) => (
               <li key={it.index}>
                 <strong>{it.codigo}</strong> — {it.descricao}
                 <span className="muted">
-                  {' '}· {it.allocatedAddresses.length} end. · {it.quantidade} {it.unidade}
+                  {' '}
+                  · {it.allocatedAddresses.length} end. · {it.quantidade} {it.unidade}
                 </span>
               </li>
             ))}
