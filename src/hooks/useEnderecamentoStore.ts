@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRepository, getStorageMode, type EnderecamentoRepository } from '../lib/repository'
-import { localRepository } from '../lib/repository/localRepository'
+import { clearLocalPersistedData, localRepository } from '../lib/repository/localRepository'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
+import { subscribeEnderecamentoChanges } from '../lib/supabaseRealtime'
 import { prepareLoadedData } from '../lib/persistence'
 import type { AppState, PersistedData } from '../types'
 import type { StorageMode } from '../lib/repository/types'
@@ -14,8 +15,20 @@ const emptyState: AppState = {
   activeItemIndex: null,
 }
 
+const SAVE_DEBOUNCE_MS = 400
+const REMOTE_RELOAD_DEBOUNCE_MS = 700
+const IGNORE_REMOTE_MS = 2500
+const POLL_INTERVAL_MS = 20_000
+
 function pickRepository(): EnderecamentoRepository {
   return isSupabaseConfigured() ? getRepository() : localRepository
+}
+
+function mergeRemoteState(prev: AppState, data: PersistedData): AppState {
+  const activeNfId =
+    prev.activeNfId && data.notas.some((n) => n.id === prev.activeNfId) ? prev.activeNfId : null
+  const activeItemIndex = activeNfId ? prev.activeItemIndex : null
+  return { ...data, activeNfId, activeItemIndex }
 }
 
 export function useEnderecamentoStore() {
@@ -23,11 +36,43 @@ export function useEnderecamentoStore() {
   const [state, setState] = useState<AppState>(emptyState)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [storageMode, setStorageMode] = useState<StorageMode>(getStorageMode())
   const [migratedFromLocal, setMigratedFromLocal] = useState(false)
   const skipSave = useRef(true)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ignoreRemoteUntil = useRef(0)
+  const savingRef = useRef(false)
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const reloadFromRemote = useCallback(async () => {
+    if (repoRef.current.mode !== 'supabase') return
+    if (savingRef.current || Date.now() < ignoreRemoteUntil.current) return
+
+    setSyncing(true)
+    skipSave.current = true
+    try {
+      const remote = await repoRef.current.loadData()
+      const { data } = prepareLoadedData(remote)
+      setState((prev) => mergeRemoteState(prev, data))
+      setError(null)
+    } catch {
+      /* mantém estado atual se a nuvem falhar momentaneamente */
+    } finally {
+      setSyncing(false)
+      setTimeout(() => {
+        skipSave.current = false
+      }, 200)
+    }
+  }, [])
+
+  const scheduleRemoteReload = useCallback(() => {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current)
+    reloadTimer.current = setTimeout(() => {
+      void reloadFromRemote()
+    }, REMOTE_RELOAD_DEBOUNCE_MS)
+  }, [reloadFromRemote])
 
   useEffect(() => {
     let cancelled = false
@@ -50,6 +95,8 @@ export function useEnderecamentoStore() {
             movimentos: data.movimentos,
             notasCanceladas: data.notasCanceladas,
           })
+          clearLocalPersistedData()
+          ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_MS
         }
 
         if (!cancelled) {
@@ -94,8 +141,22 @@ export function useEnderecamentoStore() {
     }
   }, [])
 
+  useEffect(() => {
+    if (loading || storageMode !== 'supabase' || !isSupabaseConfigured()) return
+
+    const unsubscribe = subscribeEnderecamentoChanges(scheduleRemoteReload)
+    const poll = window.setInterval(scheduleRemoteReload, POLL_INTERVAL_MS)
+
+    return () => {
+      unsubscribe()
+      window.clearInterval(poll)
+      if (reloadTimer.current) clearTimeout(reloadTimer.current)
+    }
+  }, [loading, scheduleRemoteReload, storageMode])
+
   const persist = useCallback(async (next: AppState) => {
     let repo = repoRef.current
+    savingRef.current = true
     setSaving(true)
     try {
       await repo.saveData({
@@ -107,6 +168,7 @@ export function useEnderecamentoStore() {
         activeNfId: next.activeNfId,
         activeItemIndex: next.activeItemIndex,
       })
+      ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_MS
       setError(null)
     } catch {
       if (repo.mode === 'supabase') {
@@ -132,6 +194,7 @@ export function useEnderecamentoStore() {
       }
       setError('Erro ao salvar dados.')
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }, [])
@@ -141,7 +204,7 @@ export function useEnderecamentoStore() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       void persist(state)
-    }, 400)
+    }, SAVE_DEBOUNCE_MS)
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
@@ -151,34 +214,13 @@ export function useEnderecamentoStore() {
     setState((prev) => (typeof updater === 'function' ? updater(prev) : updater))
   }, [])
 
-  const importBackup = useCallback((data: PersistedData) => {
-    const normalized = prepareLoadedData(data).data
-    setState({
-      ...normalized,
-      activeNfId: null,
-      activeItemIndex: null,
-    })
-    setMigratedFromLocal(false)
-  }, [])
-
-  const exportBackup = useCallback((): PersistedData => {
-    return {
-      notas: state.notas,
-      movimentos: state.movimentos,
-      notasCanceladas: state.notasCanceladas,
-    }
-  }, [state.notas, state.movimentos, state.notasCanceladas])
-
   return {
     state,
     setState: updateState,
     loading,
     saving,
+    syncing,
     error,
-    storageMode,
-    migratedFromLocal,
     clearError: () => setError(null),
-    importBackup,
-    exportBackup,
   }
 }

@@ -17,9 +17,8 @@ CREATE INDEX IF NOT EXISTS idx_ultrafrio_canceladas_vinculo
 
 ALTER TABLE ultrafrio_notas_canceladas ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "anon_all_ultrafrio_notas_canceladas"
-  ON ultrafrio_notas_canceladas
-  FOR ALL
-  TO anon
-  USING (true)
-  WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_all_ultrafrio_notas_canceladas" ON ultrafrio_notas_canceladas;
+DROP POLICY IF EXISTS ultrafrio_canceladas_all ON ultrafrio_notas_canceladas;
+
+CREATE POLICY ultrafrio_canceladas_all ON ultrafrio_notas_canceladas
+  FOR ALL USING (true) WITH CHECK (true);

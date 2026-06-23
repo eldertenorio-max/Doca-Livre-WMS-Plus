@@ -24,6 +24,12 @@ export function loadLocalPersistedData(): PersistedData {
   return loadBundle()
 }
 
+export function clearLocalPersistedData(): void {
+  localStorage.removeItem(DATA_KEY)
+  localStorage.removeItem(LEGACY_KEY)
+  localStorage.removeItem('ultrafrio-enderecamento-v1')
+}
+
 function loadUiFromLegacy(): Pick<AppState, 'activeNfId' | 'activeItemIndex'> {
   const raw = localStorage.getItem(UI_KEY)
   if (raw) {

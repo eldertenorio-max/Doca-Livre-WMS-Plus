@@ -56,12 +56,9 @@ export default function App() {
     setState,
     loading,
     saving,
+    syncing,
     error,
     clearError,
-    storageMode,
-    migratedFromLocal,
-    importBackup,
-    exportBackup,
   } = useEnderecamentoStore()
   const { theme, toggleTheme } = useTheme()
   const [introDone, setIntroDone] = useState(false)
@@ -561,17 +558,6 @@ export default function App() {
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
   const detailNota = detailOcc ? state.notas.find((n) => n.id === detailOcc.nfId) : null
 
-  function handleImportBackup(data: import('./types').PersistedData) {
-    importBackup(data)
-    setPendingSelection(new Set())
-    setEditPendingSelection(new Set())
-    setNfBuscaSaidaId(null)
-    setItensFlagados(new Set())
-    setNfEditarId(null)
-    setEditItemIndex(null)
-    setDetailAddress(null)
-  }
-
   if (!introDone) {
     return <IntroSplash loading={loading} onFinish={() => setIntroDone(true)} />
   }
@@ -580,11 +566,8 @@ export default function App() {
     <div className="app-shell">
       <AppSidebar
         saving={saving}
+        syncing={syncing}
         persistError={error}
-        storageMode={storageMode}
-        migratedFromLocal={migratedFromLocal}
-        onExportBackup={exportBackup}
-        onImportBackup={handleImportBackup}
         theme={theme}
         onToggleTheme={toggleTheme}
         entrada={{

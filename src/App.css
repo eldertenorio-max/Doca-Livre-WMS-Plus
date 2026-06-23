@@ -1795,10 +1795,11 @@
     width: 100%;
     max-height: none;
     position: static;
-    padding: 12px 12px 16px;
+    padding: 12px 12px 24px;
     box-shadow: none;
     border-right: none;
     border-top: 1px solid var(--border);
+    overflow-y: visible;
   }
 
   .sidebar:hover {
@@ -1889,6 +1890,10 @@
     justify-content: flex-start;
     gap: 10px;
     padding: 10px 12px;
+  }
+
+  .sidebar-section-inner {
+    padding-bottom: 16px;
   }
 
   .hist-filters {

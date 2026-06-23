@@ -1,25 +1,18 @@
 import { CollapsibleSidebarSection } from './CollapsibleSidebarSection'
 import { CanceladasPanel } from './CanceladasPanel'
-import { DataBackupPanel } from './DataBackupPanel'
 import { EditarPosicaoPanel } from './EditarPosicaoPanel'
 import { EntradaPanel } from './EntradaPanel'
 import { HistoricoPanel } from './HistoricoPanel'
 import { ImprimirPanel } from './ImprimirPanel'
 import { SaidaPanel } from './SaidaPanel'
-import { StorageBanner } from './StorageBanner'
 import { ThemeToggle } from './ThemeToggle'
-import type { StorageMode } from '../lib/repository/types'
-import type { PersistedData } from '../types'
 import type { Theme } from '../lib/theme'
 import type { ComponentProps } from 'react'
 
 type Props = {
   saving: boolean
+  syncing?: boolean
   persistError: string | null
-  storageMode: StorageMode
-  migratedFromLocal: boolean
-  onExportBackup: () => PersistedData
-  onImportBackup: (data: PersistedData) => void
   theme: Theme
   onToggleTheme: () => void
   entrada: ComponentProps<typeof EntradaPanel>
@@ -32,11 +25,8 @@ type Props = {
 
 export function AppSidebar({
   saving,
+  syncing,
   persistError,
-  storageMode,
-  migratedFromLocal,
-  onExportBackup,
-  onImportBackup,
   theme,
   onToggleTheme,
   entrada,
@@ -63,8 +53,8 @@ export function AppSidebar({
         <h1>Endereçamento</h1>
         <p className="muted">Ultrafrio · entrada e saída por NF-e</p>
         {saving && <p className="saving-hint">Salvando…</p>}
+        {syncing && !saving && <p className="saving-hint">Sincronizando…</p>}
         {persistError && <p className="error">{persistError}</p>}
-        <StorageBanner mode={storageMode} migrated={migratedFromLocal} />
       </div>
 
       <CollapsibleSidebarSection id="entrada" title="Entrada">
@@ -92,7 +82,6 @@ export function AppSidebar({
       </CollapsibleSidebarSection>
 
       <div className="sidebar-footer">
-        <DataBackupPanel onExport={onExportBackup} onImport={onImportBackup} />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
     </aside>
