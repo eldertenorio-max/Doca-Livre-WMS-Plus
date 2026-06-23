@@ -25,7 +25,7 @@
   border-right: 1px solid var(--border);
   padding: 16px 10px;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   max-height: 100vh;
   position: sticky;
   top: 0;
@@ -39,6 +39,7 @@
   width: var(--sidebar-w);
   padding: 20px 16px;
   box-shadow: var(--shadow-sidebar);
+  overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -364,6 +365,7 @@
 
 .swatch--disp { background: var(--cell-disp); }
 .swatch--sel { background: var(--cell-sel); }
+.swatch--confirm { background: var(--cell-ocup); outline: 2px solid var(--cell-sel); }
 .swatch--ocup { background: var(--cell-ocup); }
 .swatch--saida { background: #d29922; }
 .swatch--saida-flag { background: #f0883e; outline: 2px solid var(--swatch-outline); }
@@ -532,6 +534,16 @@
   background: var(--cell-disp);
 }
 
+.layout-panel--paint .cell--pintavel {
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.layout-panel--paint .rua-grid-scroll {
+  touch-action: pan-x;
+}
+
 .cell--alocavel {
   cursor: pointer;
 }
@@ -542,7 +554,14 @@
 
 .cell--selecionado {
   background: var(--cell-sel);
-  outline: 2px solid var(--sel-outline);
+  outline: 2px dashed var(--sel-outline);
+  z-index: 2;
+}
+
+.cell--confirmado {
+  background: var(--cell-ocup);
+  outline: 3px solid var(--cell-sel);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
   z-index: 1;
 }
 
@@ -677,6 +696,11 @@
 .sidebar-header {
   margin-bottom: 8px;
   text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar:not(:hover) .sidebar-header {
+  margin-bottom: 4px;
 }
 
 .sidebar:hover .sidebar-header {
@@ -703,15 +727,32 @@
 
 .sidebar-logo {
   display: block;
-  width: 100%;
-  max-width: 36px;
   height: auto;
   margin: 0 auto 8px;
-  transition: max-width 0.28s ease, margin 0.28s ease;
+  transition: opacity 0.22s ease, max-width 0.28s ease, margin 0.28s ease;
 }
 
-.sidebar:hover .sidebar-logo {
+.sidebar-logo--compact {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  object-position: top center;
+  margin-bottom: 10px;
+}
+
+.sidebar-logo--full {
+  display: none;
+  width: 100%;
   max-width: 168px;
+  margin: 0 0 12px;
+}
+
+.sidebar:hover .sidebar-logo--compact {
+  display: none;
+}
+
+.sidebar:hover .sidebar-logo--full {
+  display: block;
   margin: 0 0 12px;
 }
 
@@ -823,6 +864,28 @@
   grid-template-rows: 0fr !important;
 }
 
+.sidebar:not(:hover) .sidebar-section-inner {
+  visibility: hidden;
+  opacity: 0;
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sidebar:not(:hover) .storage-banner {
+  display: none;
+}
+
+.sidebar:not(:hover) .sidebar-footer {
+  overflow: hidden;
+  max-height: 52px;
+}
+
+.sidebar:not(:hover) .data-backup {
+  display: none;
+}
+
 .sidebar:not(:hover) .sidebar-section--open .sidebar-section-trigger {
   background: transparent;
 }
@@ -896,6 +959,318 @@
 
 .sidebar-section--canceladas .sidebar-section-icon {
   color: #f85149;
+}
+
+/* Ícones — Imprimir */
+.sidebar-section--imprimir:hover .icon-print-paper,
+.sidebar-section--imprimir.sidebar-section--open .icon-print-paper {
+  animation: icon-print-slide 0.6s ease-in-out infinite alternate;
+}
+
+.sidebar-section--imprimir .sidebar-section-icon {
+  color: #8b949e;
+}
+
+@keyframes icon-print-slide {
+  from { transform: translateY(0); }
+  to { transform: translateY(2px); }
+}
+
+/* Painel Imprimir */
+.imprimir-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.imprimir-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.imprimir-toolbar h4 {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.imprimir-toolbar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.imprimir-cam-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.imprimir-cam-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.imprimir-cam-item input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.imprimir-orientacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.imprimir-orient-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.imprimir-duplex-box h4 {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+}
+
+.imprimir-duplex-box p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* Documento de impressão (oculto na tela) */
+.print-document {
+  display: none;
+}
+
+.print-page {
+  box-sizing: border-box;
+}
+
+.print-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8mm;
+  padding-bottom: 4mm;
+  border-bottom: 1px solid #333;
+}
+
+.print-page-header h1 {
+  margin: 0;
+  font-size: 16pt;
+  font-weight: 700;
+  color: #000;
+}
+
+.print-page-sub {
+  margin: 2px 0 0;
+  font-size: 11pt;
+  color: #444;
+}
+
+.print-page-meta {
+  text-align: right;
+  font-size: 8pt;
+  color: #666;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.print-page-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.print-page-footer {
+  margin-top: 6mm;
+  padding-top: 3mm;
+  border-top: 1px solid #ccc;
+}
+
+.print-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 8pt;
+  color: #444;
+  margin-bottom: 4mm;
+}
+
+.print-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.print-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.print-swatch--disp {
+  background: #fff;
+  border: 1px solid #333;
+}
+
+.print-swatch--porta {
+  background: #e8e8e8;
+  border: 1px solid #333;
+}
+
+.print-swatch--nv5 {
+  background: repeating-linear-gradient(
+    -45deg,
+    #f5f5f5,
+    #f5f5f5 2px,
+    #ddd 2px,
+    #ddd 4px
+  );
+  border: 1px solid #999;
+}
+
+.print-duplex-hint {
+  margin: 0;
+  font-size: 8pt;
+  color: #555;
+  text-align: center;
+}
+
+.print-rua-grid {
+  margin: 0 auto;
+}
+
+.print-col-headers {
+  display: grid;
+  margin-bottom: 1mm;
+}
+
+.print-axis {
+  text-align: center;
+  color: #333;
+  font-weight: 600;
+}
+
+.print-axis--row {
+  text-align: right;
+}
+
+.print-rua-body {
+  display: flex;
+  gap: 1.5mm;
+}
+
+.print-row-labels {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.print-cells-area {
+  position: relative;
+}
+
+.print-cells-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.print-cells-row {
+  display: grid;
+}
+
+.print-cell {
+  box-sizing: border-box;
+  border-radius: 0.5mm;
+}
+
+.print-cell--disponivel {
+  background: #fff;
+  border: 0.35mm solid #222;
+}
+
+.print-cell--porta {
+  background: #ececec;
+  border: 0.35mm solid #222;
+}
+
+.print-cell--sem-nivel5 {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fafafa,
+    #fafafa 1.5mm,
+    #ddd 1.5mm,
+    #ddd 3mm
+  );
+  border: 0.35mm solid #999;
+}
+
+.print-porta-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  border: 0.5mm dashed #666;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-document,
+  .print-document * {
+    visibility: visible;
+  }
+
+  .print-document {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #fff;
+  }
+
+  .print-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+    page-break-after: always;
+    break-after: page;
+    background: #fff;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
 }
 
 .upload-btn--muted {
@@ -1449,6 +1824,37 @@
     width: auto;
     flex: 1;
     margin: revert;
+  }
+
+  .sidebar-logo--compact {
+    display: none;
+  }
+
+  .sidebar-logo--full {
+    display: block;
+    max-width: 168px;
+    margin: 0 0 12px;
+  }
+
+  .sidebar:not(:hover) .sidebar-section-inner {
+    visibility: visible;
+    opacity: 1;
+    max-height: none;
+    padding: 0 2px 14px;
+    pointer-events: auto;
+  }
+
+  .sidebar:not(:hover) .storage-banner {
+    display: flex;
+  }
+
+  .sidebar:not(:hover) .data-backup {
+    display: block;
+  }
+
+  .sidebar:not(:hover) .sidebar-footer {
+    max-height: none;
+    overflow: visible;
   }
 
   .sidebar-logo {

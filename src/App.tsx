@@ -3,6 +3,8 @@ import { AppSidebar } from './components/AppSidebar'
 import { DetailModal } from './components/DetailModal'
 import { IntroSplash } from './components/IntroSplash'
 import { LayoutPanel } from './components/LayoutPanel'
+import { PrintLayoutDocument } from './components/PrintLayoutDocument'
+import { CAMARAS } from './layout/camaras'
 import { OcupadoAlert } from './components/OcupadoAlert'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
 import { useTheme } from './hooks/useTheme'
@@ -75,6 +77,8 @@ export default function App() {
   const [editPendingSelection, setEditPendingSelection] = useState<Set<AddressId>>(new Set())
   const [buscaEditarErro, setBuscaEditarErro] = useState<string | null>(null)
   const [uploadCanceladaError, setUploadCanceladaError] = useState<string | null>(null)
+  const [canceladaPendenteId, setCanceladaPendenteId] = useState<string | null>(null)
+  const [printCamaras, setPrintCamaras] = useState<number[]>(() => CAMARAS.map((c) => c.id))
   const [ocupadoAlert, setOcupadoAlert] = useState<{
     addressId: AddressId
     occ: AddressOccupancy
@@ -187,6 +191,7 @@ export default function App() {
         ...s,
         notasCanceladas: [cancelada, ...s.notasCanceladas],
       }))
+      setCanceladaPendenteId(cancelada.id)
     } catch (e) {
       setUploadCanceladaError(e instanceof Error ? e.message : 'Erro ao ler XML.')
     }
@@ -194,6 +199,7 @@ export default function App() {
 
   function handleVincularCancelada(canceladaId: string, novaNfId: string) {
     setState((s) => ({ ...s, ...syncVinculosNotas(vincularNotaCancelada(s, canceladaId, novaNfId)) }))
+    if (canceladaId === canceladaPendenteId) setCanceladaPendenteId(null)
   }
 
   function handleDesvincularCancelada(canceladaId: string) {
@@ -202,6 +208,11 @@ export default function App() {
 
   function handleExcluirCancelada(canceladaId: string) {
     setState((s) => ({ ...s, ...syncVinculosNotas(excluirNotaCancelada(s, canceladaId)) }))
+    if (canceladaId === canceladaPendenteId) setCanceladaPendenteId(null)
+  }
+
+  function handleCancelarCancelada(canceladaId: string) {
+    handleExcluirCancelada(canceladaId)
   }
 
   function handleSelectNf(id: string) {
@@ -219,6 +230,10 @@ export default function App() {
   }
 
   function handleCellClick(addressId: AddressId, canInteract: boolean) {
+    handleCellPaint(addressId, pendingSelection.has(addressId) || editPendingSelection.has(addressId) ? 'remove' : 'add', canInteract)
+  }
+
+  function handleCellPaint(addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) {
     if (!canInteract) return
 
     const occ = occupancy.get(addressId)
@@ -232,10 +247,12 @@ export default function App() {
         }
       }
 
-      const nextPending = new Set(editPendingSelection)
-      if (nextPending.has(addressId)) nextPending.delete(addressId)
-      else nextPending.add(addressId)
-      setEditPendingSelection(nextPending)
+      setEditPendingSelection((prev) => {
+        const next = new Set(prev)
+        if (mode === 'add') next.add(addressId)
+        else next.delete(addressId)
+        return next
+      })
       return
     }
 
@@ -249,36 +266,38 @@ export default function App() {
         }
       }
 
-      const nextPending = new Set(pendingSelection)
-      if (nextPending.has(addressId)) nextPending.delete(addressId)
-      else nextPending.add(addressId)
-
       const currentItemIndex = state.activeItemIndex
-      setPendingSelection(nextPending)
-      setState((s) => ({
-        ...s,
-        notas: s.notas.map((nf) => {
-          if (nf.id !== activeNf.id) return nf
-          return {
-            ...nf,
-            items: nf.items.map((it) =>
-              it.index === currentItemIndex
-                ? { ...it, allocatedAddresses: [...nextPending] }
-                : it,
-            ),
-          }
-        }),
-      }))
+      setPendingSelection((prev) => {
+        const next = new Set(prev)
+        if (mode === 'add') next.add(addressId)
+        else next.delete(addressId)
+
+        setState((s) => ({
+          ...s,
+          notas: s.notas.map((nf) => {
+            if (nf.id !== activeNf.id) return nf
+            return {
+              ...nf,
+              items: nf.items.map((it) =>
+                it.index === currentItemIndex
+                  ? { ...it, allocatedAddresses: [...next] }
+                  : it,
+              ),
+            }
+          }),
+        }))
+
+        return next
+      })
       return
     }
 
     if (occ) {
-      if (allocateMode) {
+      if (allocateMode || editMode) {
         setOcupadoAlert({ addressId, occ })
         return
       }
       setDetailAddress(addressId)
-      return
     }
   }
 
@@ -324,8 +343,8 @@ export default function App() {
     )
     if (nextItem) {
       setState((s) => ({ ...s, activeItemIndex: nextItem.index }))
-      setPendingSelection(new Set())
     }
+    setPendingSelection(new Set())
   }
 
   function handleFinishEntrada() {
@@ -435,6 +454,12 @@ export default function App() {
     setItensFlagados(new Set())
   }
 
+  function handleCancelarSaida() {
+    setNfBuscaSaidaId(null)
+    setItensFlagados(new Set())
+    setBuscaErro(null)
+  }
+
   function handleBuscarEditar(numero: string) {
     setBuscaEditarErro(null)
     const nf = buscarNfPorNumero(state.notas, numero)
@@ -495,6 +520,13 @@ export default function App() {
         movimentos: upsertMovimentoEntrada(s.movimentos, updatedNf),
       }
     })
+  }
+
+  function handleCancelarEditar() {
+    setNfEditarId(null)
+    setEditItemIndex(null)
+    setEditPendingSelection(new Set())
+    setBuscaEditarErro(null)
   }
 
   function handleExcluirMovimento(movId: string) {
@@ -575,6 +607,7 @@ export default function App() {
           onBuscar: handleBuscarSaida,
           onToggleItem: handleToggleItemSaida,
           onFinalizarSaida: handleFinalizarSaida,
+          onCancelarSaida: handleCancelarSaida,
           buscaErro,
         }}
         historico={{
@@ -590,6 +623,8 @@ export default function App() {
           onVincular: handleVincularCancelada,
           onDesvincular: handleDesvincularCancelada,
           onExcluir: handleExcluirCancelada,
+          onCancelarCancelada: handleCancelarCancelada,
+          canceladaPendenteId,
           uploadError: uploadCanceladaError,
         }}
         editar={{
@@ -599,7 +634,17 @@ export default function App() {
           onBuscar: handleBuscarEditar,
           onSelectItem: handleSelectItemEditar,
           onSalvar: handleSalvarEditar,
+          onCancelarEditar: handleCancelarEditar,
           buscaErro: buscaEditarErro,
+        }}
+        imprimir={{
+          selectedCamaras: printCamaras,
+          onToggleCamara: (id) =>
+            setPrintCamaras((prev) =>
+              prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id].sort((a, b) => a - b),
+            ),
+          onSelectAll: () => setPrintCamaras(CAMARAS.map((c) => c.id)),
+          onClearAll: () => setPrintCamaras([]),
         }}
       />
 
@@ -608,14 +653,19 @@ export default function App() {
           occupancy={displayOccupancy}
           pendingSelection={panelPendingSelection}
           activeNfNumero={panelActiveNfNumero}
+          activeNfId={editMode ? nfEditar?.id ?? null : activeNf?.id ?? null}
           allocateMode={panelAllocateMode}
           editMode={editMode}
           editAddresses={editMode ? editNfAddresses : undefined}
           saidaAddresses={editMode ? undefined : saidaAddresses}
           saidaFlaggedAddresses={editMode ? undefined : saidaFlaggedAddresses}
+          paintMode={editMode || allocateMode}
           onCellClick={handleCellClick}
+          onCellPaint={handleCellPaint}
         />
       </main>
+
+      <PrintLayoutDocument camaraIds={printCamaras} />
 
       {ocupadoAlert && (
         <OcupadoAlert

@@ -9,6 +9,7 @@ type Props = {
   onBuscar: (numero: string) => void
   onToggleItem: (index: number) => void
   onFinalizarSaida: () => void
+  onCancelarSaida: () => void
   buscaErro: string | null
 }
 
@@ -18,9 +19,11 @@ export function SaidaPanel({
   onBuscar,
   onToggleItem,
   onFinalizarSaida,
+  onCancelarSaida,
   buscaErro,
 }: Props) {
   const [numero, setNumero] = useState('')
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false)
 
   function handleBuscar() {
     onBuscar(numero.trim())
@@ -53,7 +56,16 @@ export function SaidaPanel({
 
       {nfBusca && nfTemEnderecos(nfBusca) && (
         <div className="sidebar-block nf-detail">
-          <h3>NF {nfBusca.numero}</h3>
+          <div className="nf-detail-head">
+            <h3>NF {nfBusca.numero}</h3>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setConfirmarCancelar(true)}
+            >
+              Cancelar saída
+            </button>
+          </div>
           <p className="muted">{nfBusca.emitente}</p>
           <p className="muted">Marque os itens que vai retirar:</p>
 
@@ -102,7 +114,48 @@ export function SaidaPanel({
       )}
 
       {nfBusca && !nfTemEnderecos(nfBusca) && (
-        <p className="muted sidebar-block">Esta NF não possui itens em estoque (posições já liberadas).</p>
+        <div className="sidebar-block nf-detail">
+          <div className="nf-detail-head">
+            <h3>NF {nfBusca.numero}</h3>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setConfirmarCancelar(true)}
+            >
+              Cancelar saída
+            </button>
+          </div>
+          <p className="muted sidebar-block">Esta NF não possui itens em estoque (posições já liberadas).</p>
+        </div>
+      )}
+
+      {confirmarCancelar && nfBusca && (
+        <div className="confirm-backdrop" onClick={() => setConfirmarCancelar(false)}>
+          <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
+            <h4>Cancelar saída?</h4>
+            <p>
+              NF <strong>{nfBusca.numero}</strong>
+            </p>
+            <p className="confirm-warn">
+              A busca e os itens marcados serão descartados. Nenhuma posição será liberada.
+            </p>
+            <div className="confirm-actions">
+              <button type="button" className="btn" onClick={() => setConfirmarCancelar(false)}>
+                Voltar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  onCancelarSaida()
+                  setConfirmarCancelar(false)
+                }}
+              >
+                Cancelar saída
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

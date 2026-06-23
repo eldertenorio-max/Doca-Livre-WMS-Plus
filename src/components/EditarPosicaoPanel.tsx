@@ -10,6 +10,7 @@ type Props = {
   onBuscar: (numero: string) => void
   onSelectItem: (index: number) => void
   onSalvar: () => void
+  onCancelarEditar: () => void
   buscaErro: string | null
 }
 
@@ -20,9 +21,11 @@ export function EditarPosicaoPanel({
   onBuscar,
   onSelectItem,
   onSalvar,
+  onCancelarEditar,
   buscaErro,
 }: Props) {
   const [numero, setNumero] = useState('')
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false)
 
   function handleBuscar() {
     onBuscar(numero.trim())
@@ -52,7 +55,16 @@ export function EditarPosicaoPanel({
 
       {nfBusca && nfTemEnderecos(nfBusca) && (
         <div className="sidebar-block nf-detail">
-          <h3>NF {nfBusca.numero}</h3>
+          <div className="nf-detail-head">
+            <h3>NF {nfBusca.numero}</h3>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setConfirmarCancelar(true)}
+            >
+              Cancelar edição
+            </button>
+          </div>
           <p className="muted">{nfBusca.emitente}</p>
           <p className="muted">Selecione o item para editar:</p>
 
@@ -90,7 +102,7 @@ export function EditarPosicaoPanel({
           {itemIndex != null && (
             <div className="item-actions">
               <p className="muted">
-                {pendingCount} endereço(s) selecionado(s) — clique no painel para marcar ou desmarcar.
+                {pendingCount} endereço(s) selecionado(s) — clique ou arraste no painel para marcar ou desmarcar.
               </p>
               <button
                 type="button"
@@ -106,7 +118,50 @@ export function EditarPosicaoPanel({
       )}
 
       {nfBusca && !nfTemEnderecos(nfBusca) && (
-        <p className="muted sidebar-block">Esta NF não possui endereços alocados.</p>
+        <div className="sidebar-block nf-detail">
+          <div className="nf-detail-head">
+            <h3>NF {nfBusca.numero}</h3>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setConfirmarCancelar(true)}
+            >
+              Cancelar edição
+            </button>
+          </div>
+          <p className="muted">Esta NF não possui endereços alocados.</p>
+        </div>
+      )}
+
+      {confirmarCancelar && nfBusca && (
+        <div className="confirm-backdrop" onClick={() => setConfirmarCancelar(false)}>
+          <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
+            <h4>Cancelar edição?</h4>
+            <p>
+              NF <strong>{nfBusca.numero}</strong>
+            </p>
+            <p className="confirm-warn">
+              {pendingCount > 0
+                ? 'As alterações não salvas serão descartadas. As posições já salvas no estoque não mudam.'
+                : 'A busca e a seleção de item serão descartadas.'}
+            </p>
+            <div className="confirm-actions">
+              <button type="button" className="btn" onClick={() => setConfirmarCancelar(false)}>
+                Voltar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  onCancelarEditar()
+                  setConfirmarCancelar(false)
+                }}
+              >
+                Cancelar edição
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

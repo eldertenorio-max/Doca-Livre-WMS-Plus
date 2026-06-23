@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   CAMARAS,
   NIVEIS,
@@ -24,12 +24,15 @@ type Props = {
   occupancy: Map<AddressId, AddressOccupancy>
   pendingSelection: Set<AddressId>
   activeNfNumero: string | null
+  activeNfId?: string | null
   allocateMode: boolean
   editMode?: boolean
   editAddresses?: Set<AddressId>
   saidaAddresses?: Set<AddressId>
   saidaFlaggedAddresses?: Set<AddressId>
+  paintMode?: boolean
   onCellClick: (addressId: AddressId, clickable: boolean) => void
+  onCellPaint: (addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) => void
 }
 
 function computeCellSize(containerWidth: number, ruas: RuaConfig[], mobile: boolean): number {
@@ -48,6 +51,87 @@ function computeCellSize(containerWidth: number, ruas: RuaConfig[], mobile: bool
   return Math.min(max, Math.max(min, size))
 }
 
+type PaintController = {
+  handlePointerDown: (
+    addressId: AddressId,
+    canInteract: boolean,
+    pending: boolean,
+    e: ReactPointerEvent<HTMLButtonElement>,
+  ) => void
+  handlePointerEnter: (addressId: AddressId, canInteract: boolean) => void
+}
+
+function useCellPaint(
+  paintMode: boolean,
+  onCellPaint: Props['onCellPaint'],
+  onCellClick: Props['onCellClick'],
+): PaintController {
+  const paintDragRef = useRef<{ active: boolean; mode: 'add' | 'remove' | null }>({
+    active: false,
+    mode: null,
+  })
+  const paintedRef = useRef(new Set<AddressId>())
+
+  useEffect(() => {
+    if (!paintMode) return
+
+    function stopPaint() {
+      paintDragRef.current = { active: false, mode: null }
+      paintedRef.current.clear()
+    }
+
+    window.addEventListener('pointerup', stopPaint)
+    window.addEventListener('pointercancel', stopPaint)
+    return () => {
+      window.removeEventListener('pointerup', stopPaint)
+      window.removeEventListener('pointercancel', stopPaint)
+    }
+  }, [paintMode])
+
+  const applyPaint = useCallback(
+    (addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) => {
+      if (!canInteract || paintedRef.current.has(addressId)) return
+      paintedRef.current.add(addressId)
+      onCellPaint(addressId, mode, canInteract)
+    },
+    [onCellPaint],
+  )
+
+  const handlePointerDown = useCallback(
+    (
+      addressId: AddressId,
+      canInteract: boolean,
+      pending: boolean,
+      e: ReactPointerEvent<HTMLButtonElement>,
+    ) => {
+      if (!paintMode) {
+        onCellClick(addressId, canInteract)
+        return
+      }
+      if (!canInteract) return
+
+      e.preventDefault()
+      e.currentTarget.setPointerCapture(e.pointerId)
+
+      const mode: 'add' | 'remove' = pending ? 'remove' : 'add'
+      paintDragRef.current = { active: true, mode }
+      paintedRef.current.clear()
+      applyPaint(addressId, mode, canInteract)
+    },
+    [applyPaint, onCellClick, paintMode],
+  )
+
+  const handlePointerEnter = useCallback(
+    (addressId: AddressId, canInteract: boolean) => {
+      if (!paintMode || !paintDragRef.current.active || !paintDragRef.current.mode) return
+      applyPaint(addressId, paintDragRef.current.mode, canInteract)
+    },
+    [applyPaint, paintMode],
+  )
+
+  return { handlePointerDown, handlePointerEnter }
+}
+
 function RuaGrid({
   camaraId,
   config,
@@ -60,12 +144,15 @@ function RuaGrid({
   editAddresses,
   saidaAddresses,
   saidaFlaggedAddresses,
-  onCellClick,
+  activeNfId,
+  paintMode,
+  paint,
 }: {
   camaraId: number
   config: RuaConfig
   cellSize: number
   mobile: boolean
+  paint: PaintController
 } & Props) {
   const labelW = Math.max(mobile ? 20 : 22, Math.round(cellSize * 0.82))
   const headerH = Math.max(14, Math.round(cellSize * 0.72))
@@ -132,14 +219,24 @@ function RuaGrid({
                     const clickable = isClickable(kind)
 
                     let className = `cell cell--${kind}`
+                    const confirmed =
+                      !!occ &&
+                      !pending &&
+                      allocateMode &&
+                      !editMode &&
+                      !!activeNfId &&
+                      occ.nfId === activeNfId
                     if (occ) className += ' cell--ocupado'
                     if (pending) className += ' cell--selecionado'
+                    else if (confirmed) className += ' cell--confirmado'
                     if (editMode && editAddresses?.has(addressId) && !pending) className += ' cell--editar'
                     else if (saidaFlaggedAddresses?.has(addressId)) className += ' cell--saida-flag'
                     else if (saidaAddresses?.has(addressId)) className += ' cell--saida'
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
+                    if (paintMode && (clickable || pending)) className += ' cell--pintavel'
 
                     const title = cellTooltip(addressId, kind, occ, pending)
+                    const canInteract = clickable || !!occ || pending
 
                     return (
                       <button
@@ -147,10 +244,11 @@ function RuaGrid({
                         type="button"
                         className={className}
                         style={{ width: cellSize, height: cellSize }}
-                        disabled={!clickable && !occ && !pending}
+                        disabled={!canInteract}
                         title={title}
                         aria-label={title}
-                        onClick={() => onCellClick(addressId, clickable || !!occ || pending)}
+                        onPointerDown={(e) => paint.handlePointerDown(addressId, canInteract, pending, e)}
+                        onPointerEnter={() => paint.handlePointerEnter(addressId, canInteract)}
                       >
                         {occ && (
                           <span
@@ -188,7 +286,12 @@ function RuaGrid({
   )
 }
 
-function CamaraSection({ cam, mobile, ...props }: { cam: CamaraConfig; mobile: boolean } & Props) {
+function CamaraSection({
+  cam,
+  mobile,
+  paint,
+  ...props
+}: { cam: CamaraConfig; mobile: boolean; paint: PaintController } & Props) {
   const ref = useRef<HTMLElement>(null)
   const [cellSize, setCellSize] = useState(mobile ? MOBILE_MIN_CELL : MIN_CELL)
 
@@ -218,6 +321,7 @@ function CamaraSection({ cam, mobile, ...props }: { cam: CamaraConfig; mobile: b
             config={rua}
             cellSize={cellSize}
             mobile={mobile}
+            paint={paint}
             {...props}
           />
         ))}
@@ -246,8 +350,8 @@ function cellTooltip(
   pending?: boolean,
 ): string {
   const label = formatAddressLabel(addressId)
-  if (occ) return `${label} — NF ${occ.nfNumero}`
-  if (pending) return `${label} — Selecionado (clique para remover)`
+  if (pending) return `${label} — Selecionando (clique para remover)`
+  if (occ) return `${label} — NF ${occ.nfNumero} (confirmado)`
   if (kind === 'porta') return `${label} — Porta`
   if (kind === 'sem-nivel5') return `${label} — Nível 5 inexistente`
   return `${label} — Disponível (clique para alocar)`
@@ -255,13 +359,16 @@ function cellTooltip(
 
 export function LayoutPanel(props: Props) {
   const mobile = useIsMobile()
+  const paintMode = props.paintMode ?? false
+  const paint = useCellPaint(paintMode, props.onCellPaint, props.onCellClick)
 
   return (
-    <div className={`layout-panel ${mobile ? 'layout-panel--mobile' : ''}`}>
+    <div className={`layout-panel ${mobile ? 'layout-panel--mobile' : ''} ${paintMode ? 'layout-panel--paint' : ''}`}>
       <div className="layout-legend">
         <span><i className="swatch swatch--disp" /> Disponível</span>
         <span><i className="swatch swatch--sel" /> Selecionando</span>
-        <span><i className="swatch swatch--ocup" /> Ocupado</span>
+        <span><i className="swatch swatch--confirm" /> Confirmado</span>
+        <span><i className="swatch swatch--ocup" /> Ocupado (outras NF)</span>
         <span><i className="swatch swatch--saida" /> Saída (NF buscada)</span>
         <span><i className="swatch swatch--saida-flag" /> Item marcado p/ saída</span>
         <span><i className="swatch swatch--editar" /> NF em edição</span>
@@ -271,18 +378,18 @@ export function LayoutPanel(props: Props) {
 
       <div className="camaras-stack">
         {CAMARAS.map((cam) => (
-          <CamaraSection key={cam.id} cam={cam} mobile={mobile} {...props} />
+          <CamaraSection key={cam.id} cam={cam} mobile={mobile} paint={paint} {...props} />
         ))}
       </div>
 
       {props.editMode && props.activeNfNumero && (
         <p className="layout-hint">
-          Edição: clique nos quadrados para marcar ou desmarcar as novas posições do item — depois salve na barra lateral.
+          Edição: clique ou arraste no painel para marcar ou desmarcar posições — depois salve na barra lateral.
         </p>
       )}
       {props.allocateMode && !props.editMode && props.activeNfNumero && (
         <p className="layout-hint">
-          Modo alocação: clique nos quadrados para marcar ou desmarcar endereços do item selecionado.
+          Modo alocação: clique ou arraste nos quadrados para marcar ou desmarcar endereços do item.
         </p>
       )}
       {props.saidaAddresses && props.saidaAddresses.size > 0 && (

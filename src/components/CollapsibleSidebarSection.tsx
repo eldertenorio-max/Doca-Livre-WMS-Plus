@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
-export type SidebarSectionId = 'entrada' | 'saida' | 'editar' | 'historico' | 'canceladas'
+export type SidebarSectionId = 'entrada' | 'saida' | 'editar' | 'historico' | 'canceladas' | 'imprimir'
 
 type Props = {
   id: SidebarSectionId
@@ -144,6 +144,34 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
           strokeWidth="1.5"
           strokeLinecap="round"
           opacity="0.45"
+        />
+      </svg>
+    )
+  }
+
+  if (id === 'imprimir') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          className="icon-print-body"
+          d="M6 9V4h12v5M6 17v3h12v-3"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+        />
+        <path
+          className="icon-print-tray"
+          d="M4 14h16v-4H4z"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+        />
+        <path
+          className="icon-print-paper"
+          d="M8 11h8"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
         />
       </svg>
     )
