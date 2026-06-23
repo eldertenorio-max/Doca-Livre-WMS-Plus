@@ -1,4 +1,5 @@
 import { CollapsibleSidebarSection } from './CollapsibleSidebarSection'
+import { CanceladasPanel } from './CanceladasPanel'
 import { EntradaPanel } from './EntradaPanel'
 import { HistoricoPanel } from './HistoricoPanel'
 import { SaidaPanel } from './SaidaPanel'
@@ -10,9 +11,10 @@ type Props = {
   entrada: ComponentProps<typeof EntradaPanel>
   saida: ComponentProps<typeof SaidaPanel>
   historico: ComponentProps<typeof HistoricoPanel>
+  canceladas: ComponentProps<typeof CanceladasPanel>
 }
 
-export function AppSidebar({ saving, persistError, entrada, saida, historico }: Props) {
+export function AppSidebar({ saving, persistError, entrada, saida, historico, canceladas }: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-block sidebar-header">
@@ -33,6 +35,10 @@ export function AppSidebar({ saving, persistError, entrada, saida, historico }: 
 
       <CollapsibleSidebarSection id="saida" title="Saída">
         <SaidaPanel {...saida} />
+      </CollapsibleSidebarSection>
+
+      <CollapsibleSidebarSection id="canceladas" title="NF cancelada">
+        <CanceladasPanel {...canceladas} />
       </CollapsibleSidebarSection>
 
       <CollapsibleSidebarSection id="historico" title="Histórico">

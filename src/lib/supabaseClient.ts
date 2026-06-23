@@ -70,4 +70,17 @@ type MovRow = {
   payload: { itens: import('../types').MovimentoItemSnapshot[] }
 }
 
-export type { NfRow, ItemRow, EndRow, MovRow }
+type CanceladaRow = {
+  id: string
+  numero: string
+  serie: string
+  chave: string
+  emitente: string
+  data_emissao: string
+  created_at: string
+  vinculo_nf_nova_id: string | null
+  vinculo_nf_nova_numero: string | null
+  payload: { items: import('../types').NfeItemCancelado[] }
+}
+
+export type { NfRow, ItemRow, EndRow, MovRow, CanceladaRow }

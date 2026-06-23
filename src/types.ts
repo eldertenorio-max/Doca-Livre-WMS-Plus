@@ -19,6 +19,30 @@ export type NotaFiscal = {
   items: NfeItem[]
   status: 'em_andamento' | 'concluida'
   createdAt: string
+  /** NF cancelada vinculada a esta nota (substituição). */
+  nfCanceladaOrigemId?: string | null
+  nfCanceladaOrigemNumero?: string | null
+}
+
+export type NfeItemCancelado = {
+  index: number
+  codigo: string
+  descricao: string
+  quantidade: number
+  unidade: string
+}
+
+export type NotaFiscalCancelada = {
+  id: string
+  numero: string
+  serie: string
+  chave: string
+  emitente: string
+  dataEmissao: string
+  items: NfeItemCancelado[]
+  vinculoNfNovaId: string | null
+  vinculoNfNovaNumero: string | null
+  createdAt: string
 }
 
 export type MovimentoTipo = 'entrada' | 'saida'
@@ -54,6 +78,7 @@ export type AddressOccupancy = {
 
 export type AppState = {
   notas: NotaFiscal[]
+  notasCanceladas: NotaFiscalCancelada[]
   movimentos: MovimentoRegistro[]
   activeNfId: string | null
   activeItemIndex: number | null
@@ -61,5 +86,6 @@ export type AppState = {
 
 export type PersistedData = {
   notas: NotaFiscal[]
+  notasCanceladas: NotaFiscalCancelada[]
   movimentos: MovimentoRegistro[]
 }

@@ -75,6 +75,11 @@ export function EntradaPanel({
       {activeNf && activeNf.status === 'em_andamento' && (
         <div className="sidebar-block nf-detail">
           <h3>NF {activeNf.numero}</h3>
+          {activeNf.nfCanceladaOrigemNumero && (
+            <p className="vinculo-entrada-badge">
+              Substitui NF cancelada <strong>{activeNf.nfCanceladaOrigemNumero}</strong>
+            </p>
+          )}
           <dl className="meta-list">
             <div><dt>Emitente</dt><dd>{activeNf.emitente || '—'}</dd></div>
             <div><dt>Emissão</dt><dd>{formatDate(activeNf.dataEmissao)}</dd></div>

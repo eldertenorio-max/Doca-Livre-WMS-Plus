@@ -1,5 +1,6 @@
 import type { AddressId, MovimentoItemSnapshot, MovimentoRegistro, NotaFiscal, PersistedData } from '../types'
 import { remapLegacyAddressId } from '../layout/camaras'
+import { syncVinculosNotas } from './nfCanceladas'
 
 /** Atualiza IDs de endereço salvos antes da troca de numeração das ruas. */
 export function migrarRuasNosDados(data: PersistedData): PersistedData {
@@ -23,7 +24,7 @@ export function migrarRuasNosDados(data: PersistedData): PersistedData {
     }),
   }))
 
-  return changed ? { notas, movimentos } : data
+  return changed ? { ...data, notas, movimentos } : data
 }
 
 export function nfTemEnderecos(nf: NotaFiscal): boolean {
@@ -147,13 +148,16 @@ export function excluirMovimento(data: PersistedData, movId: string): PersistedD
   const movimentos = data.movimentos.filter((m) => m.id !== movId)
 
   if (mov.tipo === 'entrada') {
-    return {
-      movimentos,
-      notas: data.notas.filter((n) => n.id !== mov.nfId),
-    }
+    const notas = data.notas.filter((n) => n.id !== mov.nfId)
+    const notasCanceladas = data.notasCanceladas.map((c) =>
+      c.vinculoNfNovaId === mov.nfId
+        ? { ...c, vinculoNfNovaId: null, vinculoNfNovaNumero: null }
+        : c,
+    )
+    return syncVinculosNotas({ movimentos, notas, notasCanceladas })
   }
 
-  return { movimentos, notas: data.notas }
+  return { movimentos, notas: data.notas, notasCanceladas: data.notasCanceladas }
 }
 
 export function buscarNfPorNumero(notas: NotaFiscal[], numero: string): NotaFiscal | null {

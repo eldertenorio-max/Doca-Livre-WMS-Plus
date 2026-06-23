@@ -14,6 +14,13 @@ import {
   excluirMovimento,
   upsertMovimentoEntrada,
 } from './lib/movimentos'
+import {
+  desvincularNotaCancelada,
+  excluirNotaCancelada,
+  notaFiscalToCancelada,
+  syncVinculosNotas,
+  vincularNotaCancelada,
+} from './lib/nfCanceladas'
 import { parseNfeXml } from './lib/parseNfeXml'
 import type { AddressId, AddressOccupancy, NotaFiscal } from './types'
 import './App.css'
@@ -48,6 +55,7 @@ export default function App() {
   const [nfBuscaSaidaId, setNfBuscaSaidaId] = useState<string | null>(null)
   const [itensFlagados, setItensFlagados] = useState<Set<number>>(new Set())
   const [buscaErro, setBuscaErro] = useState<string | null>(null)
+  const [uploadCanceladaError, setUploadCanceladaError] = useState<string | null>(null)
 
   const occupancy = useMemo(() => buildOccupancyMap(state.notas), [state.notas])
   const activeNf = state.notas.find((n) => n.id === state.activeNfId) ?? null
@@ -105,6 +113,42 @@ export default function App() {
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Erro ao ler XML.')
     }
+  }
+
+  async function handleUploadCancelada(file: File) {
+    setUploadCanceladaError(null)
+    clearError()
+    try {
+      const text = await file.text()
+      const parsed = parseNfeXml(text)
+      if (state.notasCanceladas.some((c) => c.id === parsed.id)) {
+        setUploadCanceladaError('Esta NF cancelada já foi registrada.')
+        return
+      }
+      if (state.notas.some((n) => n.id === parsed.id)) {
+        setUploadCanceladaError('Esta chave já está na entrada ativa. Use outro XML.')
+        return
+      }
+      const cancelada = notaFiscalToCancelada(parsed)
+      setState((s) => ({
+        ...s,
+        notasCanceladas: [cancelada, ...s.notasCanceladas],
+      }))
+    } catch (e) {
+      setUploadCanceladaError(e instanceof Error ? e.message : 'Erro ao ler XML.')
+    }
+  }
+
+  function handleVincularCancelada(canceladaId: string, novaNfId: string) {
+    setState((s) => ({ ...s, ...syncVinculosNotas(vincularNotaCancelada(s, canceladaId, novaNfId)) }))
+  }
+
+  function handleDesvincularCancelada(canceladaId: string) {
+    setState((s) => ({ ...s, ...syncVinculosNotas(desvincularNotaCancelada(s, canceladaId)) }))
+  }
+
+  function handleExcluirCancelada(canceladaId: string) {
+    setState((s) => ({ ...s, ...syncVinculosNotas(excluirNotaCancelada(s, canceladaId)) }))
   }
 
   function handleSelectNf(id: string) {
@@ -250,13 +294,17 @@ export default function App() {
 
   function handleExcluirMovimento(movId: string) {
     setState((s) => {
-      const result = excluirMovimento({ notas: s.notas, movimentos: s.movimentos }, movId)
+      const result = excluirMovimento(
+        { notas: s.notas, movimentos: s.movimentos, notasCanceladas: s.notasCanceladas },
+        movId,
+      )
       const mov = s.movimentos.find((m) => m.id === movId)
       const nfRemoved = mov?.tipo === 'entrada'
       return {
         ...s,
         notas: result.notas,
         movimentos: result.movimentos,
+        notasCanceladas: result.notasCanceladas,
         activeNfId: nfRemoved || !result.notas.some((n) => n.id === s.activeNfId) ? null : s.activeNfId,
         activeItemIndex:
           nfRemoved || !result.notas.some((n) => n.id === s.activeNfId) ? null : s.activeItemIndex,
@@ -308,6 +356,15 @@ export default function App() {
         historico={{
           movimentos: movimentosOrdenados,
           onExcluir: handleExcluirMovimento,
+        }}
+        canceladas={{
+          canceladas: state.notasCanceladas,
+          notas: state.notas,
+          onUpload: handleUploadCancelada,
+          onVincular: handleVincularCancelada,
+          onDesvincular: handleDesvincularCancelada,
+          onExcluir: handleExcluirCancelada,
+          uploadError: uploadCanceladaError,
         }}
       />
 

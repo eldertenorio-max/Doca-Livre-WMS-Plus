@@ -1,21 +1,22 @@
 import type { AppState, PersistedData } from '../../types'
 import type { EnderecamentoRepository } from './types'
 
-const DATA_KEY = 'ultrafrio-enderecamento-v2'
-const LEGACY_KEY = 'ultrafrio-enderecamento-v1'
+const DATA_KEY = 'ultrafrio-enderecamento-v3'
+const LEGACY_KEY = 'ultrafrio-enderecamento-v2'
 const UI_KEY = 'ultrafrio-ui-prefs-v1'
 
 function loadBundle(): PersistedData {
   try {
-    const raw = localStorage.getItem(DATA_KEY) ?? localStorage.getItem(LEGACY_KEY)
-    if (!raw) return { notas: [], movimentos: [] }
+    const raw = localStorage.getItem(DATA_KEY) ?? localStorage.getItem(LEGACY_KEY) ?? localStorage.getItem('ultrafrio-enderecamento-v1')
+    if (!raw) return { notas: [], movimentos: [], notasCanceladas: [] }
     const parsed = JSON.parse(raw) as Partial<PersistedData & AppState>
     return {
       notas: parsed.notas ?? [],
       movimentos: parsed.movimentos ?? [],
+      notasCanceladas: parsed.notasCanceladas ?? [],
     }
   } catch {
-    return { notas: [], movimentos: [] }
+    return { notas: [], movimentos: [], notasCanceladas: [] }
   }
 }
 

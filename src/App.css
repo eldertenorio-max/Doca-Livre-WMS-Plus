@@ -673,6 +673,148 @@
   color: #3fb950;
 }
 
+/* Ícones animados — NF cancelada */
+.sidebar-section--canceladas:hover .icon-cancel-x,
+.sidebar-section--canceladas.sidebar-section--open .icon-cancel-x {
+  animation: icon-cancel-shake 0.55s ease-in-out infinite;
+}
+
+.sidebar-section--canceladas .sidebar-section-icon {
+  color: #f85149;
+}
+
+.upload-btn--muted {
+  background: #21262d;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.upload-btn--muted:hover {
+  background: #30363d;
+}
+
+.canceladas-empty,
+.canceladas-hint {
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+
+.canceladas-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.canceladas-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 0.82rem;
+  border-left: 3px solid #f85149;
+}
+
+.canceladas-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.canceladas-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #f85149;
+  letter-spacing: 0.04em;
+}
+
+.vinculo-box {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #0f1419;
+  border: 1px solid var(--border);
+}
+
+.vinculo-box--ok {
+  border-color: #388bfd55;
+  background: #1f6feb14;
+}
+
+.vinculo-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vinculo-antiga {
+  color: #f85149;
+  font-weight: 600;
+}
+
+.vinculo-nova {
+  color: #388bfd;
+  font-weight: 600;
+}
+
+.vinculo-arrow {
+  margin: 0 6px;
+  color: var(--text-muted);
+}
+
+.vinculo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.vinculo-aviso,
+.vinculo-entrada-badge {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+}
+
+.vinculo-entrada-badge {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #1f6feb18;
+  border: 1px solid #388bfd44;
+  color: var(--text-muted);
+}
+
+.vinculo-entrada-badge strong {
+  color: #f85149;
+}
+
+@keyframes icon-cancel-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
 @keyframes section-content-in {
   from {
     opacity: 0;

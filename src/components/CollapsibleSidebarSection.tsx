@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
-export type SidebarSectionId = 'entrada' | 'saida' | 'historico'
+export type SidebarSectionId = 'entrada' | 'saida' | 'historico' | 'canceladas'
 
 type Props = {
   id: SidebarSectionId
@@ -102,24 +102,45 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
     )
   }
 
+  if (id === 'historico') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle className="icon-hist-clock" cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.75" />
+        <path
+          className="icon-hist-hand"
+          d="M12 8v4l3 2"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          className="icon-hist-tick"
+          d="M4 12H2M22 12h-2M12 4V2M12 22v-2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          opacity="0.45"
+        />
+      </svg>
+    )
+  }
+
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle className="icon-hist-clock" cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.75" />
       <path
-        className="icon-hist-hand"
-        d="M12 8v4l3 2"
+        className="icon-cancel-doc"
+        d="M7 4h10v3H7zM6 7h12v13H6z"
         stroke="currentColor"
         strokeWidth="1.75"
-        strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        className="icon-hist-tick"
-        d="M4 12H2M22 12h-2M12 4V2M12 22v-2"
+        className="icon-cancel-x"
+        d="M9 12l6 6M15 12l-6 6"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="1.75"
         strokeLinecap="round"
-        opacity="0.45"
       />
     </svg>
   )

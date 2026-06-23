@@ -3,10 +3,12 @@ import { getRepository, type EnderecamentoRepository } from '../lib/repository'
 import { localRepository } from '../lib/repository/localRepository'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
 import { migrarRuasNosDados, sincronizarMovimentosEntrada } from '../lib/movimentos'
+import { syncVinculosNotas } from '../lib/nfCanceladas'
 import type { AppState } from '../types'
 
 const emptyState: AppState = {
   notas: [],
+  notasCanceladas: [],
   movimentos: [],
   activeNfId: null,
   activeItemIndex: null,
@@ -33,7 +35,9 @@ export function useEnderecamentoStore() {
       repoRef.current = repo
 
       try {
-        const data = sincronizarMovimentosEntrada(migrarRuasNosDados(await repo.loadData()))
+        const data = syncVinculosNotas(
+          sincronizarMovimentosEntrada(migrarRuasNosDados(await repo.loadData())),
+        )
         const ui = repo.loadUiPrefs()
         if (!cancelled) {
           setState({ ...data, ...ui })
@@ -45,7 +49,9 @@ export function useEnderecamentoStore() {
           repo = localRepository
           repoRef.current = repo
           try {
-            const data = sincronizarMovimentosEntrada(migrarRuasNosDados(await repo.loadData()))
+            const data = syncVinculosNotas(
+          sincronizarMovimentosEntrada(migrarRuasNosDados(await repo.loadData())),
+        )
             const ui = repo.loadUiPrefs()
             if (!cancelled) {
               setState({ ...data, ...ui })
@@ -78,7 +84,11 @@ export function useEnderecamentoStore() {
     let repo = repoRef.current
     setSaving(true)
     try {
-      await repo.saveData({ notas: next.notas, movimentos: next.movimentos })
+      await repo.saveData({
+        notas: next.notas,
+        movimentos: next.movimentos,
+        notasCanceladas: next.notasCanceladas,
+      })
       repo.saveUiPrefs({
         activeNfId: next.activeNfId,
         activeItemIndex: next.activeItemIndex,
@@ -89,7 +99,11 @@ export function useEnderecamentoStore() {
         repo = localRepository
         repoRef.current = repo
         try {
-          await repo.saveData({ notas: next.notas, movimentos: next.movimentos })
+          await repo.saveData({
+        notas: next.notas,
+        movimentos: next.movimentos,
+        notasCanceladas: next.notasCanceladas,
+      })
           repo.saveUiPrefs({
             activeNfId: next.activeNfId,
             activeItemIndex: next.activeItemIndex,

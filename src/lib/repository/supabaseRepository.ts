@@ -1,5 +1,5 @@
-import type { MovimentoRegistro, NotaFiscal } from '../../types'
-import { getSupabase, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
+import type { MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../../types'
+import { getSupabase, type CanceladaRow, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
 import type { EnderecamentoRepository } from './types'
 
 const UI_KEY = 'ultrafrio-ui-prefs-v1'
@@ -66,6 +66,33 @@ function mapMovimentos(rows: MovRow[]): MovimentoRegistro[] {
   }))
 }
 
+function mapCanceladas(rows: CanceladaRow[]): NotaFiscalCancelada[] {
+  return rows.map((c) => ({
+    id: c.id,
+    numero: c.numero,
+    serie: c.serie,
+    chave: c.chave,
+    emitente: c.emitente,
+    dataEmissao: c.data_emissao,
+    createdAt: c.created_at,
+    vinculoNfNovaId: c.vinculo_nf_nova_id,
+    vinculoNfNovaNumero: c.vinculo_nf_nova_numero,
+    items: c.payload?.items ?? [],
+  }))
+}
+
+async function loadCanceladas(sb: ReturnType<typeof getSupabase>): Promise<NotaFiscalCancelada[]> {
+  const { data, error } = await sb
+    .from('ultrafrio_notas_canceladas')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) {
+    if (error.message.includes('does not exist') || error.code === 'PGRST205') return []
+    throw new Error(error.message)
+  }
+  return mapCanceladas((data ?? []) as CanceladaRow[])
+}
+
 export const supabaseRepository: EnderecamentoRepository = {
   mode: 'supabase',
 
@@ -106,13 +133,16 @@ export const supabaseRepository: EnderecamentoRepository = {
       .order('created_at', { ascending: false })
     if (movErr) throw new Error(movErr.message)
 
+    const notasCanceladas = await loadCanceladas(sb)
+
     return {
       notas: mapNotas(rows, itemRows, endRows),
       movimentos: mapMovimentos((movs ?? []) as MovRow[]),
+      notasCanceladas,
     }
   },
 
-  async saveData({ notas, movimentos }) {
+  async saveData({ notas, movimentos, notasCanceladas }) {
     const sb = getSupabase()
     const keepIds = notas.map((n) => n.id)
 
@@ -200,6 +230,32 @@ export const supabaseRepository: EnderecamentoRepository = {
         payload: { itens: mov.itens },
       })
       if (error) throw new Error(error.message)
+    }
+
+    const keepCan = notasCanceladas.map((c) => c.id)
+    const { data: existingCan } = await sb.from('ultrafrio_notas_canceladas').select('id')
+    const toDelCan = ((existingCan ?? []) as { id: string }[])
+      .map((r) => r.id)
+      .filter((id) => !keepCan.includes(id))
+    if (toDelCan.length) {
+      const { error } = await sb.from('ultrafrio_notas_canceladas').delete().in('id', toDelCan)
+      if (error && !error.message.includes('does not exist')) throw new Error(error.message)
+    }
+
+    for (const c of notasCanceladas) {
+      const { error } = await sb.from('ultrafrio_notas_canceladas').upsert({
+        id: c.id,
+        numero: c.numero,
+        serie: c.serie,
+        chave: c.chave,
+        emitente: c.emitente,
+        data_emissao: c.dataEmissao,
+        created_at: c.createdAt,
+        vinculo_nf_nova_id: c.vinculoNfNovaId,
+        vinculo_nf_nova_numero: c.vinculoNfNovaNumero,
+        payload: { items: c.items },
+      })
+      if (error && !error.message.includes('does not exist')) throw new Error(error.message)
     }
   },
 
