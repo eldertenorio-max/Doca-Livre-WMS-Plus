@@ -8,15 +8,18 @@ import {
 } from '../lib/consultaEstoque'
 import type { ItemManualInput } from '../lib/adicionarItemNf'
 import type { NotaFiscal } from '../types'
+import { ConsultaEstoqueInventario } from './ConsultaEstoqueInventario'
 import { ConsultaItemManualForm } from './ConsultaItemManualForm'
 import { ConsultaPaletesForm } from './ConsultaPaletesForm'
 
 type Props = {
+  notas: NotaFiscal[]
   emitentesSugeridos: string[]
   resultados: ConsultaEstoqueResultado[]
   buscaErro: string | null
   onBuscar: (filtros: ConsultaEstoqueFiltros) => void
   onLimpar: () => void
+  onDestacarInventario: (resultados: ConsultaEstoqueResultado[]) => void
   nfAdicionar: NotaFiscal | null
   nfAdicionarErro: string | null
   itemAdicionadoMsg: string | null
@@ -34,11 +37,13 @@ type Props = {
 }
 
 export function ConsultaEstoquePanel({
+  notas,
   emitentesSugeridos,
   resultados,
   buscaErro,
   onBuscar,
   onLimpar,
+  onDestacarInventario,
   nfAdicionar,
   nfAdicionarErro,
   itemAdicionadoMsg,
@@ -55,6 +60,7 @@ export function ConsultaEstoquePanel({
   onLimparNfAdicionar,
 }: Props) {
   const [filtros, setFiltros] = useState<ConsultaEstoqueFiltros>(CONSULTA_FILTROS_VAZIOS)
+  const [modo, setModo] = useState<'pesquisa' | 'inventario'>('pesquisa')
   const [numeroNf, setNumeroNf] = useState('')
   const [mostrarFormManual, setMostrarFormManual] = useState(false)
   const [replicarDeIndex, setReplicarDeIndex] = useState<number | null>(null)
@@ -90,6 +96,37 @@ export function ConsultaEstoquePanel({
 
   return (
     <>
+      <div className="consulta-modo-tabs" role="tablist" aria-label="Modo da consulta">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={modo === 'pesquisa'}
+          className={`consulta-modo-tab${modo === 'pesquisa' ? ' is-active' : ''}`}
+          onClick={() => setModo('pesquisa')}
+        >
+          Pesquisa
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={modo === 'inventario'}
+          className={`consulta-modo-tab${modo === 'inventario' ? ' is-active' : ''}`}
+          onClick={() => setModo('inventario')}
+        >
+          Inventário completo
+        </button>
+      </div>
+
+      {modo === 'inventario' ? (
+        <div className="sidebar-block">
+          <p className="muted consulta-inventario-intro">
+            Todas as notas com itens armazenados no painel. Use a visão resumida para uma lista
+            rápida ou detalhada para ver lote, datas e posições de cada item.
+          </p>
+          <ConsultaEstoqueInventario notas={notas} onDestacar={onDestacarInventario} />
+        </div>
+      ) : (
+        <>
       <div className="sidebar-block">
         <p className="muted">
           Filtre por nota, item, remetente ou lote. Os endereços encontrados aparecem no painel com
@@ -394,6 +431,8 @@ export function ConsultaEstoquePanel({
         </div>
       )}
       </div>
+        </>
+      )}
     </>
   )
 }

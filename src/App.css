@@ -2469,6 +2469,202 @@ html.scroll-locked .sidebar.sidebar--fixed {
   margin-top: 10px;
 }
 
+.consulta-modo-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0 12px;
+}
+
+.consulta-modo-tab {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.consulta-modo-tab.is-active {
+  background: var(--highlight-bg-strong);
+  border-color: var(--highlight-border);
+  color: var(--text);
+}
+
+.consulta-inventario-intro {
+  margin: 0 0 12px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.consulta-inventario-vazio {
+  padding: 8px 0;
+}
+
+.consulta-inventario-totais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+}
+
+.consulta-inventario-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.consulta-inventario-vista {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-inset);
+}
+
+.consulta-inventario-vista-btn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.consulta-inventario-vista-btn.is-active {
+  background: var(--bg-panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.consulta-inventario-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.consulta-inventario-nf {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.consulta-inventario-nf--resumo {
+  padding: 10px 12px;
+}
+
+.consulta-inventario-nf-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.consulta-inventario-nf-titulo {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+.consulta-inventario-nf-sub {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+}
+
+.consulta-inventario-nf-stats {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.consulta-inventario-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.consulta-inventario-nf--detalhe {
+  padding: 10px 12px 12px;
+}
+
+.consulta-inventario-nf-head--detalhe {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.consulta-inventario-nf--detalhe .consulta-inventario-nf-body {
+  padding: 0;
+  border-top: none;
+}
+
+.consulta-inventario-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.consulta-inventario-item {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+}
+
+.consulta-inventario-item-titulo {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+}
+
+.consulta-inventario-item-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+}
+
+.consulta-inventario-item-campos dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.consulta-inventario-item-campos dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.consulta-inventario-enderecos-label {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .consulta-filtros {
   display: flex;
   flex-direction: column;

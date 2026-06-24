@@ -999,6 +999,11 @@ export default function App() {
     setConsultaErro(null)
   }
 
+  function handleDestacarInventario(resultados: ConsultaEstoqueResultado[]) {
+    setConsultaResultados(resultados)
+    setConsultaErro(null)
+  }
+
   function handleBuscarNfAdicionar(numero: string) {
     setConsultaItemAdicionadoMsg(null)
     setConsultaNfAdicionarErro(null)
@@ -1280,11 +1285,13 @@ export default function App() {
           buscaErro: buscaEditarErro,
         }}
         consulta={{
+          notas: state.notas,
           emitentesSugeridos,
           resultados: consultaResultados,
           buscaErro: consultaErro,
           onBuscar: handleBuscarConsulta,
           onLimpar: handleLimparConsulta,
+          onDestacarInventario: handleDestacarInventario,
           nfAdicionar: consultaNfAdicionar,
           nfAdicionarErro: consultaNfAdicionarErro,
           itemAdicionadoMsg: consultaItemAdicionadoMsg,
