@@ -21,7 +21,7 @@ import {
   paletesLimiteItem,
   podeAdicionarEndereco,
 } from './lib/paletes'
-import { excluirItemNotaFiscal } from './lib/excluirItemNf'
+import { excluirItemNotaFiscal, sanitizarNotasEntrada } from './lib/excluirItemNf'
 import {
   adicionarItemManualNotaFiscal,
   replicarItemNotaFiscal,
@@ -106,6 +106,7 @@ export default function App() {
   const [consultaNfAdicionarErro, setConsultaNfAdicionarErro] = useState<string | null>(null)
   const [consultaItemAdicionadoMsg, setConsultaItemAdicionadoMsg] = useState<string | null>(null)
   const [consultaItemManualErro, setConsultaItemManualErro] = useState<string | null>(null)
+  const [consultaAguardandoEndereco, setConsultaAguardandoEndereco] = useState(false)
   const [uploadCanceladaError, setUploadCanceladaError] = useState<string | null>(null)
   const [canceladaPendenteId, setCanceladaPendenteId] = useState<string | null>(null)
   const [printCamaras, setPrintCamaras] = useState<number[]>(() => CAMARAS.map((c) => c.id))
@@ -601,18 +602,35 @@ export default function App() {
         }),
       }
     })
-    const updatedNf = notas.find((n) => n.id === activeNf.id)!
-    const nextItem = activeNf.items.find(
+    let updatedNf = notas.find((n) => n.id === activeNf.id)!
+    if (consultaAguardandoEndereco && allItemsAllocated(updatedNf)) {
+      updatedNf = { ...updatedNf, status: 'concluida' as const }
+    }
+    const notasFinais = notas.map((n) => (n.id === updatedNf.id ? updatedNf : n))
+    const nextItem = updatedNf.items.find(
       (it) => it.index !== currentItemIndex && !itemEnderecamentoCompleto(it),
     )
     const nextState = {
       ...state,
-      notas,
+      notas: notasFinais,
       movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
-      activeItemIndex: nextItem?.index ?? state.activeItemIndex,
+      activeItemIndex: consultaAguardandoEndereco
+        ? null
+        : nextItem?.index ?? state.activeItemIndex,
+      activeNfId:
+        consultaAguardandoEndereco && updatedNf.status === 'concluida'
+          ? null
+          : state.activeNfId,
     }
     setState(nextState)
     setPendingSelection(new Set())
+    if (consultaAguardandoEndereco) {
+      setConsultaAguardandoEndereco(false)
+      setConsultaItemAdicionadoMsg(`Posições confirmadas na NF ${activeNf.numero}.`)
+      if (updatedNf.status === 'concluida') {
+        setSelectedEntradaIds((prev) => prev.filter((id) => id !== updatedNf.id))
+      }
+    }
     await saveNow(nextState)
   }
 
@@ -1003,13 +1021,20 @@ export default function App() {
     setConsultaNfAdicionarErro(null)
     setConsultaItemAdicionadoMsg(null)
     setConsultaItemManualErro(null)
+    setConsultaAguardandoEndereco(false)
+    setPendingSelection(new Set())
+  }
+
+  function handleCancelarEnderecoConsulta() {
+    setConsultaAguardandoEndereco(false)
+    setPendingSelection(new Set())
+    setConsultaItemAdicionadoMsg(null)
   }
 
   async function aplicarItemConsultaNaNf(
     nfId: string,
     nota: NotaFiscal,
     newItemIndex: number,
-    mensagem: string,
   ) {
     const notas = state.notas.map((n) => (n.id === nfId ? nota : n))
     const nextState = {
@@ -1023,24 +1048,23 @@ export default function App() {
     setPendingSelection(new Set())
     setSelectedEntradaIds((prev) => (prev.includes(nfId) ? prev : [...prev, nfId]))
     lastEntradaClickRef.current = nfId
-    setConsultaItemAdicionadoMsg(mensagem)
+    setConsultaAguardandoEndereco(true)
+    setConsultaItemAdicionadoMsg(null)
     setConsultaItemManualErro(null)
     await saveNow(nextState)
   }
 
-  async function handleReplicarItemConsulta(itemIndex: number) {
+  async function handleReplicarItemConsulta(itemIndex: number, paletes: number) {
     const nf = state.notas.find((n) => n.id === consultaNfAdicionarId)
     if (!nf) return
 
-    const result = replicarItemNotaFiscal(nf, itemIndex)
-    if (!result) return
+    const result = replicarItemNotaFiscal(nf, itemIndex, paletes)
+    if (!result) {
+      setConsultaItemManualErro('Informe uma quantidade válida de paletes.')
+      return
+    }
 
-    await aplicarItemConsultaNaNf(
-      nf.id,
-      result.nota,
-      result.newItemIndex,
-      `Item replicado na NF ${nf.numero}. Preencha lote, datas e paletes na aba Entrada.`,
-    )
+    await aplicarItemConsultaNaNf(nf.id, result.nota, result.newItemIndex)
   }
 
   async function handleAdicionarItemManualConsulta(input: ItemManualInput) {
@@ -1059,45 +1083,82 @@ export default function App() {
       return
     }
 
-    await aplicarItemConsultaNaNf(
-      nf.id,
-      result.nota,
-      result.newItemIndex,
-      `Item manual adicionado à NF ${nf.numero}. Enderece na aba Entrada.`,
-    )
+    await aplicarItemConsultaNaNf(nf.id, result.nota, result.newItemIndex)
   }
 
   async function handleExcluirItemConsulta(itemIndex: number) {
     const nf = state.notas.find((n) => n.id === consultaNfAdicionarId)
     if (!nf) return
 
-    const nota = excluirItemNotaFiscal(nf, itemIndex)
-    if (!nota) {
-      setConsultaItemManualErro('Não é possível excluir o único item da NF.')
+    const result = excluirItemNotaFiscal(nf, itemIndex)
+    if (!result) {
+      setConsultaItemManualErro(
+        'Não é possível excluir este item. O último item com endereços precisa permanecer na NF.',
+      )
       return
     }
 
-    const notas = state.notas.map((n) => (n.id === nf.id ? nota : n))
-    const activeItemIndex =
-      state.activeNfId === nf.id && state.activeItemIndex === itemIndex
-        ? null
-        : state.activeItemIndex
+    let notas: NotaFiscal[]
+    let movimentos = state.movimentos
+    let activeNfId = state.activeNfId
+    let activeItemIndex = state.activeItemIndex
+    let consultaNfId = consultaNfAdicionarId
+    let mensagem: string
+
+    if (result.acao === 'remover_nf') {
+      notas = state.notas.filter((n) => n.id !== nf.id)
+      const mov = findMovimentoEntradaAtivo(state.movimentos, nf.id)
+      if (mov) {
+        movimentos = movimentos.map((m) =>
+          m.id === mov.id ? { ...m, itens: [] } : m,
+        )
+      }
+      if (activeNfId === nf.id) {
+        activeNfId = null
+        activeItemIndex = null
+      }
+      consultaNfId = null
+      mensagem = `NF ${nf.numero} removida das entradas em andamento.`
+    } else {
+      const nota = result.nota
+      notas = state.notas.map((n) => (n.id === nf.id ? nota : n))
+      movimentos = upsertMovimentoEntrada(state.movimentos, nota)
+
+      if (nota.status === 'concluida') {
+        if (activeNfId === nf.id) {
+          activeNfId = null
+          activeItemIndex = null
+        }
+        mensagem = `Item removido. NF ${nf.numero} voltou para concluída.`
+      } else {
+        if (activeNfId === nf.id && activeItemIndex === itemIndex) {
+          activeItemIndex = null
+        }
+        mensagem = `Item removido da NF ${nf.numero}.`
+      }
+    }
+
+    notas = sanitizarNotasEntrada(notas)
 
     const nextState = {
       ...state,
       notas,
-      movimentos: upsertMovimentoEntrada(state.movimentos, nota),
+      movimentos,
+      activeNfId,
       activeItemIndex,
     }
     setState(nextState)
-    if (state.activeNfId === nf.id && state.activeItemIndex === itemIndex) {
+    setConsultaNfAdicionarId(consultaNfId)
+    setSelectedEntradaIds((prev) => prev.filter((id) => id !== nf.id))
+    if (activeNfId !== state.activeNfId || activeItemIndex !== state.activeItemIndex) {
       setPendingSelection(new Set())
     }
     setConsultaResultados((prev) =>
       prev.filter((r) => !(r.nfId === nf.id && r.itemIndex === itemIndex)),
     )
-    setConsultaItemAdicionadoMsg(`Item removido da NF ${nf.numero}.`)
+    setConsultaItemAdicionadoMsg(mensagem)
     setConsultaItemManualErro(null)
+    setConsultaAguardandoEndereco(false)
     await saveNow(nextState)
   }
 
@@ -1232,10 +1293,15 @@ export default function App() {
           nfAdicionarErro: consultaNfAdicionarErro,
           itemAdicionadoMsg: consultaItemAdicionadoMsg,
           itemManualErro: consultaItemManualErro,
+          aguardandoEndereco: consultaAguardandoEndereco,
+          paletesTotal: consultaAguardandoEndereco ? paletesTotal : null,
+          enderecosSelecionados: consultaAguardandoEndereco ? pendingSelection.size : 0,
           onBuscarNfAdicionar: handleBuscarNfAdicionar,
           onReplicarItem: handleReplicarItemConsulta,
           onExcluirItem: handleExcluirItemConsulta,
           onAdicionarItemManual: handleAdicionarItemManualConsulta,
+          onConfirmarEnderecos: handleConfirmItem,
+          onCancelarEnderecos: handleCancelarEnderecoConsulta,
           onLimparNfAdicionar: handleLimparNfAdicionar,
         }}
         imprimir={{

@@ -1,20 +1,37 @@
 import { itemEnderecamentoCompleto } from './paletes'
 import type { NotaFiscal } from '../types'
 
+export type ExcluirItemResult =
+  | { acao: 'atualizar'; nota: NotaFiscal }
+  | { acao: 'remover_nf' }
+
 export function podeExcluirItemNf(nf: NotaFiscal, itemIndex: number): boolean {
-  if (nf.items.length <= 1) return false
-  return nf.items.some((it) => it.index === itemIndex)
+  const item = nf.items.find((it) => it.index === itemIndex)
+  if (!item) return false
+  if (nf.items.length > 1) return true
+  return item.allocatedAddresses.length === 0
 }
 
-export function excluirItemNotaFiscal(nf: NotaFiscal, itemIndex: number): NotaFiscal | null {
-  if (!podeExcluirItemNf(nf, itemIndex)) return null
+export function todosItensEnderecados(nf: NotaFiscal): boolean {
+  return nf.items.length > 0 && nf.items.every(itemEnderecamentoCompleto)
+}
+
+export function excluirItemNotaFiscal(nf: NotaFiscal, itemIndex: number): ExcluirItemResult | null {
+  const item = nf.items.find((it) => it.index === itemIndex)
+  if (!item || !podeExcluirItemNf(nf, itemIndex)) return null
 
   const items = nf.items.filter((it) => it.index !== itemIndex)
-  let status = nf.status
+  if (items.length === 0) return { acao: 'remover_nf' }
 
-  if (status === 'em_andamento' && items.every(itemEnderecamentoCompleto)) {
+  let status = nf.status
+  if (status === 'em_andamento' && todosItensEnderecados({ ...nf, items })) {
     status = 'concluida'
   }
 
-  return { ...nf, items, status }
+  return { acao: 'atualizar', nota: { ...nf, items, status } }
+}
+
+/** Remove entradas fantasmas (em andamento sem itens). */
+export function sanitizarNotasEntrada(notas: NotaFiscal[]): NotaFiscal[] {
+  return notas.filter((n) => !(n.status === 'em_andamento' && n.items.length === 0))
 }

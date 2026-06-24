@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { normalizeDataFabricacao, todayDateInputMax } from '../lib/entradaCampos'
+import { parsePaletesInput } from '../lib/paletes'
 import type { ItemManualInput } from '../lib/adicionarItemNf'
 
 type Props = {
@@ -13,6 +14,7 @@ type Draft = {
   descricao: string
   quantidade: string
   unidade: string
+  paletes: string
   up: string
   lote: string
   dataFabricacao: string
@@ -24,6 +26,7 @@ const VAZIO: Draft = {
   descricao: '',
   quantidade: '1',
   unidade: 'UN',
+  paletes: '1',
   up: '',
   lote: '',
   dataFabricacao: '',
@@ -38,11 +41,14 @@ export function ConsultaItemManualForm({ onConfirm, onCancel, erro }: Props) {
   }
 
   function handleConfirm() {
+    const paletes = parsePaletesInput(draft.paletes)
+    if (paletes == null || paletes <= 0) return
     onConfirm({
       codigo: draft.codigo,
       descricao: draft.descricao,
       quantidade: Number(draft.quantidade.replace(',', '.')),
       unidade: draft.unidade,
+      paletes,
       up: draft.up,
       lote: draft.lote,
       dataFabricacao: draft.dataFabricacao,
@@ -92,6 +98,17 @@ export function ConsultaItemManualForm({ onConfirm, onCancel, erro }: Props) {
           />
         </label>
         <label className="manual-nf-field">
+          <span>Paletes</span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            className="input-nf"
+            value={draft.paletes}
+            onChange={(e) => patch({ paletes: e.target.value })}
+          />
+        </label>
+        <label className="manual-nf-field">
           <span>UP</span>
           <input
             type="text"
@@ -130,6 +147,10 @@ export function ConsultaItemManualForm({ onConfirm, onCancel, erro }: Props) {
         </label>
       </div>
       {erro && <p className="error">{erro}</p>}
+      <p className="muted consulta-item-manual-hint">
+        Após salvar, clique nas posições disponíveis no painel ao lado para indicar onde guardar
+        o item.
+      </p>
       <div className="consulta-item-manual-actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>
           Cancelar

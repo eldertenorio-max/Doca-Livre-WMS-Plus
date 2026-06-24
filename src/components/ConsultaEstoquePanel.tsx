@@ -9,6 +9,7 @@ import {
 import type { ItemManualInput } from '../lib/adicionarItemNf'
 import type { NotaFiscal } from '../types'
 import { ConsultaItemManualForm } from './ConsultaItemManualForm'
+import { ConsultaPaletesForm } from './ConsultaPaletesForm'
 
 type Props = {
   emitentesSugeridos: string[]
@@ -20,10 +21,15 @@ type Props = {
   nfAdicionarErro: string | null
   itemAdicionadoMsg: string | null
   itemManualErro: string | null
+  aguardandoEndereco: boolean
+  paletesTotal: number | null
+  enderecosSelecionados: number
   onBuscarNfAdicionar: (numero: string) => void
-  onReplicarItem: (itemIndex: number) => void
+  onReplicarItem: (itemIndex: number, paletes: number) => void
   onExcluirItem: (itemIndex: number) => void
   onAdicionarItemManual: (input: ItemManualInput) => void
+  onConfirmarEnderecos: () => void
+  onCancelarEnderecos: () => void
   onLimparNfAdicionar: () => void
 }
 
@@ -37,15 +43,21 @@ export function ConsultaEstoquePanel({
   nfAdicionarErro,
   itemAdicionadoMsg,
   itemManualErro,
+  aguardandoEndereco,
+  paletesTotal,
+  enderecosSelecionados,
   onBuscarNfAdicionar,
   onReplicarItem,
   onExcluirItem,
   onAdicionarItemManual,
+  onConfirmarEnderecos,
+  onCancelarEnderecos,
   onLimparNfAdicionar,
 }: Props) {
   const [filtros, setFiltros] = useState<ConsultaEstoqueFiltros>(CONSULTA_FILTROS_VAZIOS)
   const [numeroNf, setNumeroNf] = useState('')
   const [mostrarFormManual, setMostrarFormManual] = useState(false)
+  const [replicarDeIndex, setReplicarDeIndex] = useState<number | null>(null)
   const [itemExcluirIndex, setItemExcluirIndex] = useState<number | null>(null)
 
   useBodyScrollLock(itemExcluirIndex != null)
@@ -212,6 +224,36 @@ export function ConsultaEstoquePanel({
         {nfAdicionarErro && <p className="error">{nfAdicionarErro}</p>}
         {itemAdicionadoMsg && <p className="consulta-sucesso">{itemAdicionadoMsg}</p>}
 
+        {aguardandoEndereco && (
+          <div className="consulta-enderecar-box">
+            <p className="consulta-enderecar-titulo">Selecione as posições no painel</p>
+            <p className="muted consulta-enderecar-texto">
+              Clique nas células <strong>disponíveis</strong> (brancas) no mapa ao lado para indicar
+              onde o item será guardado. Você deve marcar{' '}
+              <strong>
+                {paletesTotal ?? 0} posição{paletesTotal === 1 ? '' : 'ões'}
+              </strong>{' '}
+              — uma para cada palete informado.
+            </p>
+            <p className="consulta-enderecar-contagem">
+              {enderecosSelecionados} de {paletesTotal ?? 0} selecionada(s)
+            </p>
+            <div className="consulta-enderecar-actions">
+              <button type="button" className="btn btn-ghost" onClick={onCancelarEnderecos}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn success"
+                onClick={onConfirmarEnderecos}
+                disabled={enderecosSelecionados === 0}
+              >
+                Confirmar posições
+              </button>
+            </div>
+          </div>
+        )}
+
         {nfAdicionar && (
           <div className="consulta-nf-adicionar">
             <div className="consulta-nf-adicionar-head">
@@ -228,7 +270,8 @@ export function ConsultaEstoquePanel({
             </p>
             <ul className="consulta-itens-adicionar">
               {nfAdicionar.items.map((item) => {
-                const podeExcluir = nfAdicionar.items.length > 1
+                const podeExcluir =
+                  nfAdicionar.items.length > 1 || item.allocatedAddresses.length === 0
                 return (
                 <li key={item.index}>
                   <div className="consulta-item-adicionar-row">
@@ -251,7 +294,11 @@ export function ConsultaEstoquePanel({
                     <button
                       type="button"
                       className="consulta-item-remove"
-                      title={podeExcluir ? 'Excluir item' : 'A NF precisa ter ao menos um item'}
+                      title={
+                        podeExcluir
+                          ? 'Excluir item'
+                          : 'O último item com endereços não pode ser excluído'
+                      }
                       disabled={!podeExcluir}
                       aria-label="Excluir item"
                       onClick={() => podeExcluir && setItemExcluirIndex(item.index)}
@@ -263,7 +310,8 @@ export function ConsultaEstoquePanel({
                     <button
                       type="button"
                       className="btn btn-sm btn-ghost"
-                      onClick={() => onReplicarItem(item.index)}
+                      disabled={aguardandoEndereco}
+                      onClick={() => setReplicarDeIndex(item.index)}
                     >
                       Replicar item
                     </button>
@@ -273,14 +321,31 @@ export function ConsultaEstoquePanel({
               })}
             </ul>
 
-            {!mostrarFormManual ? (
+            {!mostrarFormManual && replicarDeIndex == null ? (
               <button
                 type="button"
                 className="btn btn-ghost consulta-btn-adicionar"
+                disabled={aguardandoEndereco}
                 onClick={() => setMostrarFormManual(true)}
               >
                 + Adicionar item manual
               </button>
+            ) : replicarDeIndex != null ? (
+              <ConsultaPaletesForm
+                titulo="Replicar item"
+                descricao={
+                  nfAdicionar.items.find((it) => it.index === replicarDeIndex)
+                    ? `${nfAdicionar.items.find((it) => it.index === replicarDeIndex)!.codigo} — ${nfAdicionar.items.find((it) => it.index === replicarDeIndex)!.descricao}`
+                    : undefined
+                }
+                botaoConfirmar="Replicar e endereçar"
+                erro={itemManualErro}
+                onCancel={() => setReplicarDeIndex(null)}
+                onConfirm={(paletes) => {
+                  onReplicarItem(replicarDeIndex, paletes)
+                  setReplicarDeIndex(null)
+                }}
+              />
             ) : (
               <ConsultaItemManualForm
                 erro={itemManualErro}

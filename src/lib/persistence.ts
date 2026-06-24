@@ -1,12 +1,25 @@
+import { sanitizarNotasEntrada, todosItensEnderecados } from './excluirItemNf'
 import { migrarRuasNosDados, sincronizarMovimentosEntrada } from './movimentos'
 import { syncVinculosNotas } from './nfCanceladas'
 import { emitentesFromPersisted } from './emitentesRegistry'
-import type { PersistedData } from '../types'
+import type { NotaFiscal, PersistedData } from '../types'
+
+function normalizarStatusNotas(notas: NotaFiscal[]): NotaFiscal[] {
+  return sanitizarNotasEntrada(
+    notas.map((nf) => {
+      if (nf.status === 'em_andamento' && todosItensEnderecados(nf)) {
+        return { ...nf, status: 'concluida' as const }
+      }
+      return nf
+    }),
+  )
+}
 
 export function normalizePersistedData(data: PersistedData): PersistedData {
   const base = syncVinculosNotas(sincronizarMovimentosEntrada(migrarRuasNosDados(data)))
   return {
     ...base,
+    notas: normalizarStatusNotas(base.notas),
     emitentes: base.emitentes?.length ? base.emitentes : emitentesFromPersisted(base),
   }
 }

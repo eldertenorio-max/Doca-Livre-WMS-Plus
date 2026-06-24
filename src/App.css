@@ -2643,6 +2643,61 @@ html.scroll-locked .sidebar.sidebar--fixed {
   flex: 1;
 }
 
+.consulta-item-manual-hint {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.consulta-paletes-form {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.consulta-paletes-desc {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+
+.consulta-enderecar-box {
+  margin-top: 12px;
+  padding: 12px;
+  border: 2px solid var(--cell-sel);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cell-sel) 8%, var(--bg-elevated));
+}
+
+.consulta-enderecar-titulo {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.consulta-enderecar-texto {
+  margin: 0 0 8px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.consulta-enderecar-contagem {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--cell-sel);
+}
+
+.consulta-enderecar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.consulta-enderecar-actions .btn {
+  flex: 1;
+}
+
 .saida-justificativa {
   margin: 12px 0;
   padding: 0;

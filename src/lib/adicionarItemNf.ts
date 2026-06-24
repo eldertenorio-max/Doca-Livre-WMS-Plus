@@ -6,6 +6,7 @@ export type ItemManualInput = {
   descricao: string
   quantidade: number
   unidade: string
+  paletes: number
   up?: string
   lote?: string
   dataFabricacao?: string
@@ -16,6 +17,7 @@ export function validarItemManualInput(input: ItemManualInput): string | null {
   if (!input.codigo.trim()) return 'Informe o código do item.'
   if (!input.descricao.trim()) return 'Informe a descrição do item.'
   if (!(input.quantidade > 0)) return 'Informe uma quantidade válida.'
+  if (!(input.paletes > 0)) return 'Informe a quantidade de paletes.'
   return null
 }
 
@@ -23,7 +25,9 @@ export function validarItemManualInput(input: ItemManualInput): string | null {
 export function replicarItemNotaFiscal(
   nf: NotaFiscal,
   sourceItemIndex: number,
+  paletes: number,
 ): { nota: NotaFiscal; newItemIndex: number } | null {
+  if (!(paletes > 0)) return null
   const pos = nf.items.findIndex((it) => it.index === sourceItemIndex)
   if (pos < 0) return null
 
@@ -37,6 +41,7 @@ export function replicarItemNotaFiscal(
     quantidade: 0,
     unidade: source.unidade,
     allocatedAddresses: [],
+    paletes,
     ...(source.valorUnitario != null ? { valorUnitario: source.valorUnitario, valorTotal: 0 } : {}),
   }
 
@@ -69,6 +74,7 @@ export function adicionarItemManualNotaFiscal(
     quantidade: input.quantidade,
     unidade: input.unidade.trim() || 'UN',
     allocatedAddresses: [],
+    paletes: input.paletes,
     ...pickItemCampos(input),
   }
 
