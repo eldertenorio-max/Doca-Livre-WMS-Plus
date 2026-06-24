@@ -21,6 +21,7 @@ import {
   paletesLimiteItem,
   podeAdicionarEndereco,
 } from './lib/paletes'
+import { buscarEstoque, temFiltroConsulta, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
 import { contarItensSemEndereco, nfEntradaIncompleta } from './lib/entradaPendente'
 import { mesclarEmitentesSugeridos } from './lib/emitentesRegistry'
 import {
@@ -92,6 +93,8 @@ export default function App() {
   const [editItemIndex, setEditItemIndex] = useState<number | null>(null)
   const [editPendingSelection, setEditPendingSelection] = useState<Set<AddressId>>(new Set())
   const [buscaEditarErro, setBuscaEditarErro] = useState<string | null>(null)
+  const [consultaResultados, setConsultaResultados] = useState<ConsultaEstoqueResultado[]>([])
+  const [consultaErro, setConsultaErro] = useState<string | null>(null)
   const [uploadCanceladaError, setUploadCanceladaError] = useState<string | null>(null)
   const [canceladaPendenteId, setCanceladaPendenteId] = useState<string | null>(null)
   const [printCamaras, setPrintCamaras] = useState<number[]>(() => CAMARAS.map((c) => c.id))
@@ -196,6 +199,11 @@ export default function App() {
     if (!nfEditar) return new Set<AddressId>()
     return new Set(enderecosDaNf(nfEditar))
   }, [nfEditar])
+
+  const consultaAddresses = useMemo(
+    () => new Set(consultaResultados.map((r) => r.addressId)),
+    [consultaResultados],
+  )
 
   const panelPendingSelection = editMode ? editPendingSelection : pendingSelection
   const panelAllocateMode = allocateMode || editMode
@@ -938,6 +946,25 @@ export default function App() {
     setBuscaEditarErro(null)
   }
 
+  function handleBuscarConsulta(filtros: ConsultaEstoqueFiltros) {
+    setConsultaErro(null)
+    if (!temFiltroConsulta(filtros)) {
+      setConsultaResultados([])
+      setConsultaErro('Informe ao menos um filtro para pesquisar.')
+      return
+    }
+    const resultados = buscarEstoque(state.notas, filtros)
+    setConsultaResultados(resultados)
+    if (resultados.length === 0) {
+      setConsultaErro('Nenhum endereço encontrado com os filtros informados.')
+    }
+  }
+
+  function handleLimparConsulta() {
+    setConsultaResultados([])
+    setConsultaErro(null)
+  }
+
   async function handleExcluirMovimento(movId: string) {
     const mov = state.movimentos.find((m) => m.id === movId)
     const result = excluirMovimento(
@@ -1059,6 +1086,13 @@ export default function App() {
           onCancelarEditar: handleCancelarEditar,
           buscaErro: buscaEditarErro,
         }}
+        consulta={{
+          emitentesSugeridos,
+          resultados: consultaResultados,
+          buscaErro: consultaErro,
+          onBuscar: handleBuscarConsulta,
+          onLimpar: handleLimparConsulta,
+        }}
         imprimir={{
           selectedCamaras: printCamaras,
           onToggleCamara: (id) =>
@@ -1079,6 +1113,7 @@ export default function App() {
           allocateMode={panelAllocateMode}
           editMode={editMode}
           editAddresses={nfEditar ? editNfAddresses : undefined}
+          consultaAddresses={consultaAddresses.size > 0 ? consultaAddresses : undefined}
           saidaAddresses={nfEditar ? undefined : saidaAddresses}
           saidaFlaggedAddresses={editMode ? undefined : saidaFlaggedAddresses}
           paintMode={editMode || allocateMode}

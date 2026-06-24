@@ -1,4 +1,5 @@
 import { CollapsibleSidebarSection } from './CollapsibleSidebarSection'
+import { ConsultaEstoquePanel } from './ConsultaEstoquePanel'
 import { CanceladasPanel } from './CanceladasPanel'
 import { EditarPosicaoPanel } from './EditarPosicaoPanel'
 import { EntradaPanel } from './EntradaPanel'
@@ -21,6 +22,7 @@ type Props = {
   entrada: ComponentProps<typeof EntradaPanel>
   saida: ComponentProps<typeof SaidaPanel>
   editar: ComponentProps<typeof EditarPosicaoPanel>
+  consulta: ComponentProps<typeof ConsultaEstoquePanel>
   historico: ComponentProps<typeof HistoricoPanel>
   canceladas: ComponentProps<typeof CanceladasPanel>
   imprimir: ComponentProps<typeof ImprimirPanel>
@@ -37,6 +39,7 @@ export function AppSidebar({
   entrada,
   saida,
   editar,
+  consulta,
   historico,
   canceladas,
   imprimir,
@@ -98,6 +101,10 @@ export function AppSidebar({
 
       <CollapsibleSidebarSection id="editar" title="Movimentação" onBeforeToggle={guardOtherSection}>
         <EditarPosicaoPanel {...editar} />
+      </CollapsibleSidebarSection>
+
+      <CollapsibleSidebarSection id="consulta" title="Consulta estoque" onBeforeToggle={guardOtherSection}>
+        <ConsultaEstoquePanel {...consulta} />
       </CollapsibleSidebarSection>
 
       <CollapsibleSidebarSection id="canceladas" title="NF cancelada" onBeforeToggle={guardOtherSection}>

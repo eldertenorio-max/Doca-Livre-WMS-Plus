@@ -821,6 +821,11 @@
 .swatch--saida { background: var(--cell-saida); }
 .swatch--saida-flag { background: var(--cell-saida-flag); outline: 2px solid var(--swatch-outline); }
 .swatch--editar { background: #a371f7; }
+.swatch--consulta {
+  background: transparent;
+  outline: 3px solid var(--accent-hover);
+  outline-offset: -1px;
+}
 .swatch--porta { background: var(--cell-porta); }
 .swatch--nv5 { background: var(--cell-nv5); border: 1px solid var(--border); }
 
@@ -1114,6 +1119,16 @@
 .cell--editar {
   outline: 2px solid #a371f7;
   z-index: 1;
+}
+
+.cell--consulta {
+  outline: 3px solid var(--accent-hover);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+  z-index: 1;
+}
+
+.cell--ocupado.cell--consulta {
+  background: var(--cell-ocup);
 }
 
 .cell--porta,
@@ -1436,6 +1451,13 @@ html.scroll-locked .sidebar.sidebar--fixed {
   line-height: 1.35;
 }
 
+.detail-address-line--hero {
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #a371f7;
+}
+
 .detail-product-block {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
@@ -1559,6 +1581,28 @@ html.scroll-locked .sidebar.sidebar--fixed {
   margin: 0;
   padding-left: 18px;
   font-size: 0.85rem;
+}
+
+.detail-item-row {
+  margin-bottom: 10px;
+}
+
+.detail-item-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-item-trace {
+  margin: 4px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.detail-addr-trace {
+  color: var(--text-muted);
+  font-size: 0.82em;
 }
 
 .addr-list-scroll {
@@ -1821,6 +1865,10 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
 .sidebar-section--editar .sidebar-section-icon {
   color: #a371f7;
+}
+
+.sidebar-section--consulta .sidebar-section-icon {
+  color: var(--accent-hover);
 }
 
 .addr-edit-active {
@@ -2387,6 +2435,75 @@ html.scroll-locked .sidebar.sidebar--fixed {
   display: flex;
   gap: 8px;
   margin-top: 10px;
+}
+
+.consulta-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.consulta-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.consulta-campo span {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.consulta-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.consulta-actions .btn {
+  flex: 1;
+}
+
+.consulta-resultados {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consulta-grupo-titulo {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+}
+
+.consulta-grupo-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.consulta-item-codigo {
+  font-weight: 700;
+}
+
+.consulta-item-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.consulta-enderecos {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 0.82rem;
+  color: var(--accent-hover);
 }
 
 .saida-justificativa {

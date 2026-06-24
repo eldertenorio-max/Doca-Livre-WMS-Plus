@@ -30,6 +30,7 @@ type Props = {
   editAddresses?: Set<AddressId>
   saidaAddresses?: Set<AddressId>
   saidaFlaggedAddresses?: Set<AddressId>
+  consultaAddresses?: Set<AddressId>
   paintMode?: boolean
   onCellClick: (addressId: AddressId, clickable: boolean) => void
   onCellPaint: (addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) => void
@@ -162,6 +163,7 @@ function RuaGrid({
   editAddresses,
   saidaAddresses,
   saidaFlaggedAddresses,
+  consultaAddresses,
   activeNfId,
   paintMode,
   paint,
@@ -250,6 +252,7 @@ function RuaGrid({
                     if (pending) className += ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
                     if (editAddresses?.has(addressId) && !pending) className += ' cell--editar'
+                    else if (consultaAddresses?.has(addressId)) className += ' cell--consulta'
                     else if (saidaFlaggedAddresses?.has(addressId)) className += ' cell--saida-flag'
                     else if (saidaAddresses?.has(addressId)) className += ' cell--saida'
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
@@ -405,6 +408,7 @@ export function LayoutPanel(props: Props) {
         <span><i className="swatch swatch--saida" /> Saída (NF buscada)</span>
         <span><i className="swatch swatch--saida-flag" /> Item marcado p/ saída</span>
         <span><i className="swatch swatch--editar" /> Movimentação (NF buscada)</span>
+        <span><i className="swatch swatch--consulta" /> Consulta de estoque</span>
         <span><i className="swatch swatch--porta" /> Porta</span>
         <span><i className="swatch swatch--nv5" /> Nível 5 inexistente</span>
       </div>
@@ -428,6 +432,12 @@ export function LayoutPanel(props: Props) {
       {props.allocateMode && !props.editMode && props.activeNfNumero && (
         <p className="layout-hint">
           Modo alocação: clique ou arraste nos quadrados para marcar ou desmarcar endereços do item.
+        </p>
+      )}
+      {props.consultaAddresses && props.consultaAddresses.size > 0 && (
+        <p className="layout-hint">
+          Consulta: endereços com contorno azul correspondem aos filtros aplicados. Clique em um
+          quadrado para ver os detalhes.
         </p>
       )}
       {props.saidaAddresses && props.saidaAddresses.size > 0 && (
