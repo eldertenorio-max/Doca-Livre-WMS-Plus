@@ -4,9 +4,11 @@ export const SIDEBAR_MODE_KEY = 'ultrafrio-sidebar-mode'
 
 export function getStoredSidebarMode(): SidebarMode {
   try {
-    return localStorage.getItem(SIDEBAR_MODE_KEY) === 'fixed' ? 'fixed' : 'free'
+    const stored = localStorage.getItem(SIDEBAR_MODE_KEY)
+    if (stored === 'free') return 'free'
+    return 'fixed'
   } catch {
-    return 'free'
+    return 'fixed'
   }
 }
 
