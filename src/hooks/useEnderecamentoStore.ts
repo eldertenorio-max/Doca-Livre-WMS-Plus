@@ -49,7 +49,6 @@ export function useEnderecamentoStore() {
   const [state, setState] = useState<AppState>(emptyState)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [storageMode, setStorageMode] = useState<StorageMode>(getStorageMode())
   const skipSave = useRef(true)
@@ -163,7 +162,6 @@ export function useEnderecamentoStore() {
     if (savingRef.current || pendingSaveRef.current) return
     if (Date.now() < ignoreRemoteUntil.current) return
 
-    setSyncing(true)
     skipSave.current = true
     try {
       const remote = await repoRef.current.loadData()
@@ -175,7 +173,9 @@ export function useEnderecamentoStore() {
         const dirty = base ? isDirtyComparedToBase(local, base) : false
         const merged = dirty && base ? mergePersistedData(base, local, data) : data
         lastPersistedRef.current = merged
-        return preserveUi(prev, merged)
+        const next = preserveUi(prev, merged)
+        if (persistedEquals(pickPersisted(prev), pickPersisted(next))) return prev
+        return next
       })
       setError(null)
     } catch (e) {
@@ -185,7 +185,6 @@ export function useEnderecamentoStore() {
           : 'Erro ao sincronizar com a nuvem.',
       )
     } finally {
-      setSyncing(false)
       setTimeout(() => {
         skipSave.current = false
       }, 200)
@@ -331,7 +330,6 @@ export function useEnderecamentoStore() {
     registrarEmitente,
     loading,
     saving,
-    syncing,
     error,
     clearError: () => setError(null),
   }

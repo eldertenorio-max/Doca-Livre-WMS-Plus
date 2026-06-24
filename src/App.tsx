@@ -66,7 +66,6 @@ export default function App() {
     registrarEmitente,
     loading,
     saving,
-    syncing,
     error,
     clearError,
   } = useEnderecamentoStore()
@@ -719,7 +718,6 @@ export default function App() {
     <div className="app-shell">
       <AppSidebar
         saving={saving}
-        syncing={syncing}
         persistError={error}
         theme={theme}
         onToggleTheme={toggleTheme}

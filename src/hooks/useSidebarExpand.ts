@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { useIsMobile } from './useIsMobile'
 
 /** Tempo antes de recolher ao sair com o mouse (modo livre). */
 const CLOSE_DELAY_MS = 1600
 
 export function useSidebarExpand(sidebarFixed: boolean) {
-  const mobile = useIsMobile()
   const [hoverExpanded, setHoverExpanded] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const expanded = sidebarFixed || mobile || hoverExpanded
+  const expanded = sidebarFixed || hoverExpanded
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimer.current) {
@@ -30,16 +28,16 @@ export function useSidebarExpand(sidebarFixed: boolean) {
   }, [clearCloseTimer])
 
   useEffect(() => {
-    if (sidebarFixed || mobile) {
+    if (sidebarFixed) {
       clearCloseTimer()
       setHoverExpanded(false)
     }
-  }, [sidebarFixed, mobile, clearCloseTimer])
+  }, [sidebarFixed, clearCloseTimer])
 
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer])
 
   useEffect(() => {
-    if (!hoverExpanded || sidebarFixed || mobile) return
+    if (!hoverExpanded || sidebarFixed) return
 
     function handlePointerDown(e: PointerEvent) {
       const el = sidebarRef.current
@@ -49,15 +47,15 @@ export function useSidebarExpand(sidebarFixed: boolean) {
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [hoverExpanded, sidebarFixed, mobile, collapse])
+  }, [hoverExpanded, sidebarFixed, collapse])
 
   const onSidebarPointerDown = useCallback(
     (e: ReactPointerEvent) => {
-      if (sidebarFixed || mobile || hoverExpanded) return
+      if (sidebarFixed || hoverExpanded) return
       if (e.button !== 0) return
       expand()
     },
-    [sidebarFixed, mobile, hoverExpanded, expand],
+    [sidebarFixed, hoverExpanded, expand],
   )
 
   const onMouseEnter = useCallback(() => {
@@ -66,7 +64,7 @@ export function useSidebarExpand(sidebarFixed: boolean) {
 
   const onMouseLeave = useCallback(
     (e: React.MouseEvent) => {
-      if (sidebarFixed || mobile || !hoverExpanded) return
+      if (sidebarFixed || !hoverExpanded) return
       const related = e.relatedTarget as Node | null
       if (related && sidebarRef.current?.contains(related)) return
 
@@ -76,7 +74,7 @@ export function useSidebarExpand(sidebarFixed: boolean) {
         closeTimer.current = null
       }, CLOSE_DELAY_MS)
     },
-    [sidebarFixed, mobile, hoverExpanded, clearCloseTimer, collapse],
+    [sidebarFixed, hoverExpanded, clearCloseTimer, collapse],
   )
 
   return { expanded, sidebarRef, onSidebarPointerDown, onMouseEnter, onMouseLeave }

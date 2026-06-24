@@ -13,7 +13,6 @@ import type { ComponentProps } from 'react'
 
 type Props = {
   saving: boolean
-  syncing?: boolean
   persistError: string | null
   theme: Theme
   onToggleTheme: () => void
@@ -29,7 +28,6 @@ type Props = {
 
 export function AppSidebar({
   saving,
-  syncing,
   persistError,
   theme,
   onToggleTheme,
@@ -69,7 +67,6 @@ export function AppSidebar({
         <h1>Endereçamento</h1>
         <p className="muted">Ultrafrio · entrada e saída por NF-e</p>
         {saving && <p className="saving-hint">Salvando…</p>}
-        {syncing && !saving && <p className="saving-hint">Sincronizando…</p>}
         {persistError && <p className="error">{persistError}</p>}
       </div>
 
