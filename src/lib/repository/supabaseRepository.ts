@@ -9,6 +9,82 @@ const uiPrefsMemory: Pick<AppState, 'activeNfId' | 'activeItemIndex'> = {
   activeItemIndex: null,
 }
 
+/** Quando o Supabase ainda não tem as colunas comerciais/entrada, salva só o básico. */
+let omitNfCommercialFields = false
+let omitItemExtendedFields = false
+
+function missingColumnError(message: string): boolean {
+  return message.includes('schema cache') || /Could not find the '[^']+' column/.test(message)
+}
+
+function nfUpsertRow(nf: NotaFiscal) {
+  const row = {
+    id: nf.id,
+    numero: nf.numero,
+    serie: nf.serie,
+    chave: nf.chave,
+    emitente: nf.emitente,
+    data_emissao: nf.dataEmissao,
+    status: nf.status,
+  }
+  if (omitNfCommercialFields) return row
+  return {
+    ...row,
+    peso_bruto: nf.pesoBruto ?? null,
+    peso_liquido: nf.pesoLiquido ?? null,
+    valor_total_nota: nf.valorTotalNota ?? null,
+    quantidade_volume: nf.quantidadeVolume ?? null,
+  }
+}
+
+function itemInsertRow(nfId: string, it: NotaFiscal['items'][number]) {
+  const row = {
+    nf_id: nfId,
+    item_index: it.index,
+    codigo: it.codigo,
+    descricao: it.descricao,
+    quantidade: it.quantidade,
+    unidade: it.unidade,
+  }
+  if (omitItemExtendedFields) return row
+  return {
+    ...row,
+    peso_bruto: it.pesoBruto ?? null,
+    valor_unitario: it.valorUnitario ?? null,
+    valor_total: it.valorTotal ?? null,
+    up: it.up || null,
+    lote: it.lote || null,
+    data_fabricacao: it.dataFabricacao || null,
+    data_validade: it.dataValidade || null,
+  }
+}
+
+async function upsertNf(
+  sb: ReturnType<typeof getSupabase>,
+  nf: NotaFiscal,
+): Promise<{ error: { message: string } | null }> {
+  let result = await sb.from('ultrafrio_notas_fiscais').upsert(nfUpsertRow(nf))
+  if (result.error && missingColumnError(result.error.message) && !omitNfCommercialFields) {
+    omitNfCommercialFields = true
+    result = await sb.from('ultrafrio_notas_fiscais').upsert(nfUpsertRow(nf))
+  }
+  return result
+}
+
+async function insertItens(
+  sb: ReturnType<typeof getSupabase>,
+  nfId: string,
+  items: NotaFiscal['items'],
+): Promise<{ error: { message: string } | null }> {
+  if (!items.length) return { error: null }
+  let result = await sb.from('ultrafrio_nf_itens').insert(items.map((it) => itemInsertRow(nfId, it)))
+  if (result.error && missingColumnError(result.error.message) && !omitItemExtendedFields) {
+    omitItemExtendedFields = true
+    result = await sb.from('ultrafrio_nf_itens').insert(items.map((it) => itemInsertRow(nfId, it)))
+  }
+  return result
+}
+
 function mapNotas(
   rows: NfRow[],
   itemRows: ItemRow[],
@@ -192,44 +268,14 @@ export const supabaseRepository: EnderecamentoRepository = {
     }
 
     for (const nf of notas) {
-      const { error: upErr } = await sb.from('ultrafrio_notas_fiscais').upsert({
-        id: nf.id,
-        numero: nf.numero,
-        serie: nf.serie,
-        chave: nf.chave,
-        emitente: nf.emitente,
-        data_emissao: nf.dataEmissao,
-        status: nf.status,
-        peso_bruto: nf.pesoBruto ?? null,
-        peso_liquido: nf.pesoLiquido ?? null,
-        valor_total_nota: nf.valorTotalNota ?? null,
-        quantidade_volume: nf.quantidadeVolume ?? null,
-      })
+      const { error: upErr } = await upsertNf(sb, nf)
       if (upErr) throw new Error(upErr.message)
 
       const { error: delIt } = await sb.from('ultrafrio_nf_itens').delete().eq('nf_id', nf.id)
       if (delIt) throw new Error(delIt.message)
 
-      if (nf.items.length) {
-        const { error: insIt } = await sb.from('ultrafrio_nf_itens').insert(
-          nf.items.map((it) => ({
-            nf_id: nf.id,
-            item_index: it.index,
-            codigo: it.codigo,
-            descricao: it.descricao,
-            quantidade: it.quantidade,
-            unidade: it.unidade,
-            peso_bruto: it.pesoBruto ?? null,
-            valor_unitario: it.valorUnitario ?? null,
-            valor_total: it.valorTotal ?? null,
-            up: it.up || null,
-            lote: it.lote || null,
-            data_fabricacao: it.dataFabricacao || null,
-            data_validade: it.dataValidade || null,
-          })),
-        )
-        if (insIt) throw new Error(insIt.message)
-      }
+      const { error: insIt } = await insertItens(sb, nf.id, nf.items)
+      if (insIt) throw new Error(insIt.message)
 
       const { error: delEnd } = await sb.from('ultrafrio_enderecamentos').delete().eq('nf_id', nf.id)
       if (delEnd) throw new Error(delEnd.message)
