@@ -24,9 +24,9 @@ const emptyState: AppState = {
 }
 
 const SAVE_DEBOUNCE_MS = 400
-const REMOTE_RELOAD_DEBOUNCE_MS = 350
-const IGNORE_REMOTE_AFTER_SAVE_MS = 2500
-const POLL_INTERVAL_MS = 5000
+const REMOTE_RELOAD_DEBOUNCE_MS = 300
+const IGNORE_REMOTE_AFTER_SAVE_MS = 2000
+const POLL_INTERVAL_MS = 3000
 
 function pickRepository(): EnderecamentoRepository {
   return isSupabaseConfigured() ? getRepository() : localRepository
@@ -78,19 +78,41 @@ export function useEnderecamentoStore() {
 
   const persist = useCallback(async (next: AppState) => {
     const repo = repoRef.current
+    if (repo.mode !== 'supabase') {
+      savingRef.current = true
+      setSaving(true)
+      try {
+        const dataToSave = pickPersisted(next)
+        await repo.saveData({
+          notas: dataToSave.notas,
+          movimentos: dataToSave.movimentos,
+          notasCanceladas: dataToSave.notasCanceladas,
+        })
+        repo.saveUiPrefs({
+          activeNfId: next.activeNfId,
+          activeItemIndex: next.activeItemIndex,
+        })
+        lastPersistedRef.current = dataToSave
+        pendingSaveRef.current = null
+        setError(null)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Erro ao salvar dados.')
+      } finally {
+        savingRef.current = false
+        setSaving(false)
+      }
+      return
+    }
+
     savingRef.current = true
     setSaving(true)
 
     try {
       let dataToSave = pickPersisted(next)
 
-      if (repo.mode === 'supabase' && lastPersistedRef.current) {
-        try {
-          const remote = pickPersisted(await repo.loadData())
-          dataToSave = mergePersistedData(lastPersistedRef.current, dataToSave, remote)
-        } catch {
-          /* salva versão local se a leitura remota falhar */
-        }
+      if (lastPersistedRef.current) {
+        const remote = pickPersisted(await repo.loadData())
+        dataToSave = mergePersistedData(lastPersistedRef.current, dataToSave, remote)
       }
 
       await repo.saveData({
@@ -112,31 +134,12 @@ export function useEnderecamentoStore() {
       }
 
       setError(null)
-    } catch {
-      if (repo.mode === 'supabase') {
-        repoRef.current = localRepository
-        setStorageMode('local')
-        try {
-          const dataToSave = pickPersisted(next)
-          await localRepository.saveData({
-            notas: dataToSave.notas,
-            movimentos: dataToSave.movimentos,
-            notasCanceladas: dataToSave.notasCanceladas,
-          })
-          localRepository.saveUiPrefs({
-            activeNfId: next.activeNfId,
-            activeItemIndex: next.activeItemIndex,
-          })
-          lastPersistedRef.current = dataToSave
-          pendingSaveRef.current = null
-          setError(null)
-          return
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Erro ao salvar dados.')
-          return
-        }
-      }
-      setError('Erro ao salvar dados.')
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? `Erro ao salvar na nuvem: ${e.message}`
+          : 'Erro ao salvar na nuvem. Verifique a conexão com o Supabase.',
+      )
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -164,24 +167,23 @@ export function useEnderecamentoStore() {
     skipSave.current = true
     try {
       const remote = await repoRef.current.loadData()
-      const { data } = prepareLoadedData(remote)
+      const data = prepareLoadedData(remote)
       const base = lastPersistedRef.current
 
       setState((prev) => {
         const local = pickPersisted(prev)
-        let merged = data
-
-        if (base && isDirtyComparedToBase(local, base)) {
-          merged = mergePersistedData(base, local, data)
-        } else {
-          lastPersistedRef.current = data
-        }
-
+        const dirty = base ? isDirtyComparedToBase(local, base) : false
+        const merged = dirty && base ? mergePersistedData(base, local, data) : data
+        lastPersistedRef.current = merged
         return preserveUi(prev, merged)
       })
       setError(null)
-    } catch {
-      /* mantém estado atual se a nuvem falhar momentaneamente */
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? `Erro ao sincronizar: ${e.message}`
+          : 'Erro ao sincronizar com a nuvem.',
+      )
     } finally {
       setSyncing(false)
       setTimeout(() => {
@@ -203,61 +205,36 @@ export function useEnderecamentoStore() {
     async function load() {
       await ensureSupabaseConfig()
 
-      let repo = pickRepository()
+      if (isSupabaseConfigured()) {
+        clearLocalPersistedData()
+      }
+
+      const repo = pickRepository()
       repoRef.current = repo
       setStorageMode(repo.mode)
 
       try {
         const remote = await repo.loadData()
-        let { data, migratedFromLocal: migrated } = prepareLoadedData(remote, {
-          allowLocalMigration: repo.mode === 'supabase',
-        })
-        const ui = repo.loadUiPrefs()
-
-        if (migrated && repo.mode === 'supabase') {
-          await repo.saveData({
-            notas: data.notas,
-            movimentos: data.movimentos,
-            notasCanceladas: data.notasCanceladas,
-          })
-          for (const nf of data.notas) await repo.registrarEmitente(nf.emitente)
-          for (const c of data.notasCanceladas) await repo.registrarEmitente(c.emitente)
-          data = {
-            ...data,
-            emitentes: await repo.loadData().then((d) => d.emitentes).catch(() => data.emitentes),
-          }
-          clearLocalPersistedData()
-          ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
-        }
+        const data = prepareLoadedData(remote)
+        const ui = repo.mode === 'supabase' ? { activeNfId: null, activeItemIndex: null } : repo.loadUiPrefs()
 
         if (!cancelled) {
           lastPersistedRef.current = data
           setState({ ...data, ...ui })
           setError(null)
         }
-        return
-      } catch {
-        if (repo.mode === 'supabase') {
-          repo = localRepository
-          repoRef.current = repo
-          setStorageMode('local')
-          try {
-            const { data } = prepareLoadedData(await repo.loadData())
-            const ui = repo.loadUiPrefs()
-            if (!cancelled) {
-              lastPersistedRef.current = data
-              setState({ ...data, ...ui })
-              setError(null)
-            }
-            return
-          } catch (e) {
-            if (!cancelled) {
-              setError(e instanceof Error ? e.message : 'Erro ao carregar dados.')
-            }
-            return
+      } catch (e) {
+        if (!cancelled) {
+          if (repo.mode === 'supabase') {
+            setError(
+              e instanceof Error
+                ? `Não foi possível carregar da nuvem: ${e.message}`
+                : 'Não foi possível carregar da nuvem. Confira o Supabase.',
+            )
+          } else {
+            setError(e instanceof Error ? e.message : 'Erro ao carregar dados.')
           }
         }
-        if (!cancelled) setError('Erro ao carregar dados.')
       } finally {
         if (!cancelled) {
           skipSave.current = false
@@ -278,9 +255,15 @@ export function useEnderecamentoStore() {
     const unsubscribe = subscribeEnderecamentoChanges(scheduleRemoteReload)
     const poll = window.setInterval(scheduleRemoteReload, POLL_INTERVAL_MS)
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRemoteReload()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     return () => {
       unsubscribe()
       window.clearInterval(poll)
+      document.removeEventListener('visibilitychange', onVisible)
       if (reloadTimer.current) clearTimeout(reloadTimer.current)
     }
   }, [loading, scheduleRemoteReload, storageMode])

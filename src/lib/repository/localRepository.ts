@@ -4,7 +4,7 @@ import type { EnderecamentoRepository } from './types'
 
 const DATA_KEY = 'ultrafrio-enderecamento-v3'
 const LEGACY_KEY = 'ultrafrio-enderecamento-v2'
-const UI_KEY = 'ultrafrio-ui-prefs-v1'
+export const UI_KEY = 'ultrafrio-ui-prefs-v1'
 
 function loadBundle(): PersistedData {
   try {
@@ -33,6 +33,7 @@ export function clearLocalPersistedData(): void {
   localStorage.removeItem(DATA_KEY)
   localStorage.removeItem(LEGACY_KEY)
   localStorage.removeItem('ultrafrio-enderecamento-v1')
+  localStorage.removeItem(UI_KEY)
 }
 
 function loadUiFromLegacy(): Pick<AppState, 'activeNfId' | 'activeItemIndex'> {

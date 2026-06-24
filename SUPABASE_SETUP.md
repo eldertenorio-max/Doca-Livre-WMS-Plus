@@ -66,13 +66,15 @@ npm run dev
 - O aviso amarelo **“só neste navegador”** deve sumir.
 - Aparece o banner verde: **“Dados sincronizados na nuvem — iguais em todos os navegadores.”**
 - Abra o app em outro PC/navegador: os mesmos dados devem aparecer.
-- Alterações em um lugar atualizam os outros em poucos segundos (tempo real + verificação a cada 20 s).
+- Alterações em um lugar atualizam os outros em poucos segundos (tempo real + verificação a cada 3 s).
 
 ---
 
-## Migração automática
+## Importante: só nuvem
 
-Se este navegador já tinha dados no `localStorage` e a nuvem estava vazia, na primeira carga com Supabase configurado os dados são **enviados automaticamente** para a nuvem.
+Com Supabase configurado, **NFs e movimentos não ficam mais no navegador** — tudo vem e vai direto para o Supabase. Cada PC mostra a mesma lista. Ao abrir o app, dados antigos do `localStorage` são **descartados** (não são mais migrados automaticamente).
+
+Se aparecer NF que ninguém criou nesta sessão, ela já está na nuvem (outro PC ou teste anterior). Use **Cancelar entrada** ou **Excluir** na movimentação para remover.
 
 ---
 
@@ -84,7 +86,7 @@ Se este navegador já tinha dados no `localStorage` e a nuvem estava vazia, na p
 | Erro ao salvar / nuvem indisponível | Rode os SQLs no Supabase; confira URL e chave |
 | Sugestões de remetente vazias | Rode `create_ultrafrio_cadastro_remetentes.sql` |
 | Outro PC não atualiza na hora | Rode `enable_realtime.sql`; recarregue a página |
-| Dados diferentes em dois PCs | Um deles pode estar sem Supabase (modo local) — confira o banner no topo |
+| Dados diferentes em dois PCs | Confira `VITE_SUPABASE_*` no Render; rode `enable_realtime.sql`; recarregue os dois navegadores |
 
 ---
 

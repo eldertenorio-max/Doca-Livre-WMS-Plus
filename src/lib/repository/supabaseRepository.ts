@@ -1,18 +1,12 @@
-import type { MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../../types'
+import type { AppState, MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../../types'
 import { emitenteKey, normalizarEmitente } from '../emitentesRegistry'
 import { getSupabase, type CanceladaRow, type EmitenteRow, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
 import type { EnderecamentoRepository } from './types'
 
-const UI_KEY = 'ultrafrio-ui-prefs-v1'
-
-function loadUiPrefsLocal(): { activeNfId: string | null; activeItemIndex: number | null } {
-  try {
-    const raw = localStorage.getItem(UI_KEY)
-    if (!raw) return { activeNfId: null, activeItemIndex: null }
-    return JSON.parse(raw)
-  } catch {
-    return { activeNfId: null, activeItemIndex: null }
-  }
+/** Preferências de UI ficam só na sessão (não no localStorage). */
+const uiPrefsMemory: Pick<AppState, 'activeNfId' | 'activeItemIndex'> = {
+  activeNfId: null,
+  activeItemIndex: null,
 }
 
 function mapNotas(
@@ -331,10 +325,11 @@ export const supabaseRepository: EnderecamentoRepository = {
   },
 
   loadUiPrefs() {
-    return loadUiPrefsLocal()
+    return { ...uiPrefsMemory }
   },
 
   saveUiPrefs(prefs) {
-    localStorage.setItem(UI_KEY, JSON.stringify(prefs))
+    uiPrefsMemory.activeNfId = prefs.activeNfId
+    uiPrefsMemory.activeItemIndex = prefs.activeItemIndex
   },
 }
