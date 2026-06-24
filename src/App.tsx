@@ -21,6 +21,7 @@ import {
   paletesLimiteItem,
   podeAdicionarEndereco,
 } from './lib/paletes'
+import { excluirItemNotaFiscal } from './lib/excluirItemNf'
 import {
   adicionarItemManualNotaFiscal,
   replicarItemNotaFiscal,
@@ -1066,6 +1067,40 @@ export default function App() {
     )
   }
 
+  async function handleExcluirItemConsulta(itemIndex: number) {
+    const nf = state.notas.find((n) => n.id === consultaNfAdicionarId)
+    if (!nf) return
+
+    const nota = excluirItemNotaFiscal(nf, itemIndex)
+    if (!nota) {
+      setConsultaItemManualErro('Não é possível excluir o único item da NF.')
+      return
+    }
+
+    const notas = state.notas.map((n) => (n.id === nf.id ? nota : n))
+    const activeItemIndex =
+      state.activeNfId === nf.id && state.activeItemIndex === itemIndex
+        ? null
+        : state.activeItemIndex
+
+    const nextState = {
+      ...state,
+      notas,
+      movimentos: upsertMovimentoEntrada(state.movimentos, nota),
+      activeItemIndex,
+    }
+    setState(nextState)
+    if (state.activeNfId === nf.id && state.activeItemIndex === itemIndex) {
+      setPendingSelection(new Set())
+    }
+    setConsultaResultados((prev) =>
+      prev.filter((r) => !(r.nfId === nf.id && r.itemIndex === itemIndex)),
+    )
+    setConsultaItemAdicionadoMsg(`Item removido da NF ${nf.numero}.`)
+    setConsultaItemManualErro(null)
+    await saveNow(nextState)
+  }
+
   async function handleExcluirMovimento(movId: string) {
     const mov = state.movimentos.find((m) => m.id === movId)
     const result = excluirMovimento(
@@ -1199,6 +1234,7 @@ export default function App() {
           itemManualErro: consultaItemManualErro,
           onBuscarNfAdicionar: handleBuscarNfAdicionar,
           onReplicarItem: handleReplicarItemConsulta,
+          onExcluirItem: handleExcluirItemConsulta,
           onAdicionarItemManual: handleAdicionarItemManualConsulta,
           onLimparNfAdicionar: handleLimparNfAdicionar,
         }}

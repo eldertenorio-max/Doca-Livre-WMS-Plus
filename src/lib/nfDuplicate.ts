@@ -2,7 +2,7 @@ import type { NotaFiscal, NotaFiscalCancelada } from '../types'
 
 type NfRef = Pick<NotaFiscal, 'id' | 'chave' | 'numero' | 'serie'>
 
-function normNumero(numero: string): string {
+export function normNumero(numero: string): string {
   return numero.trim().replace(/^0+/, '') || '0'
 }
 

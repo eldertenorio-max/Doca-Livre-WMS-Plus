@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { formatAddressLabel } from '../layout/camaras'
 import {
   CONSULTA_FILTROS_VAZIOS,
@@ -21,6 +22,7 @@ type Props = {
   itemManualErro: string | null
   onBuscarNfAdicionar: (numero: string) => void
   onReplicarItem: (itemIndex: number) => void
+  onExcluirItem: (itemIndex: number) => void
   onAdicionarItemManual: (input: ItemManualInput) => void
   onLimparNfAdicionar: () => void
 }
@@ -37,12 +39,21 @@ export function ConsultaEstoquePanel({
   itemManualErro,
   onBuscarNfAdicionar,
   onReplicarItem,
+  onExcluirItem,
   onAdicionarItemManual,
   onLimparNfAdicionar,
 }: Props) {
   const [filtros, setFiltros] = useState<ConsultaEstoqueFiltros>(CONSULTA_FILTROS_VAZIOS)
   const [numeroNf, setNumeroNf] = useState('')
   const [mostrarFormManual, setMostrarFormManual] = useState(false)
+  const [itemExcluirIndex, setItemExcluirIndex] = useState<number | null>(null)
+
+  useBodyScrollLock(itemExcluirIndex != null)
+
+  const itemExcluir =
+    nfAdicionar && itemExcluirIndex != null
+      ? nfAdicionar.items.find((it) => it.index === itemExcluirIndex) ?? null
+      : null
 
   function patch(partial: Partial<ConsultaEstoqueFiltros>) {
     setFiltros((prev) => ({ ...prev, ...partial }))
@@ -216,17 +227,37 @@ export function ConsultaEstoquePanel({
               Replique um item existente ou adicione um item manual:
             </p>
             <ul className="consulta-itens-adicionar">
-              {nfAdicionar.items.map((item) => (
+              {nfAdicionar.items.map((item) => {
+                const podeExcluir = nfAdicionar.items.length > 1
+                return (
                 <li key={item.index}>
                   <div className="consulta-item-adicionar-row">
-                    <span className="consulta-item-codigo">{item.codigo}</span>
-                    <span className="muted"> — {item.descricao}</span>
-                    {(item.lote || item.up) && (
-                      <span className="consulta-item-meta">
-                        {item.lote ? ` · Lote ${item.lote}` : ''}
-                        {item.up ? ` · UP ${item.up}` : ''}
-                      </span>
-                    )}
+                    <div className="consulta-item-adicionar-info">
+                      <span className="consulta-item-codigo">{item.codigo}</span>
+                      <span className="muted"> — {item.descricao}</span>
+                      {(item.lote || item.up) && (
+                        <span className="consulta-item-meta">
+                          {item.lote ? ` · Lote ${item.lote}` : ''}
+                          {item.up ? ` · UP ${item.up}` : ''}
+                        </span>
+                      )}
+                      {item.allocatedAddresses.length > 0 && (
+                        <span className="consulta-item-meta">
+                          {' '}
+                          · {item.allocatedAddresses.length} endereço(s)
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="consulta-item-remove"
+                      title={podeExcluir ? 'Excluir item' : 'A NF precisa ter ao menos um item'}
+                      disabled={!podeExcluir}
+                      aria-label="Excluir item"
+                      onClick={() => podeExcluir && setItemExcluirIndex(item.index)}
+                    >
+                      <TrashIcon />
+                    </button>
                   </div>
                   <div className="consulta-item-adicionar-actions">
                     <button
@@ -238,7 +269,8 @@ export function ConsultaEstoquePanel({
                     </button>
                   </div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
 
             {!mostrarFormManual ? (
@@ -261,8 +293,57 @@ export function ConsultaEstoquePanel({
             )}
           </div>
         )}
+
+      {itemExcluir && nfAdicionar && (
+        <div className="confirm-backdrop" onClick={() => setItemExcluirIndex(null)}>
+          <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
+            <h4>Excluir item?</h4>
+            <p>
+              <strong>{itemExcluir.codigo}</strong>
+              <span className="muted"> — {itemExcluir.descricao}</span>
+            </p>
+            {itemExcluir.allocatedAddresses.length > 0 ? (
+              <p className="confirm-warn">
+                Este item tem {itemExcluir.allocatedAddresses.length} endereço(s) alocado(s). Eles
+                serão liberados no painel.
+              </p>
+            ) : (
+              <p className="muted">A linha será removida da NF {nfAdicionar.numero}.</p>
+            )}
+            <div className="confirm-actions">
+              <button type="button" className="btn" onClick={() => setItemExcluirIndex(null)}>
+                Voltar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  onExcluirItem(itemExcluir.index)
+                  setItemExcluirIndex(null)
+                }}
+              >
+                Excluir item
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 3h6m-8 4h10m-1 0-.7 12.1a2 2 0 0 1-2 1.9H9.7a2 2 0 0 1-2-1.9L7 7m3 4v5m4-5v5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 

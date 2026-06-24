@@ -1,4 +1,5 @@
 import type { AddressId, NotaFiscal } from '../types'
+import { normNumero } from './nfDuplicate'
 
 export type ConsultaEstoqueFiltros = {
   nfNumero: string
@@ -30,6 +31,14 @@ function norm(value: string): string {
   return value.trim().toLowerCase()
 }
 
+function nfNumeroCoincide(nfNumero: string, query: string): boolean {
+  const q = query.trim()
+  if (!q) return true
+  const normNf = normNumero(nfNumero)
+  const normQ = normNumero(q)
+  return normNf.includes(normQ) || normNf === normQ || nfNumero.toLowerCase().includes(norm(q))
+}
+
 export function temFiltroConsulta(filtros: ConsultaEstoqueFiltros): boolean {
   return Object.values(filtros).some((v) => v.trim().length > 0)
 }
@@ -48,9 +57,8 @@ export function buscarEstoque(
   const results: ConsultaEstoqueResultado[] = []
 
   for (const nf of notas) {
-    if (nf.status !== 'concluida') continue
     if (remQ && !nf.emitente.toLowerCase().includes(remQ)) continue
-    if (nfQ && !nf.numero.toLowerCase().includes(nfQ)) continue
+    if (nfQ && !nfNumeroCoincide(nf.numero, filtros.nfNumero)) continue
 
     for (const item of nf.items) {
       if (item.allocatedAddresses.length === 0) continue
