@@ -1,4 +1,5 @@
 import type { AddressId, AppState, NfeItem, NotaFiscal } from '../types'
+import { pickItemCampos } from './entradaCampos'
 import { upsertMovimentoEntrada } from './movimentos'
 import { mensagemNfDuplicada } from './nfDuplicate'
 
@@ -7,6 +8,10 @@ export type ManualNfItemInput = {
   descricao: string
   quantidade: number
   unidade: string
+  up?: string
+  lote?: string
+  dataFabricacao?: string
+  dataValidade?: string
 }
 
 export type ManualNfInput = {
@@ -25,6 +30,7 @@ export function criarNotaManual(input: ManualNfInput): NotaFiscal {
     quantidade: it.quantidade,
     unidade: it.unidade.trim() || 'UN',
     allocatedAddresses: [],
+    ...pickItemCampos(it),
   }))
 
   return {

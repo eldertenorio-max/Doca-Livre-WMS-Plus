@@ -1,4 +1,5 @@
-import { Fragment } from 'react'
+import { Fragment, type SyntheticEvent } from 'react'
+import type { EntradaItemCampos } from '../lib/entradaCampos'
 import type { NfeItem } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -11,6 +12,7 @@ type Props = {
   items: NfeItem[]
   activeItemIndex: number | null
   onSelectItem: (index: number) => void
+  onUpdateItemCampos: (itemIndex: number, patch: EntradaItemCampos) => void
 }
 
 function itemStatus(item: NfeItem): 'pendente' | 'ok' {
@@ -18,7 +20,11 @@ function itemStatus(item: NfeItem): 'pendente' | 'ok' {
   return 'ok'
 }
 
-export function NfItensTable({ items, activeItemIndex, onSelectItem }: Props) {
+function stopRowActivate(e: SyntheticEvent) {
+  e.stopPropagation()
+}
+
+export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateItemCampos }: Props) {
   return (
     <div className="nf-itens-table-wrap">
       <table className="nf-itens-table">
@@ -68,6 +74,57 @@ export function NfItensTable({ items, activeItemIndex, onSelectItem }: Props) {
                   <td className="nf-itens-col-num">{formatQuantidadeNfe(item.quantidade)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorUnitario)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorTotal)}</td>
+                </tr>
+                <tr className="nf-itens-row-campos" onClick={stopRowActivate}>
+                  <td className="nf-itens-col-status" aria-hidden />
+                  <td colSpan={7}>
+                    <div className="nf-itens-campos-row">
+                      <label className="nf-itens-campo">
+                        <span>UP</span>
+                        <input
+                          type="text"
+                          className="input-nf input-nf--compact"
+                          value={item.up ?? ''}
+                          onChange={(e) => onUpdateItemCampos(item.index, { up: e.target.value })}
+                          onClick={stopRowActivate}
+                        />
+                      </label>
+                      <label className="nf-itens-campo">
+                        <span>Lote</span>
+                        <input
+                          type="text"
+                          className="input-nf input-nf--compact"
+                          value={item.lote ?? ''}
+                          onChange={(e) => onUpdateItemCampos(item.index, { lote: e.target.value })}
+                          onClick={stopRowActivate}
+                        />
+                      </label>
+                      <label className="nf-itens-campo">
+                        <span>Fab.</span>
+                        <input
+                          type="date"
+                          className="input-nf input-nf--compact"
+                          value={item.dataFabricacao ?? ''}
+                          onChange={(e) =>
+                            onUpdateItemCampos(item.index, { dataFabricacao: e.target.value })
+                          }
+                          onClick={stopRowActivate}
+                        />
+                      </label>
+                      <label className="nf-itens-campo">
+                        <span>Valid.</span>
+                        <input
+                          type="date"
+                          className="input-nf input-nf--compact"
+                          value={item.dataValidade ?? ''}
+                          onChange={(e) =>
+                            onUpdateItemCampos(item.index, { dataValidade: e.target.value })
+                          }
+                          onClick={stopRowActivate}
+                        />
+                      </label>
+                    </div>
+                  </td>
                 </tr>
                 {showEnderecos && (
                   <tr className="nf-itens-row-addr">

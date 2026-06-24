@@ -8,7 +8,6 @@ import { PrintLayoutDocument } from './components/PrintLayoutDocument'
 import { CAMARAS } from './layout/camaras'
 import { OcupadoAlert } from './components/OcupadoAlert'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
-import { useEntradaCamposConfig } from './hooks/useEntradaCamposConfig'
 import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
 import { allItemsAllocated } from './lib/repository'
@@ -71,7 +70,6 @@ export default function App() {
   } = useEnderecamentoStore()
   const { theme, toggleTheme } = useTheme()
   const { sidebarFixed, toggleSidebarMode } = useSidebarMode()
-  const entradaCampos = useEntradaCamposConfig()
   const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -823,12 +821,6 @@ export default function App() {
           selectedNfIds: selectedEntradaIds,
           activeItemIndex: state.activeItemIndex,
           pendingCount: pendingSelection.size,
-          camposConfig: entradaCampos.config,
-          camposDraft: entradaCampos.draft,
-          camposDirty: entradaCampos.dirty,
-          camposSavedHint: entradaCampos.savedHint,
-          onToggleCampo: entradaCampos.toggleDraft,
-          onSaveCampos: entradaCampos.saveDraft,
           onUpload: handleUpload,
           onSelectNf: handleSelectNf,
           onSelectItem: handleSelectItem,

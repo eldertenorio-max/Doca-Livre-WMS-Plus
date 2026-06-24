@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { pickItemCampos } from '../lib/entradaCampos'
 import type { NotaFiscal } from '../types'
 import { findNotaByNumero } from '../lib/nfDuplicate'
 import type { ManualNfInput } from '../lib/manualNf'
@@ -15,6 +16,10 @@ type ManualItemDraft = {
   descricao: string
   quantidade: string
   unidade: string
+  up: string
+  lote: string
+  dataFabricacao: string
+  dataValidade: string
 }
 
 type Props = {
@@ -32,6 +37,10 @@ function createItemDraft(): ManualItemDraft {
     descricao: '',
     quantidade: '1',
     unidade: 'UN',
+    up: '',
+    lote: '',
+    dataFabricacao: '',
+    dataValidade: '',
   }
 }
 
@@ -41,6 +50,7 @@ function parseItemsDraft(items: ManualItemDraft[]): ManualNfInput['items'] {
     descricao: item.descricao,
     quantidade: Number(item.quantidade.replace(',', '.')),
     unidade: item.unidade,
+    ...pickItemCampos(item),
   }))
 }
 
@@ -286,6 +296,42 @@ export function ManualNfModal({
                         className="input-nf"
                         value={item.unidade}
                         onChange={(e) => updateItem(item.id, { unidade: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field">
+                      <span>UP</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        value={item.up}
+                        onChange={(e) => updateItem(item.id, { up: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field">
+                      <span>Lote</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        value={item.lote}
+                        onChange={(e) => updateItem(item.id, { lote: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field">
+                      <span>Data de fabricação</span>
+                      <input
+                        type="date"
+                        className="input-nf"
+                        value={item.dataFabricacao}
+                        onChange={(e) => updateItem(item.id, { dataFabricacao: e.target.value })}
+                      />
+                    </label>
+                    <label className="manual-nf-field">
+                      <span>Data de validade</span>
+                      <input
+                        type="date"
+                        className="input-nf"
+                        value={item.dataValidade}
+                        onChange={(e) => updateItem(item.id, { dataValidade: e.target.value })}
                       />
                     </label>
                   </div>

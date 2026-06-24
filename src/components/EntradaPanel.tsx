@@ -1,6 +1,5 @@
 import { useState, type ChangeEvent, type MouseEvent } from 'react'
-import type { EntradaCampoId, EntradaCamposConfig, EntradaItemCampos } from '../lib/entradaCampos'
-import { ENTRADA_CAMPOS_LIST, entradaCamposAtivos } from '../lib/entradaCampos'
+import type { EntradaItemCampos } from '../lib/entradaCampos'
 import type { NotaFiscal } from '../types'
 import { allItemsAllocated } from '../lib/repository'
 import { NfItensTable } from './NfItensTable'
@@ -12,12 +11,6 @@ type Props = {
   selectedNfIds: string[]
   activeItemIndex: number | null
   pendingCount: number
-  camposConfig: EntradaCamposConfig
-  camposDraft: EntradaCamposConfig
-  camposDirty: boolean
-  camposSavedHint: boolean
-  onToggleCampo: (id: EntradaCampoId) => void
-  onSaveCampos: () => void
   onUpload: (files: File[]) => void | Promise<void>
   onCadastrarManual: () => void
   onSelectNf: (id: string, event?: MouseEvent) => void
@@ -36,12 +29,6 @@ export function EntradaPanel({
   selectedNfIds,
   activeItemIndex,
   pendingCount,
-  camposConfig,
-  camposDraft,
-  camposDirty,
-  camposSavedHint,
-  onToggleCampo,
-  onSaveCampos,
   onUpload,
   onCadastrarManual,
   onSelectNf,
@@ -57,10 +44,6 @@ export function EntradaPanel({
   const emAndamento = notas.filter((n) => n.status === 'em_andamento')
   const selectedSet = new Set(selectedNfIds)
   const activeNf = notas.find((n) => n.id === activeNfId) ?? null
-  const activeItem =
-    activeNf && activeItemIndex != null
-      ? activeNf.items.find((it) => it.index === activeItemIndex) ?? null
-      : null
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const files = e.target.files ? Array.from(e.target.files) : []
@@ -82,31 +65,6 @@ export function EntradaPanel({
           Subir XML da NF-e (entrada)
         </label>
         <p className="muted entrada-upload-hint">Selecione um ou vários XMLs. NFs repetidas são ignoradas.</p>
-
-        <div className="entrada-campos-box">
-          <p className="entrada-campos-title">Informações extras na entrada</p>
-          <p className="muted entrada-campos-hint">Marque o que deseja preencher por item e salve.</p>
-          <ul className="entrada-campos-list">
-            {ENTRADA_CAMPOS_LIST.map((campo) => (
-              <li key={campo.id}>
-                <label className="entrada-campos-check">
-                  <input
-                    type="checkbox"
-                    checked={camposDraft[campo.id]}
-                    onChange={() => onToggleCampo(campo.id)}
-                  />
-                  <span>{campo.label}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-          <div className="entrada-campos-actions">
-            <button type="button" className="btn primary btn-sm" onClick={onSaveCampos} disabled={!camposDirty}>
-              Salvar opções
-            </button>
-            {camposSavedHint && <span className="entrada-campos-saved">Salvo</span>}
-          </div>
-        </div>
 
         <button type="button" className="upload-btn upload-btn--muted" onClick={onCadastrarManual}>
           Cadastrar NF manual
@@ -184,66 +142,13 @@ export function EntradaPanel({
 
           <div className="sidebar-block nf-itens-panel">
             <h3 className="nf-section-title">Itens da nota</h3>
-            <p className="muted nf-itens-intro">Clique em um item na tabela e marque os endereços no painel de câmaras.</p>
+            <p className="muted nf-itens-intro">Clique na linha do item para alocar endereços. Preencha UP, lote e datas na linha abaixo de cada item.</p>
             <NfItensTable
               items={activeNf.items}
               activeItemIndex={activeItemIndex}
               onSelectItem={onSelectItem}
+              onUpdateItemCampos={onUpdateItemCampos}
             />
-
-          {activeItem && entradaCamposAtivos(camposConfig) && (
-            <div className="entrada-item-campos">
-              <h4>Dados do item {activeItem.codigo}</h4>
-              {camposConfig.up && (
-                <label className="entrada-campo-field">
-                  <span>UP</span>
-                  <input
-                    type="text"
-                    className="input-nf"
-                    value={activeItem.up ?? ''}
-                    onChange={(e) => onUpdateItemCampos(activeItem.index, { up: e.target.value })}
-                  />
-                </label>
-              )}
-              {camposConfig.lote && (
-                <label className="entrada-campo-field">
-                  <span>Lote</span>
-                  <input
-                    type="text"
-                    className="input-nf"
-                    value={activeItem.lote ?? ''}
-                    onChange={(e) => onUpdateItemCampos(activeItem.index, { lote: e.target.value })}
-                  />
-                </label>
-              )}
-              {camposConfig.dataFabricacao && (
-                <label className="entrada-campo-field">
-                  <span>Data de fabricação</span>
-                  <input
-                    type="date"
-                    className="input-nf"
-                    value={activeItem.dataFabricacao ?? ''}
-                    onChange={(e) =>
-                      onUpdateItemCampos(activeItem.index, { dataFabricacao: e.target.value })
-                    }
-                  />
-                </label>
-              )}
-              {camposConfig.dataValidade && (
-                <label className="entrada-campo-field">
-                  <span>Data de validade</span>
-                  <input
-                    type="date"
-                    className="input-nf"
-                    value={activeItem.dataValidade ?? ''}
-                    onChange={(e) =>
-                      onUpdateItemCampos(activeItem.index, { dataValidade: e.target.value })
-                    }
-                  />
-                </label>
-              )}
-            </div>
-          )}
 
           {activeItemIndex != null && (
             <div className="item-actions">
