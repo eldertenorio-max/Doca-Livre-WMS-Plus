@@ -14,6 +14,8 @@ export type NfeItem = {
   lote?: string
   dataFabricacao?: string
   dataValidade?: string
+  /** Quantidade de paletes = máximo de endereços para este item na entrada. */
+  paletes?: number
 }
 
 export type NotaFiscal = {
@@ -81,6 +83,7 @@ export type MovimentoItemSnapshot = {
   lote?: string
   dataFabricacao?: string
   dataValidade?: string
+  paletes?: number
 }
 
 export type MovimentoRegistro = {

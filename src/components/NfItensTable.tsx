@@ -1,6 +1,7 @@
 import { Fragment, type SyntheticEvent } from 'react'
 import type { EntradaItemCampos } from '../lib/entradaCampos'
 import { normalizeDataFabricacao, todayDateInputMax } from '../lib/entradaCampos'
+import { canDesmembrarNfeItem } from '../lib/desmembrarItem'
 import type { NfeItem } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -14,6 +15,10 @@ type Props = {
   activeItemIndex: number | null
   onSelectItem: (index: number) => void
   onUpdateItemCampos: (itemIndex: number, patch: EntradaItemCampos) => void
+  onUpdateItemQuantidade: (itemIndex: number, quantidade: string) => void
+  onUpdateItemPaletes: (itemIndex: number, paletes: string) => void
+  onDesmembrarItem: (itemIndex: number) => void
+  canEdit?: boolean
 }
 
 function itemStatus(item: NfeItem): 'pendente' | 'ok' {
@@ -25,7 +30,16 @@ function stopRowActivate(e: SyntheticEvent) {
   e.stopPropagation()
 }
 
-export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateItemCampos }: Props) {
+export function NfItensTable({
+  items,
+  activeItemIndex,
+  onSelectItem,
+  onUpdateItemCampos,
+  onUpdateItemQuantidade,
+  onUpdateItemPaletes,
+  onDesmembrarItem,
+  canEdit = true,
+}: Props) {
   return (
     <div className="nf-itens-table-wrap">
       <table className="nf-itens-table">
@@ -46,6 +60,7 @@ export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateIte
             const st = itemStatus(item)
             const isActive = activeItemIndex === item.index
             const showEnderecos = item.allocatedAddresses.length > 0
+            const podeDesmembrar = canEdit && canDesmembrarNfeItem(item)
 
             return (
               <Fragment key={item.index}>
@@ -86,6 +101,7 @@ export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateIte
                           type="text"
                           className="input-nf input-nf--compact"
                           value={item.up ?? ''}
+                          disabled={!canEdit}
                           onChange={(e) => onUpdateItemCampos(item.index, { up: e.target.value })}
                           onClick={stopRowActivate}
                         />
@@ -96,6 +112,7 @@ export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateIte
                           type="text"
                           className="input-nf input-nf--compact"
                           value={item.lote ?? ''}
+                          disabled={!canEdit}
                           onChange={(e) => onUpdateItemCampos(item.index, { lote: e.target.value })}
                           onClick={stopRowActivate}
                         />
@@ -107,6 +124,7 @@ export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateIte
                           className="input-nf input-nf--compact"
                           max={todayDateInputMax()}
                           value={item.dataFabricacao ?? ''}
+                          disabled={!canEdit}
                           onChange={(e) =>
                             onUpdateItemCampos(item.index, {
                               dataFabricacao: normalizeDataFabricacao(e.target.value),
@@ -121,13 +139,60 @@ export function NfItensTable({ items, activeItemIndex, onSelectItem, onUpdateIte
                           type="date"
                           className="input-nf input-nf--compact"
                           value={item.dataValidade ?? ''}
+                          disabled={!canEdit}
                           onChange={(e) =>
                             onUpdateItemCampos(item.index, { dataValidade: e.target.value })
                           }
                           onClick={stopRowActivate}
                         />
                       </label>
+                      <label className="nf-itens-campo">
+                        <span>Paletes</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          className="input-nf input-nf--compact"
+                          value={item.paletes ?? ''}
+                          disabled={!canEdit}
+                          onChange={(e) => onUpdateItemPaletes(item.index, e.target.value)}
+                          onClick={stopRowActivate}
+                        />
+                      </label>
+                      <label className="nf-itens-campo">
+                        <span>Qtd.</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          className="input-nf input-nf--compact"
+                          value={item.quantidade}
+                          disabled={!canEdit}
+                          onChange={(e) => onUpdateItemQuantidade(item.index, e.target.value)}
+                          onClick={stopRowActivate}
+                        />
+                      </label>
                     </div>
+                    {canEdit && (
+                      <div className="nf-itens-campos-actions">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost nf-itens-desmembrar"
+                          disabled={!podeDesmembrar}
+                          title={
+                            podeDesmembrar
+                              ? 'Duplica a linha para registrar outra data ou lote'
+                              : 'Confirme os endereços antes de desmembrar'
+                          }
+                          onClick={(e) => {
+                            stopRowActivate(e)
+                            onDesmembrarItem(item.index)
+                          }}
+                        >
+                          Desmembrar
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
                 {showEnderecos && (

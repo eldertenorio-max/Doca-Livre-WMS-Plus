@@ -17,6 +17,10 @@ type Props = {
   onSelectNf: (id: string, event?: MouseEvent) => void
   onSelectItem: (index: number) => void
   onUpdateItemCampos: (itemIndex: number, patch: EntradaItemCampos) => void
+  onUpdateItemQuantidade: (itemIndex: number, quantidade: string) => void
+  onUpdateItemPaletes: (itemIndex: number, paletes: string) => void
+  onDesmembrarItem: (itemIndex: number) => void
+  paletesRestantes: number | null
   onConfirmItem: () => void
   onFinishEntrada: () => void
   onCancelarEntrada: (nfId: string) => void
@@ -35,6 +39,10 @@ export function EntradaPanel({
   onSelectNf,
   onSelectItem,
   onUpdateItemCampos,
+  onUpdateItemQuantidade,
+  onUpdateItemPaletes,
+  onDesmembrarItem,
+  paletesRestantes,
   onConfirmItem,
   onFinishEntrada,
   onCancelarEntrada,
@@ -144,16 +152,30 @@ export function EntradaPanel({
 
           <div className="sidebar-block nf-itens-panel">
             <h3 className="nf-section-title">Itens da nota</h3>
-            <p className="muted nf-itens-intro">Clique na linha do item para alocar endereços. Preencha UP, lote e datas na linha abaixo de cada item.</p>
+            <p className="muted nf-itens-intro">
+              Informe os <strong>paletes</strong> do item — cada palete corresponde a um endereço no
+              painel. Preencha UP, lote, datas e quantidade abaixo. Use <strong>Desmembrar</strong>{' '}
+              quando o mesmo produto vier com mais de uma data.
+            </p>
             <NfItensTable
               items={activeNf.items}
               activeItemIndex={activeItemIndex}
               onSelectItem={onSelectItem}
               onUpdateItemCampos={onUpdateItemCampos}
+              onUpdateItemQuantidade={onUpdateItemQuantidade}
+              onUpdateItemPaletes={onUpdateItemPaletes}
+              onDesmembrarItem={onDesmembrarItem}
+              canEdit={activeNf.status === 'em_andamento'}
             />
 
           {activeItemIndex != null && (
             <div className="item-actions">
+              {paletesRestantes != null && (
+                <p className="item-paletes-counter">
+                  {paletesRestantes}{' '}
+                  {paletesRestantes === 1 ? 'palete a endereçar' : 'paletes a endereçar'}
+                </p>
+              )}
               <p className="muted">{pendingCount} endereço(s) selecionado(s)</p>
               <div className="item-actions-row">
                 <button

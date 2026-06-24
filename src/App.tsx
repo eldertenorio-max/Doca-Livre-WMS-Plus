@@ -7,11 +7,14 @@ import { LayoutPanel } from './components/LayoutPanel'
 import { PrintLayoutDocument } from './components/PrintLayoutDocument'
 import { CAMARAS } from './layout/camaras'
 import { OcupadoAlert } from './components/OcupadoAlert'
+import { PaletesLimiteAlert } from './components/PaletesLimiteAlert'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
 import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
 import { allItemsAllocated } from './lib/repository'
 import { adicionarNotaManual } from './lib/manualNf'
+import { desmembrarNfeItem, patchNfeItemQuantidade } from './lib/desmembrarItem'
+import { parsePaletesInput, paletesLimiteItem, podeAdicionarEndereco } from './lib/paletes'
 import { mesclarEmitentesSugeridos } from './lib/emitentesRegistry'
 import {
   aplicarSaidaItens,
@@ -89,6 +92,9 @@ export default function App() {
     addressId: AddressId
     occ: AddressOccupancy
   } | null>(null)
+  const [paletesLimiteAlert, setPaletesLimiteAlert] = useState<'sem_paletes' | 'maximo' | null>(
+    null,
+  )
   const [manualNfModalOpen, setManualNfModalOpen] = useState(false)
   const [manualNfError, setManualNfError] = useState<string | null>(null)
   const [selectedEntradaIds, setSelectedEntradaIds] = useState<string[]>([])
@@ -160,6 +166,18 @@ export default function App() {
   const panelAllocateMode = allocateMode || editMode
   const panelActiveNfNumero = editMode ? nfEditar?.numero ?? null : activeNf?.numero ?? null
 
+  const activeAllocateItem = useMemo(() => {
+    if (!allocateMode || !activeNf || state.activeItemIndex == null) return null
+    return activeNf.items.find((it) => it.index === state.activeItemIndex) ?? null
+  }, [allocateMode, activeNf, state.activeItemIndex])
+
+  const paletesTotal =
+    activeAllocateItem?.paletes != null && activeAllocateItem.paletes > 0
+      ? activeAllocateItem.paletes
+      : null
+  const paletesRestantesCount =
+    paletesTotal != null ? Math.max(0, paletesTotal - pendingSelection.size) : null
+
   const movimentosOrdenados = useMemo(
     () => [...state.movimentos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [state.movimentos],
@@ -186,7 +204,7 @@ export default function App() {
   )
 
   const syncPendingFromItem = useCallback((nf: NotaFiscal, itemIndex: number) => {
-    const item = nf.items[itemIndex]
+    const item = nf.items.find((it) => it.index === itemIndex)
     if (!item) {
       setPendingSelection(new Set())
       return
@@ -419,10 +437,25 @@ export default function App() {
       }
 
       const currentItemIndex = state.activeItemIndex
+      const item = activeNf.items.find((it) => it.index === currentItemIndex)
+      const limitePaletes = paletesLimiteItem(item)
+
       setPendingSelection((prev) => {
         const next = new Set(prev)
-        if (mode === 'add') next.add(addressId)
-        else next.delete(addressId)
+        if (mode === 'add') {
+          if (next.has(addressId)) return prev
+          if (limitePaletes <= 0) {
+            setPaletesLimiteAlert('sem_paletes')
+            return prev
+          }
+          if (!podeAdicionarEndereco(limitePaletes, next.size)) {
+            setPaletesLimiteAlert('maximo')
+            return prev
+          }
+          next.add(addressId)
+        } else {
+          next.delete(addressId)
+        }
 
         setState((s) => ({
           ...s,
@@ -508,6 +541,69 @@ export default function App() {
         }
       }),
     }))
+  }
+
+  function handleUpdateItemQuantidade(itemIndex: number, quantidade: string) {
+    if (!state.activeNfId) return
+    setState((s) => ({
+      ...s,
+      notas: s.notas.map((nf) => {
+        if (nf.id !== s.activeNfId) return nf
+        return {
+          ...nf,
+          items: nf.items.map((it) =>
+            it.index === itemIndex ? patchNfeItemQuantidade(it, quantidade) : it,
+          ),
+        }
+      }),
+    }))
+  }
+
+  function handleUpdateItemPaletes(itemIndex: number, value: string) {
+    if (!state.activeNfId) return
+    const paletes = parsePaletesInput(value)
+    const shouldTrim =
+      state.activeItemIndex === itemIndex &&
+      paletes != null &&
+      paletes > 0 &&
+      pendingSelection.size > paletes
+    const trimmed = shouldTrim ? [...pendingSelection].slice(0, paletes) : null
+    if (trimmed) setPendingSelection(new Set(trimmed))
+
+    setState((s) => ({
+      ...s,
+      notas: s.notas.map((nf) => {
+        if (nf.id !== s.activeNfId) return nf
+        return {
+          ...nf,
+          items: nf.items.map((it) => {
+            if (it.index !== itemIndex) return it
+            const next = { ...it, paletes }
+            if (trimmed) return { ...next, allocatedAddresses: trimmed }
+            return next
+          }),
+        }
+      }),
+    }))
+  }
+
+  async function handleDesmembrarItem(itemIndex: number) {
+    if (!activeNf || activeNf.status !== 'em_andamento') return
+    const result = desmembrarNfeItem(activeNf, itemIndex)
+    if (!result) return
+
+    const notas = state.notas.map((nf) =>
+      nf.id !== activeNf.id ? nf : { ...nf, items: result.items },
+    )
+    const updatedNf = notas.find((n) => n.id === activeNf.id)!
+    const nextState = {
+      ...state,
+      notas,
+      activeItemIndex: result.newItemIndex,
+    }
+    setState(nextState)
+    syncPendingFromItem(updatedNf, result.newItemIndex)
+    await saveNow(nextState)
   }
 
   async function handleFinishEntrada() {
@@ -821,10 +917,14 @@ export default function App() {
           selectedNfIds: selectedEntradaIds,
           activeItemIndex: state.activeItemIndex,
           pendingCount: pendingSelection.size,
+          paletesRestantes: paletesRestantesCount,
           onUpload: handleUpload,
           onSelectNf: handleSelectNf,
           onSelectItem: handleSelectItem,
           onUpdateItemCampos: handleUpdateItemCampos,
+          onUpdateItemQuantidade: handleUpdateItemQuantidade,
+          onUpdateItemPaletes: handleUpdateItemPaletes,
+          onDesmembrarItem: handleDesmembrarItem,
           onConfirmItem: handleConfirmItem,
           onFinishEntrada: handleFinishEntrada,
           onCancelarEntrada: handleCancelarEntrada,
@@ -896,10 +996,19 @@ export default function App() {
           paintMode={editMode || allocateMode}
           onCellClick={handleCellClick}
           onCellPaint={handleCellPaint}
+          paletesRestantes={paletesRestantesCount}
+          paletesTotal={paletesTotal}
         />
       </main>
 
       <PrintLayoutDocument camaraIds={printCamaras} />
+
+      {paletesLimiteAlert && (
+        <PaletesLimiteAlert
+          kind={paletesLimiteAlert}
+          onClose={() => setPaletesLimiteAlert(null)}
+        />
+      )}
 
       {ocupadoAlert && (
         <OcupadoAlert

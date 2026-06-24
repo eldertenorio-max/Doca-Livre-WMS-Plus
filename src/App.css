@@ -417,8 +417,47 @@
 
 .nf-itens-campos-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px 10px;
+}
+
+.paletes-counter-float {
+  position: fixed;
+  top: 72px;
+  right: 20px;
+  z-index: 50;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--highlight-bg-strong, var(--bg-panel));
+  box-shadow: var(--shadow-modal);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.paletes-counter-float strong {
+  font-size: 1.25rem;
+  color: var(--accent-hover);
+}
+
+.item-paletes-counter {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-hover);
+}
+
+.nf-itens-campos-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.nf-itens-desmembrar {
+  font-size: 0.72rem;
+  padding: 3px 8px;
 }
 
 .nf-itens-campo {
@@ -2731,5 +2770,14 @@ html.scroll-locked .sidebar.sidebar--fixed {
   .confirm-box,
   .alert-box {
     margin-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .paletes-counter-float {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    text-align: center;
+    font-size: 0.82rem;
   }
 }

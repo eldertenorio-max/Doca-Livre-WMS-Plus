@@ -33,6 +33,8 @@ type Props = {
   paintMode?: boolean
   onCellClick: (addressId: AddressId, clickable: boolean) => void
   onCellPaint: (addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) => void
+  paletesRestantes?: number | null
+  paletesTotal?: number | null
 }
 
 function rowLabelWidth(cellSize: number, mobile: boolean): number {
@@ -389,6 +391,12 @@ export function LayoutPanel(props: Props) {
 
   return (
     <div className={`layout-panel ${mobile ? 'layout-panel--mobile' : ''} ${paintMode ? 'layout-panel--paint' : ''}`}>
+      {props.paletesTotal != null && props.paletesRestantes != null && props.allocateMode && !props.editMode && (
+        <div className="paletes-counter-float" aria-live="polite">
+          <strong>{props.paletesRestantes}</strong>{' '}
+          {props.paletesRestantes === 1 ? 'palete a endereçar' : 'paletes a endereçar'}
+        </div>
+      )}
       <div className="layout-legend">
         <span><i className="swatch swatch--disp" /> Disponível</span>
         <span><i className="swatch swatch--sel" /> Selecionando</span>

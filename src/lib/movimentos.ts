@@ -55,6 +55,7 @@ export function snapshotItensNf(nf: NotaFiscal, itemIndexes?: number[]): Movimen
       ...(it.lote ? { lote: it.lote } : {}),
       ...(it.dataFabricacao ? { dataFabricacao: it.dataFabricacao } : {}),
       ...(it.dataValidade ? { dataValidade: it.dataValidade } : {}),
+      ...(it.paletes != null ? { paletes: it.paletes } : {}),
     }))
 }
 

@@ -56,6 +56,7 @@ function itemInsertRow(nfId: string, it: NotaFiscal['items'][number]) {
     lote: it.lote || null,
     data_fabricacao: it.dataFabricacao || null,
     data_validade: it.dataValidade || null,
+    paletes: it.paletes ?? null,
   }
 }
 
@@ -132,6 +133,7 @@ function mapNotas(
       ...(it.lote ? { lote: it.lote } : {}),
       ...(it.data_fabricacao ? { dataFabricacao: it.data_fabricacao } : {}),
       ...(it.data_validade ? { dataValidade: it.data_validade } : {}),
+      ...(it.paletes != null ? { paletes: Number(it.paletes) } : {}),
     })),
   }))
 }

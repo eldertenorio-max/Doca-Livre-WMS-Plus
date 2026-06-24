@@ -77,6 +77,7 @@ type ItemRow = {
   lote?: string | null
   data_fabricacao?: string | null
   data_validade?: string | null
+  paletes?: number | null
 }
 
 type EndRow = {

@@ -20,4 +20,5 @@ alter table public.ultrafrio_nf_itens
   add column if not exists up text,
   add column if not exists lote text,
   add column if not exists data_fabricacao text,
-  add column if not exists data_validade text;
+  add column if not exists data_validade text,
+  add column if not exists paletes integer;
