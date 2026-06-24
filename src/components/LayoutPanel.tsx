@@ -249,10 +249,10 @@ function RuaGrid({
                       !!activeNfId &&
                       occ.nfId === activeNfId
                     if (occ) className += ' cell--ocupado'
-                    if (pending) className += ' cell--selecionado'
+                    if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
-                    if (editAddresses?.has(addressId) && !pending) className += ' cell--editar'
-                    else if (consultaAddresses?.has(addressId)) className += ' cell--consulta'
+                    if (editAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
+                    else if (consultaAddresses?.has(addressId)) className += ' cell--destaque-verde'
                     else if (saidaFlaggedAddresses?.has(addressId)) className += ' cell--saida-flag'
                     else if (saidaAddresses?.has(addressId)) className += ' cell--saida'
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
@@ -387,6 +387,42 @@ function cellTooltip(
   return `${label} — Disponível`
 }
 
+type LegendItem = { swatch: string; label: string }
+
+function buildLegendItems(props: Props): LegendItem[] {
+  const items: LegendItem[] = [
+    { swatch: 'swatch--disp', label: 'Disponível' },
+    { swatch: 'swatch--ocup', label: 'Ocupado' },
+  ]
+
+  const entradaAtiva = props.allocateMode && !props.editMode && !!props.activeNfNumero
+  if (entradaAtiva) {
+    items.push({ swatch: 'swatch--sel', label: 'Selecionando' })
+    items.push({ swatch: 'swatch--confirm', label: 'Confirmado' })
+  }
+
+  const destaqueAtivo =
+    props.editMode ||
+    (props.consultaAddresses != null && props.consultaAddresses.size > 0) ||
+    (props.editAddresses != null && props.editAddresses.size > 0)
+
+  if (destaqueAtivo) {
+    items.push({ swatch: 'swatch--destaque', label: 'Destaque da busca' })
+  }
+
+  if (props.saidaAddresses != null && props.saidaAddresses.size > 0) {
+    items.push({ swatch: 'swatch--saida', label: 'NF na saída' })
+  }
+  if (props.saidaFlaggedAddresses != null && props.saidaFlaggedAddresses.size > 0) {
+    items.push({ swatch: 'swatch--saida-flag', label: 'Item para retirar' })
+  }
+
+  items.push({ swatch: 'swatch--porta', label: 'Porta' })
+  items.push({ swatch: 'swatch--nv5', label: 'Sem nível 5' })
+
+  return items
+}
+
 export function LayoutPanel(props: Props) {
   const mobile = useIsMobile()
   const paintMode = props.paintMode ?? false
@@ -400,17 +436,13 @@ export function LayoutPanel(props: Props) {
           {props.paletesRestantes === 1 ? 'palete a endereçar' : 'paletes a endereçar'}
         </div>
       )}
-      <div className="layout-legend">
-        <span><i className="swatch swatch--disp" /> Disponível</span>
-        <span><i className="swatch swatch--sel" /> Selecionando</span>
-        <span><i className="swatch swatch--confirm" /> Confirmado</span>
-        <span><i className="swatch swatch--ocup" /> Ocupado (outras NF)</span>
-        <span><i className="swatch swatch--saida" /> Saída (NF buscada)</span>
-        <span><i className="swatch swatch--saida-flag" /> Item marcado p/ saída</span>
-        <span><i className="swatch swatch--editar" /> Movimentação (NF buscada)</span>
-        <span><i className="swatch swatch--consulta" /> Consulta de estoque</span>
-        <span><i className="swatch swatch--porta" /> Porta</span>
-        <span><i className="swatch swatch--nv5" /> Nível 5 inexistente</span>
+      <div className="layout-legend" aria-label="Legenda do painel">
+        {buildLegendItems(props).map((item) => (
+          <span key={item.label}>
+            <i className={`swatch ${item.swatch}`} aria-hidden />
+            {item.label}
+          </span>
+        ))}
       </div>
 
       <div className="camaras-stack">
@@ -426,7 +458,7 @@ export function LayoutPanel(props: Props) {
       )}
       {props.editAddresses && props.editAddresses.size > 0 && !props.editMode && (
         <p className="layout-hint">
-          Movimentação: endereços roxos indicam onde a NF buscada está armazenada. Selecione um item na barra lateral para editar.
+          Selecione um item na barra lateral para editar as posições.
         </p>
       )}
       {props.allocateMode && !props.editMode && props.activeNfNumero && (
@@ -435,10 +467,7 @@ export function LayoutPanel(props: Props) {
         </p>
       )}
       {props.consultaAddresses && props.consultaAddresses.size > 0 && (
-        <p className="layout-hint">
-          Consulta: endereços com contorno azul correspondem aos filtros aplicados. Clique em um
-          quadrado para ver os detalhes.
-        </p>
+        <p className="layout-hint">Clique em um quadrado para ver os detalhes do endereço.</p>
       )}
       {props.saidaAddresses && props.saidaAddresses.size > 0 && (
         <p className="layout-hint">

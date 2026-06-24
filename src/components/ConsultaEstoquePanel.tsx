@@ -44,7 +44,7 @@ export function ConsultaEstoquePanel({
       <div className="sidebar-block">
         <p className="muted">
           Filtre por nota, item, remetente ou lote. Os endereços encontrados aparecem no painel com
-          contorno azul, sem cobrir o número da NF.
+          fundo verde claro, sem cobrir o número da NF.
         </p>
 
         <div className="consulta-filtros">
