@@ -1,9 +1,10 @@
 import { useState, type ChangeEvent } from 'react'
 import type { EntradaCampoId, EntradaCamposConfig, EntradaItemCampos } from '../lib/entradaCampos'
 import { ENTRADA_CAMPOS_LIST, entradaCamposAtivos } from '../lib/entradaCampos'
-import type { NfeItem, NotaFiscal } from '../types'
+import type { NotaFiscal } from '../types'
 import { allItemsAllocated } from '../lib/repository'
-import { formatAddressLabel } from '../layout/camaras'
+import { NfItensTable } from './NfItensTable'
+import { NfResumoGrid } from './NfResumoGrid'
 
 type Props = {
   notas: NotaFiscal[]
@@ -26,16 +27,6 @@ type Props = {
   onCancelarEntrada: (nfId: string) => void
   onLimparSelecao: () => void
   uploadError: string | null
-}
-
-function itemStatus(item: NfeItem): 'pendente' | 'ok' {
-  if (item.allocatedAddresses.length === 0) return 'pendente'
-  return 'ok'
-}
-
-function formatItemExtra(label: string, value: string | undefined): string | null {
-  if (!value?.trim()) return null
-  return `${label}: ${value}`
 }
 
 export function EntradaPanel({
@@ -132,7 +123,8 @@ export function EntradaPanel({
                   onClick={() => onSelectNf(nf.id)}
                 >
                   <strong>NF {nf.numero}</strong>
-                  <span>Alocar endereços</span>
+                  <NfResumoGrid nf={nf} compact />
+                  <span className="nf-chip-hint">Alocar endereços</span>
                 </button>
               </li>
             ))}
@@ -161,48 +153,14 @@ export function EntradaPanel({
             <div><dt>Emitente</dt><dd>{activeNf.emitente || '—'}</dd></div>
             <div><dt>Emissão</dt><dd>{formatDate(activeNf.dataEmissao)}</dd></div>
           </dl>
+          <NfResumoGrid nf={activeNf} />
 
           <h4>Itens — marque endereços no painel</h4>
-          <ul className="item-list">
-            {activeNf.items.map((item) => {
-              const st = itemStatus(item)
-              const isActive = activeItemIndex === item.index
-              const extras = [
-                formatItemExtra('UP', item.up),
-                formatItemExtra('Lote', item.lote),
-                formatItemExtra('Fab.', item.dataFabricacao),
-                formatItemExtra('Val.', item.dataValidade),
-              ].filter(Boolean)
-              return (
-                <li key={item.index}>
-                  <button
-                    type="button"
-                    className={`item-row ${isActive ? 'item-row--active' : ''} item-row--${st}`}
-                    onClick={() => onSelectItem(item.index)}
-                  >
-                    <span className="item-check">{st === 'ok' ? '✓' : '○'}</span>
-                    <span className="item-text">
-                      <strong>{item.codigo}</strong>
-                      <span>{item.descricao}</span>
-                      <span className="muted">
-                        {item.quantidade} {item.unidade} · {item.allocatedAddresses.length} end.
-                      </span>
-                      {extras.length > 0 && (
-                        <span className="muted item-extra-line">{extras.join(' · ')}</span>
-                      )}
-                    </span>
-                  </button>
-                  {item.allocatedAddresses.length > 0 && (
-                    <ul className="addr-mini">
-                      {item.allocatedAddresses.map((a) => (
-                        <li key={a}>{formatAddressLabel(a)}</li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+          <NfItensTable
+            items={activeNf.items}
+            activeItemIndex={activeItemIndex}
+            onSelectItem={onSelectItem}
+          />
 
           {activeItem && entradaCamposAtivos(camposConfig) && (
             <div className="entrada-item-campos">

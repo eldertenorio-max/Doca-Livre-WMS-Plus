@@ -44,6 +44,10 @@ function mapNotas(
     dataEmissao: nf.data_emissao,
     status: nf.status,
     createdAt: nf.created_at,
+    ...(nf.peso_bruto != null ? { pesoBruto: Number(nf.peso_bruto) } : {}),
+    ...(nf.peso_liquido != null ? { pesoLiquido: Number(nf.peso_liquido) } : {}),
+    ...(nf.valor_total_nota != null ? { valorTotalNota: Number(nf.valor_total_nota) } : {}),
+    ...(nf.quantidade_volume ? { quantidadeVolume: nf.quantidade_volume } : {}),
     items: (itensByNf.get(nf.id) ?? []).map((it) => ({
       index: it.item_index,
       codigo: it.codigo,
@@ -51,6 +55,9 @@ function mapNotas(
       quantidade: Number(it.quantidade),
       unidade: it.unidade,
       allocatedAddresses: endByItem.get(`${nf.id}:${it.item_index}`) ?? [],
+      ...(it.peso_bruto != null ? { pesoBruto: Number(it.peso_bruto) } : {}),
+      ...(it.valor_unitario != null ? { valorUnitario: Number(it.valor_unitario) } : {}),
+      ...(it.valor_total != null ? { valorTotal: Number(it.valor_total) } : {}),
       ...(it.up ? { up: it.up } : {}),
       ...(it.lote ? { lote: it.lote } : {}),
       ...(it.data_fabricacao ? { dataFabricacao: it.data_fabricacao } : {}),
@@ -199,6 +206,10 @@ export const supabaseRepository: EnderecamentoRepository = {
         emitente: nf.emitente,
         data_emissao: nf.dataEmissao,
         status: nf.status,
+        peso_bruto: nf.pesoBruto ?? null,
+        peso_liquido: nf.pesoLiquido ?? null,
+        valor_total_nota: nf.valorTotalNota ?? null,
+        quantidade_volume: nf.quantidadeVolume ?? null,
       })
       if (upErr) throw new Error(upErr.message)
 
@@ -214,6 +225,9 @@ export const supabaseRepository: EnderecamentoRepository = {
             descricao: it.descricao,
             quantidade: it.quantidade,
             unidade: it.unidade,
+            peso_bruto: it.pesoBruto ?? null,
+            valor_unitario: it.valorUnitario ?? null,
+            valor_total: it.valorTotal ?? null,
             up: it.up || null,
             lote: it.lote || null,
             data_fabricacao: it.dataFabricacao || null,

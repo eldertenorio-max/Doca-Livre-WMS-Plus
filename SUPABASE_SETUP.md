@@ -16,7 +16,10 @@ No **SQL Editor** do Supabase, execute **nesta ordem** (copie e cole cada arquiv
 3. `supabase/sql/create_ultrafrio_notas_canceladas.sql`
 4. `supabase/sql/create_ultrafrio_cadastro_remetentes.sql` ← cadastro de remetentes no NF manual
 5. `supabase/sql/movimentos_historico_soft_delete.sql` (se ainda não rodou)
-6. `supabase/sql/enable_realtime.sql` ← necessário para atualizar sem recarregar a página
+6. `supabase/sql/add_nf_itens_campos_entrada.sql` (UP, lote, datas — se ainda não rodou)
+7. `supabase/sql/add_nf_itens_comercial.sql` (peso, valores — se ainda não rodou)
+8. `supabase/sql/add_nf_totais.sql` (totais da nota — se ainda não rodou)
+9. `supabase/sql/enable_realtime.sql` ← necessário para atualizar sem recarregar a página
 
 ---
 

@@ -7,6 +7,9 @@ export type NfeItem = {
   quantidade: number
   unidade: string
   allocatedAddresses: AddressId[]
+  pesoBruto?: number
+  valorUnitario?: number
+  valorTotal?: number
   up?: string
   lote?: string
   dataFabricacao?: string
@@ -23,6 +26,11 @@ export type NotaFiscal = {
   items: NfeItem[]
   status: 'em_andamento' | 'concluida'
   createdAt: string
+  /** Totais do documento (XML transp/total). */
+  pesoBruto?: number
+  pesoLiquido?: number
+  valorTotalNota?: number
+  quantidadeVolume?: string
   /** NF cancelada vinculada a esta nota (substituição). */
   nfCanceladaOrigemId?: string | null
   nfCanceladaOrigemNumero?: string | null

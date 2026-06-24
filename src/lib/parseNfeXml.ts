@@ -6,6 +6,57 @@ function textOf(el: Element | null, tag: string): string {
   return node?.textContent?.trim() ?? ''
 }
 
+function numOf(el: Element | null, tag: string): number {
+  const raw = textOf(el, tag).replace(',', '.')
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : 0
+}
+
+function isUnidadePeso(unidade: string): boolean {
+  const u = unidade.trim().toUpperCase()
+  return u === 'KG' || u === 'KGM' || u === 'QUILO' || u === 'QUILOGRAMA'
+}
+
+function parsePesoBrutoItem(prod: Element, quantidade: number, unidade: string): number | undefined {
+  const uTrib = textOf(prod, 'uTrib')
+  const qTrib = numOf(prod, 'qTrib')
+  if (isUnidadePeso(uTrib) && qTrib > 0) return qTrib
+  if (isUnidadePeso(unidade) && quantidade > 0) return quantidade
+  return undefined
+}
+
+function parseQuantidadeVolume(transp: Element | undefined): string | undefined {
+  if (!transp) return undefined
+  const volNodes = Array.from(transp.getElementsByTagName('vol'))
+  if (volNodes.length === 0) return undefined
+
+  const parts: string[] = []
+  for (const vol of volNodes) {
+    const q = numOf(vol, 'qVol')
+    const esp = textOf(vol, 'esp') || 'VOL'
+    if (q > 0) parts.push(`${q.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${esp}`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined
+}
+
+function parseTotaisTransporte(transp: Element | undefined): {
+  pesoBruto?: number
+  pesoLiquido?: number
+} {
+  if (!transp) return {}
+  const volNodes = Array.from(transp.getElementsByTagName('vol'))
+  let pesoBruto = 0
+  let pesoLiquido = 0
+  for (const vol of volNodes) {
+    pesoBruto += numOf(vol, 'pesoB')
+    pesoLiquido += numOf(vol, 'pesoL')
+  }
+  return {
+    ...(pesoBruto > 0 ? { pesoBruto } : {}),
+    ...(pesoLiquido > 0 ? { pesoLiquido } : {}),
+  }
+}
+
 function findInfNFe(doc: Document): Element | null {
   return (
     doc.querySelector('infNFe') ??
@@ -38,13 +89,21 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
   const detNodes = Array.from(inf.getElementsByTagName('det'))
   const items: NfeItem[] = detNodes.map((det, index) => {
     const prod = det.getElementsByTagName('prod')[0]
+    const quantidade = numOf(prod, 'qCom')
+    const unidade = textOf(prod, 'uCom')
+    const valorUnitario = numOf(prod, 'vUnCom')
+    const valorTotal = numOf(prod, 'vProd')
+    const pesoBruto = parsePesoBrutoItem(prod, quantidade, unidade)
     return {
       index,
       codigo: textOf(prod, 'cProd'),
       descricao: textOf(prod, 'xProd'),
-      quantidade: Number(textOf(prod, 'qCom').replace(',', '.')) || 0,
-      unidade: textOf(prod, 'uCom'),
+      quantidade,
+      unidade,
       allocatedAddresses: [],
+      ...(pesoBruto != null ? { pesoBruto } : {}),
+      ...(valorUnitario > 0 ? { valorUnitario } : {}),
+      ...(valorTotal > 0 ? { valorTotal } : {}),
     }
   })
 
@@ -53,6 +112,12 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
   }
 
   const id = chave || `nf-${numero}-${serie}-${Date.now()}`
+
+  const total = inf.getElementsByTagName('total')[0]
+  const valorTotalNota = numOf(total, 'vNF')
+  const transp = inf.getElementsByTagName('transp')[0]
+  const totaisTransp = parseTotaisTransporte(transp)
+  const quantidadeVolume = parseQuantidadeVolume(transp)
 
   return {
     id,
@@ -64,5 +129,8 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
     items,
     status: 'em_andamento',
     createdAt: new Date().toISOString(),
+    ...totaisTransp,
+    ...(valorTotalNota > 0 ? { valorTotalNota } : {}),
+    ...(quantidadeVolume ? { quantidadeVolume } : {}),
   }
 }

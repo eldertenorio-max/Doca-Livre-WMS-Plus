@@ -57,6 +57,10 @@ type NfRow = {
   data_emissao: string
   status: 'em_andamento' | 'concluida'
   created_at: string
+  peso_bruto?: number | null
+  peso_liquido?: number | null
+  valor_total_nota?: number | null
+  quantidade_volume?: string | null
 }
 
 type ItemRow = {
@@ -66,6 +70,9 @@ type ItemRow = {
   descricao: string
   quantidade: number
   unidade: string
+  peso_bruto?: number | null
+  valor_unitario?: number | null
+  valor_total?: number | null
   up?: string | null
   lote?: string | null
   data_fabricacao?: string | null
