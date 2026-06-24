@@ -16,6 +16,9 @@
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
 }
 
 .sidebar {
@@ -596,12 +599,15 @@
 .main-panel {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
   overflow: auto;
   padding: 10px 14px 24px;
 }
 
 .layout-panel {
   width: 100%;
+  max-width: 100%;
 }
 
 .layout-legend {
@@ -660,6 +666,8 @@
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 8px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .camara-header {
@@ -736,30 +744,57 @@
   min-width: 100%;
 }
 
+.layout-panel--mobile .rua-grid-inner {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .ruas-row--stacked {
   flex-direction: column;
   gap: 12px;
 }
 
 .layout-panel--mobile .layout-legend {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  gap: 8px 12px;
-  padding-bottom: 8px;
-  font-size: 0.72rem;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  gap: 6px 10px;
+  padding-bottom: 6px;
+  font-size: 0.68rem;
+  position: static;
 }
 
 .layout-panel--mobile .layout-legend span {
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .layout-panel--mobile .camara-section {
-  padding: 8px 8px 10px;
+  padding: 6px 6px 8px;
+}
+
+.layout-panel--mobile .camara-header {
+  margin-bottom: 4px;
+  gap: 6px;
 }
 
 .layout-panel--mobile .camara-header h2 {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
+}
+
+.layout-panel--mobile .camara-header span {
+  font-size: 0.72rem;
+}
+
+.layout-panel--mobile .ruas-row--stacked {
+  gap: 8px;
+}
+
+.layout-panel--mobile .rua-title {
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.layout-panel--mobile .camaras-stack {
+  gap: 8px;
 }
 
 .layout-panel--mobile .cell {
@@ -2442,22 +2477,25 @@
 @media (max-width: 900px) {
   .app-shell {
     flex-direction: column;
+    overflow-x: clip;
   }
 
   .main-panel {
     order: -1;
     padding: 8px 8px 12px;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .sidebar {
     width: 100%;
+    max-width: 100%;
     max-height: none;
     position: static;
     padding: 12px 12px 24px;
     box-shadow: none;
     border-right: none;
     border-top: 1px solid var(--border);
+    overflow-x: hidden;
     overflow-y: visible;
   }
 
@@ -2536,6 +2574,23 @@
 
   .sidebar-section-inner {
     padding-bottom: 16px;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .nf-itens-table-wrap {
+    max-width: 100%;
+  }
+
+  .nf-itens-table {
+    min-width: 0;
+    font-size: 0.78rem;
+  }
+
+  .nf-itens-table th,
+  .nf-itens-table td {
+    padding: 6px 8px;
+    font-size: 0.76rem;
   }
 
   .hist-filters {

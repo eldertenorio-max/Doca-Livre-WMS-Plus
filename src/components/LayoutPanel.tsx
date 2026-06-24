@@ -17,8 +17,8 @@ import { useIsMobile } from '../hooks/useIsMobile'
 const CELL_GAP = 0
 const MIN_CELL = 28
 const MAX_CELL = 58
-const MOBILE_MIN_CELL = 20
-const MOBILE_MAX_CELL = 34
+const MOBILE_MIN_CELL = 14
+const MOBILE_MAX_CELL = 22
 
 type Props = {
   occupancy: Map<AddressId, AddressOccupancy>
@@ -35,19 +35,36 @@ type Props = {
   onCellPaint: (addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) => void
 }
 
+function rowLabelWidth(cellSize: number, mobile: boolean): number {
+  return Math.max(mobile ? 18 : 22, Math.round(cellSize * 0.82))
+}
+
+function gridContentWidth(cellSize: number, colunas: number, mobile: boolean): number {
+  const labelW = rowLabelWidth(cellSize, mobile)
+  return labelW + 6 + colunas * cellSize + (colunas - 1) * CELL_GAP
+}
+
 function computeCellSize(containerWidth: number, ruas: RuaConfig[], mobile: boolean): number {
   if (containerWidth <= 0) return mobile ? MOBILE_MIN_CELL : MIN_CELL
 
-  const pad = mobile ? 8 : 24
-  const labelArea = mobile ? 26 : 30
   const maxCols = Math.max(...ruas.map((r) => r.colunas))
+
+  if (mobile) {
+    const sectionPad = 16
+    const available = Math.min(containerWidth, window.innerWidth) - sectionPad
+    for (let size = MOBILE_MAX_CELL; size >= MOBILE_MIN_CELL; size--) {
+      if (gridContentWidth(size, maxCols, true) <= available) return size
+    }
+    return MOBILE_MIN_CELL
+  }
+
+  const pad = 24
+  const labelArea = 30
   /** Largura total para uma rua — a outra fica na rolagem horizontal. */
   const perRua = containerWidth - pad - labelArea
   const size = Math.floor((perRua - (maxCols - 1) * CELL_GAP) / maxCols)
-  const min = mobile ? MOBILE_MIN_CELL : MIN_CELL
-  const max = mobile ? MOBILE_MAX_CELL : MAX_CELL
 
-  return Math.min(max, Math.max(min, size))
+  return Math.min(MAX_CELL, Math.max(MIN_CELL, size))
 }
 
 type PaintController = {
@@ -153,7 +170,7 @@ function RuaGrid({
   mobile: boolean
   paint: PaintController
 } & Props) {
-  const labelW = Math.max(mobile ? 20 : 22, Math.round(cellSize * 0.82))
+  const labelW = rowLabelWidth(cellSize, mobile)
   const headerH = Math.max(14, Math.round(cellSize * 0.72))
   const axisFont = cellSize >= 36 ? 11 : 9
   const gridWidth = labelW + 6 + config.colunas * cellSize + (config.colunas - 1) * CELL_GAP
@@ -305,7 +322,11 @@ function CamaraSection({
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    return () => ro.disconnect()
+    if (mobile) window.addEventListener('resize', update)
+    return () => {
+      ro.disconnect()
+      if (mobile) window.removeEventListener('resize', update)
+    }
   }, [cam, mobile])
 
   return (
