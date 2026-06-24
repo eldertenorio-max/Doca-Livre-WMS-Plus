@@ -35,10 +35,21 @@ function pickRepository(): EnderecamentoRepository {
 }
 
 function preserveUi(prev: AppState, data: PersistedData): AppState {
-  const activeNfId =
-    prev.activeNfId && data.notas.some((n) => n.id === prev.activeNfId) ? prev.activeNfId : null
+  let notas = data.notas
+  let activeNfId = prev.activeNfId
+
+  if (activeNfId) {
+    const inMerged = notas.some((n) => n.id === activeNfId)
+    const prevNf = prev.notas.find((n) => n.id === activeNfId)
+    if (!inMerged && prevNf?.status === 'em_andamento') {
+      notas = [prevNf, ...notas.filter((n) => n.id !== activeNfId)]
+    } else if (!inMerged) {
+      activeNfId = null
+    }
+  }
+
   const activeItemIndex = activeNfId ? prev.activeItemIndex : null
-  return { ...data, activeNfId, activeItemIndex }
+  return { ...data, notas, activeNfId, activeItemIndex }
 }
 
 function isDirtyComparedToBase(current: PersistedData, base: PersistedData | null): boolean {
@@ -303,7 +314,10 @@ export function useEnderecamentoStore() {
   useEffect(() => {
     if (loading || storageMode !== 'supabase' || !isSupabaseConfigured()) return
 
-    const unsubscribe = subscribeEnderecamentoChanges(scheduleRemoteReload)
+    const unsubscribe = subscribeEnderecamentoChanges(() => {
+      if (Date.now() < ignoreRemoteUntil.current) return
+      scheduleRemoteReload()
+    })
     const poll = window.setInterval(scheduleRemoteReload, POLL_INTERVAL_MS)
 
     const onVisible = () => {
@@ -321,6 +335,12 @@ export function useEnderecamentoStore() {
 
   useEffect(() => {
     if (skipSave.current || loading) return
+
+    const persisted = pickPersisted(state)
+    if (lastPersistedRef.current && persistedEquals(persisted, lastPersistedRef.current)) {
+      return
+    }
+
     pendingSaveRef.current = state
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {

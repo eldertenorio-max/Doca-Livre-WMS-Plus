@@ -57,9 +57,14 @@ function mergeNotaFiscal(base: NotaFiscal[], local: NotaFiscal[], remote: NotaFi
     }
 
     if (entityJson(b) !== entityJson(r)) {
-      if (r === undefined) continue
-      const fallback = l ?? b
-      result.push(fallback ? preserveOptionalNfFields(r, fallback) : r)
+      if (r !== undefined) {
+        const fallback = l ?? b
+        result.push(fallback ? preserveOptionalNfFields(r, fallback) : r)
+      } else if (l !== undefined) {
+        result.push(l)
+      } else if (b !== undefined) {
+        result.push(b)
+      }
       continue
     }
 
@@ -111,7 +116,13 @@ export function mergeEntityList<T extends { id: string }>(
     }
 
     if (entityJson(b) !== entityJson(r)) {
-      if (r !== undefined) result.push(r)
+      if (r !== undefined) {
+        result.push(r)
+      } else if (l !== undefined) {
+        result.push(l)
+      } else if (b !== undefined) {
+        result.push(b)
+      }
       continue
     }
 
