@@ -5,7 +5,9 @@ import {
   type ConsultaEstoqueFiltros,
   type ConsultaEstoqueResultado,
 } from '../lib/consultaEstoque'
+import type { ItemManualInput } from '../lib/adicionarItemNf'
 import type { NotaFiscal } from '../types'
+import { ConsultaItemManualForm } from './ConsultaItemManualForm'
 
 type Props = {
   emitentesSugeridos: string[]
@@ -16,8 +18,10 @@ type Props = {
   nfAdicionar: NotaFiscal | null
   nfAdicionarErro: string | null
   itemAdicionadoMsg: string | null
+  itemManualErro: string | null
   onBuscarNfAdicionar: (numero: string) => void
-  onAdicionarItem: (itemIndex: number) => void
+  onReplicarItem: (itemIndex: number) => void
+  onAdicionarItemManual: (input: ItemManualInput) => void
   onLimparNfAdicionar: () => void
 }
 
@@ -30,12 +34,15 @@ export function ConsultaEstoquePanel({
   nfAdicionar,
   nfAdicionarErro,
   itemAdicionadoMsg,
+  itemManualErro,
   onBuscarNfAdicionar,
-  onAdicionarItem,
+  onReplicarItem,
+  onAdicionarItemManual,
   onLimparNfAdicionar,
 }: Props) {
   const [filtros, setFiltros] = useState<ConsultaEstoqueFiltros>(CONSULTA_FILTROS_VAZIOS)
   const [numeroNf, setNumeroNf] = useState('')
+  const [mostrarFormManual, setMostrarFormManual] = useState(false)
 
   function patch(partial: Partial<ConsultaEstoqueFiltros>) {
     setFiltros((prev) => ({ ...prev, ...partial }))
@@ -175,8 +182,8 @@ export function ConsultaEstoquePanel({
       <div className="sidebar-block consulta-adicionar">
         <h3 className="consulta-section-title">Adicionar item à NF</h3>
         <p className="muted">
-          Busque uma NF já importada por XML e duplique um item para registrar outro lote ou data.
-          Depois enderece na aba Entrada.
+          Busque uma NF já importada por XML. Replique um item existente ou cadastre um item manual
+          e depois enderece na aba Entrada.
         </p>
         <div className="saida-busca">
           <input
@@ -206,7 +213,7 @@ export function ConsultaEstoquePanel({
               </button>
             </div>
             <p className="muted consulta-nf-adicionar-hint">
-              Escolha o item de origem para criar uma nova linha:
+              Replique um item existente ou adicione um item manual:
             </p>
             <ul className="consulta-itens-adicionar">
               {nfAdicionar.items.map((item) => (
@@ -221,16 +228,37 @@ export function ConsultaEstoquePanel({
                       </span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost consulta-btn-adicionar"
-                    onClick={() => onAdicionarItem(item.index)}
-                  >
-                    + Adicionar item
-                  </button>
+                  <div className="consulta-item-adicionar-actions">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => onReplicarItem(item.index)}
+                    >
+                      Replicar item
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
+
+            {!mostrarFormManual ? (
+              <button
+                type="button"
+                className="btn btn-ghost consulta-btn-adicionar"
+                onClick={() => setMostrarFormManual(true)}
+              >
+                + Adicionar item manual
+              </button>
+            ) : (
+              <ConsultaItemManualForm
+                erro={itemManualErro}
+                onCancel={() => setMostrarFormManual(false)}
+                onConfirm={(input) => {
+                  onAdicionarItemManual(input)
+                  setMostrarFormManual(false)
+                }}
+              />
+            )}
           </div>
         )}
       </div>

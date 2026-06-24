@@ -21,7 +21,12 @@ import {
   paletesLimiteItem,
   podeAdicionarEndereco,
 } from './lib/paletes'
-import { adicionarItemNotaFiscal } from './lib/adicionarItemNf'
+import {
+  adicionarItemManualNotaFiscal,
+  replicarItemNotaFiscal,
+  validarItemManualInput,
+  type ItemManualInput,
+} from './lib/adicionarItemNf'
 import { contarItensSemEndereco, nfEntradaIncompleta } from './lib/entradaPendente'
 import { mesclarEmitentesSugeridos } from './lib/emitentesRegistry'
 import {
@@ -99,6 +104,7 @@ export default function App() {
   const [consultaNfAdicionarId, setConsultaNfAdicionarId] = useState<string | null>(null)
   const [consultaNfAdicionarErro, setConsultaNfAdicionarErro] = useState<string | null>(null)
   const [consultaItemAdicionadoMsg, setConsultaItemAdicionadoMsg] = useState<string | null>(null)
+  const [consultaItemManualErro, setConsultaItemManualErro] = useState<string | null>(null)
   const [uploadCanceladaError, setUploadCanceladaError] = useState<string | null>(null)
   const [canceladaPendenteId, setCanceladaPendenteId] = useState<string | null>(null)
   const [printCamaras, setPrintCamaras] = useState<number[]>(() => CAMARAS.map((c) => c.id))
@@ -976,6 +982,7 @@ export default function App() {
   function handleBuscarNfAdicionar(numero: string) {
     setConsultaItemAdicionadoMsg(null)
     setConsultaNfAdicionarErro(null)
+    setConsultaItemManualErro(null)
     if (!numero) {
       setConsultaNfAdicionarErro('Informe o número da NF.')
       setConsultaNfAdicionarId(null)
@@ -994,31 +1001,69 @@ export default function App() {
     setConsultaNfAdicionarId(null)
     setConsultaNfAdicionarErro(null)
     setConsultaItemAdicionadoMsg(null)
+    setConsultaItemManualErro(null)
   }
 
-  async function handleAdicionarItemConsulta(itemIndex: number) {
-    const nf = state.notas.find((n) => n.id === consultaNfAdicionarId)
-    if (!nf) return
-
-    const result = adicionarItemNotaFiscal(nf, itemIndex)
-    if (!result) return
-
-    const notas = state.notas.map((n) => (n.id === nf.id ? result.nota : n))
+  async function aplicarItemConsultaNaNf(
+    nfId: string,
+    nota: NotaFiscal,
+    newItemIndex: number,
+    mensagem: string,
+  ) {
+    const notas = state.notas.map((n) => (n.id === nfId ? nota : n))
     const nextState = {
       ...state,
       notas,
-      movimentos: upsertMovimentoEntrada(state.movimentos, result.nota),
-      activeNfId: nf.id,
-      activeItemIndex: result.newItemIndex,
+      movimentos: upsertMovimentoEntrada(state.movimentos, nota),
+      activeNfId: nfId,
+      activeItemIndex: newItemIndex,
     }
     setState(nextState)
     setPendingSelection(new Set())
-    setSelectedEntradaIds((prev) => (prev.includes(nf.id) ? prev : [...prev, nf.id]))
-    lastEntradaClickRef.current = nf.id
-    setConsultaItemAdicionadoMsg(
-      `Item adicionado à NF ${nf.numero}. Preencha lote, datas e paletes na aba Entrada.`,
-    )
+    setSelectedEntradaIds((prev) => (prev.includes(nfId) ? prev : [...prev, nfId]))
+    lastEntradaClickRef.current = nfId
+    setConsultaItemAdicionadoMsg(mensagem)
+    setConsultaItemManualErro(null)
     await saveNow(nextState)
+  }
+
+  async function handleReplicarItemConsulta(itemIndex: number) {
+    const nf = state.notas.find((n) => n.id === consultaNfAdicionarId)
+    if (!nf) return
+
+    const result = replicarItemNotaFiscal(nf, itemIndex)
+    if (!result) return
+
+    await aplicarItemConsultaNaNf(
+      nf.id,
+      result.nota,
+      result.newItemIndex,
+      `Item replicado na NF ${nf.numero}. Preencha lote, datas e paletes na aba Entrada.`,
+    )
+  }
+
+  async function handleAdicionarItemManualConsulta(input: ItemManualInput) {
+    const nf = state.notas.find((n) => n.id === consultaNfAdicionarId)
+    if (!nf) return
+
+    const erro = validarItemManualInput(input)
+    if (erro) {
+      setConsultaItemManualErro(erro)
+      return
+    }
+
+    const result = adicionarItemManualNotaFiscal(nf, input)
+    if (!result) {
+      setConsultaItemManualErro('Não foi possível adicionar o item.')
+      return
+    }
+
+    await aplicarItemConsultaNaNf(
+      nf.id,
+      result.nota,
+      result.newItemIndex,
+      `Item manual adicionado à NF ${nf.numero}. Enderece na aba Entrada.`,
+    )
   }
 
   async function handleExcluirMovimento(movId: string) {
@@ -1151,8 +1196,10 @@ export default function App() {
           nfAdicionar: consultaNfAdicionar,
           nfAdicionarErro: consultaNfAdicionarErro,
           itemAdicionadoMsg: consultaItemAdicionadoMsg,
+          itemManualErro: consultaItemManualErro,
           onBuscarNfAdicionar: handleBuscarNfAdicionar,
-          onAdicionarItem: handleAdicionarItemConsulta,
+          onReplicarItem: handleReplicarItemConsulta,
+          onAdicionarItemManual: handleAdicionarItemManualConsulta,
           onLimparNfAdicionar: handleLimparNfAdicionar,
         }}
         imprimir={{
