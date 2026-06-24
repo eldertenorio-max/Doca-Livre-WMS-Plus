@@ -272,12 +272,22 @@ export default function App() {
   }
 
   function handleVincularCancelada(canceladaId: string, novaNfId: string) {
-    setState((s) => ({ ...s, ...syncVinculosNotas(vincularNotaCancelada(s, canceladaId, novaNfId)) }))
+    const nextState = {
+      ...state,
+      ...syncVinculosNotas(vincularNotaCancelada(state, canceladaId, novaNfId)),
+    }
+    setState(nextState)
     if (canceladaId === canceladaPendenteId) setCanceladaPendenteId(null)
+    void saveNow(nextState)
   }
 
   function handleDesvincularCancelada(canceladaId: string) {
-    setState((s) => ({ ...s, ...syncVinculosNotas(desvincularNotaCancelada(s, canceladaId)) }))
+    const nextState = {
+      ...state,
+      ...syncVinculosNotas(desvincularNotaCancelada(state, canceladaId)),
+    }
+    setState(nextState)
+    void saveNow(nextState)
   }
 
   async function handleExcluirCancelada(canceladaId: string) {
@@ -528,27 +538,27 @@ export default function App() {
     await saveNow(nextState)
   }
 
-  function handleLimparSelecao() {
+  async function handleLimparSelecao() {
     if (!activeNf || state.activeItemIndex == null) return
     const currentItemIndex = state.activeItemIndex
     setPendingSelection(new Set())
-    setState((s) => {
-      const notas = s.notas.map((nf) => {
-        if (nf.id !== activeNf.id) return nf
-        return {
-          ...nf,
-          items: nf.items.map((it) =>
-            it.index === currentItemIndex ? { ...it, allocatedAddresses: [] } : it,
-          ),
-        }
-      })
-      const updatedNf = notas.find((n) => n.id === activeNf.id)!
+    const notas = state.notas.map((nf) => {
+      if (nf.id !== activeNf.id) return nf
       return {
-        ...s,
-        notas,
-        movimentos: upsertMovimentoEntrada(s.movimentos, updatedNf),
+        ...nf,
+        items: nf.items.map((it) =>
+          it.index === currentItemIndex ? { ...it, allocatedAddresses: [] } : it,
+        ),
       }
     })
+    const updatedNf = notas.find((n) => n.id === activeNf.id)!
+    const nextState = {
+      ...state,
+      notas,
+      movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
+    }
+    setState(nextState)
+    await saveNow(nextState)
   }
 
   function handleBuscarSaida(numero: string) {

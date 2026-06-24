@@ -25,8 +25,10 @@ const emptyState: AppState = {
 
 const SAVE_DEBOUNCE_MS = 400
 const REMOTE_RELOAD_DEBOUNCE_MS = 300
-const IGNORE_REMOTE_AFTER_SAVE_MS = 2000
+const IGNORE_REMOTE_AFTER_SAVE_MS = 5000
 const POLL_INTERVAL_MS = 3000
+const PERSIST_RETRY_MS = 600
+const PERSIST_MAX_ATTEMPTS = 3
 
 function pickRepository(): EnderecamentoRepository {
   return isSupabaseConfigured() ? getRepository() : localRepository
@@ -44,6 +46,21 @@ function isDirtyComparedToBase(current: PersistedData, base: PersistedData | nul
   return !persistedEquals(current, base)
 }
 
+function hasPendingLocalChanges(
+  stateRef: AppState,
+  lastPersisted: PersistedData | null,
+  pendingSave: AppState | null,
+  saveTimer: ReturnType<typeof setTimeout> | null,
+): boolean {
+  if (pendingSave || saveTimer) return true
+  if (!lastPersisted) return false
+  return isDirtyComparedToBase(pickPersisted(stateRef), lastPersisted)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export function useEnderecamentoStore() {
   const repoRef = useRef<EnderecamentoRepository>(pickRepository())
   const [state, setState] = useState<AppState>(emptyState)
@@ -57,6 +74,7 @@ export function useEnderecamentoStore() {
   const savingRef = useRef(false)
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingSaveRef = useRef<AppState | null>(null)
+  const persistQueueRef = useRef<AppState | null>(null)
   const lastPersistedRef = useRef<PersistedData | null>(null)
   const stateRef = useRef(state)
 
@@ -76,11 +94,18 @@ export function useEnderecamentoStore() {
   }, [])
 
   const persist = useCallback(async (next: AppState) => {
+    if (savingRef.current) {
+      persistQueueRef.current = next
+      return
+    }
+
     const repo = repoRef.current
-    if (repo.mode !== 'supabase') {
-      savingRef.current = true
-      setSaving(true)
-      try {
+    savingRef.current = true
+    setSaving(true)
+    ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
+
+    const runLocalSave = async () => {
+      if (repo.mode !== 'supabase') {
         const dataToSave = pickPersisted(next)
         await repo.saveData({
           notas: dataToSave.notas,
@@ -93,20 +118,9 @@ export function useEnderecamentoStore() {
         })
         lastPersistedRef.current = dataToSave
         pendingSaveRef.current = null
-        setError(null)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Erro ao salvar dados.')
-      } finally {
-        savingRef.current = false
-        setSaving(false)
+        return dataToSave
       }
-      return
-    }
 
-    savingRef.current = true
-    setSaving(true)
-
-    try {
       let dataToSave = pickPersisted(next)
 
       if (lastPersistedRef.current) {
@@ -124,24 +138,53 @@ export function useEnderecamentoStore() {
         activeItemIndex: next.activeItemIndex,
       })
 
-      lastPersistedRef.current = dataToSave
-      pendingSaveRef.current = null
-      ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
-
       if (!persistedEquals(dataToSave, pickPersisted(next))) {
         applyPersistedToState(dataToSave, next)
       }
 
-      setError(null)
+      return dataToSave
+    }
+
+    try {
+      let lastError: unknown = null
+      for (let attempt = 0; attempt < PERSIST_MAX_ATTEMPTS; attempt++) {
+        try {
+          const dataToSave = await runLocalSave()
+          lastPersistedRef.current = dataToSave
+          pendingSaveRef.current = null
+          ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
+          setError(null)
+          lastError = null
+          break
+        } catch (e) {
+          lastError = e
+          if (attempt < PERSIST_MAX_ATTEMPTS - 1) {
+            await sleep(PERSIST_RETRY_MS * (attempt + 1))
+          }
+        }
+      }
+
+      if (lastError) {
+        throw lastError
+      }
     } catch (e) {
       setError(
-        e instanceof Error
-          ? `Erro ao salvar na nuvem: ${e.message}`
-          : 'Erro ao salvar na nuvem. Verifique a conexão com o Supabase.',
+        repo.mode === 'supabase'
+          ? e instanceof Error
+            ? `Erro ao salvar na nuvem: ${e.message}`
+            : 'Erro ao salvar na nuvem. Verifique a conexão com o Supabase.'
+          : e instanceof Error
+            ? e.message
+            : 'Erro ao salvar dados.',
       )
     } finally {
       savingRef.current = false
       setSaving(false)
+      const queued = persistQueueRef.current
+      if (queued) {
+        persistQueueRef.current = null
+        void persist(queued)
+      }
     }
   }, [applyPersistedToState])
 
@@ -159,8 +202,18 @@ export function useEnderecamentoStore() {
 
   const reloadFromRemote = useCallback(async () => {
     if (repoRef.current.mode !== 'supabase') return
-    if (savingRef.current || pendingSaveRef.current) return
+    if (savingRef.current) return
     if (Date.now() < ignoreRemoteUntil.current) return
+    if (
+      hasPendingLocalChanges(
+        stateRef.current,
+        lastPersistedRef.current,
+        pendingSaveRef.current,
+        saveTimer.current,
+      )
+    ) {
+      return
+    }
 
     skipSave.current = true
     try {
@@ -170,8 +223,7 @@ export function useEnderecamentoStore() {
 
       setState((prev) => {
         const local = pickPersisted(prev)
-        const dirty = base ? isDirtyComparedToBase(local, base) : false
-        const merged = dirty && base ? mergePersistedData(base, local, data) : data
+        const merged = base ? mergePersistedData(base, local, data) : data
         lastPersistedRef.current = merged
         const next = preserveUi(prev, merged)
         if (persistedEquals(pickPersisted(prev), pickPersisted(next))) return prev
@@ -283,23 +335,26 @@ export function useEnderecamentoStore() {
 
   useEffect(() => {
     const flushPendingSave = () => {
-      const pending = pendingSaveRef.current ?? stateRef.current
       if (skipSave.current || savingRef.current) return
+      const pending = pendingSaveRef.current ?? stateRef.current
       if (saveTimer.current) {
         clearTimeout(saveTimer.current)
         saveTimer.current = null
       }
       pendingSaveRef.current = null
+      ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
       void persist(pending)
     }
 
     window.addEventListener('pagehide', flushPendingSave)
+    window.addEventListener('beforeunload', flushPendingSave)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') flushPendingSave()
     })
 
     return () => {
       window.removeEventListener('pagehide', flushPendingSave)
+      window.removeEventListener('beforeunload', flushPendingSave)
     }
   }, [persist])
 

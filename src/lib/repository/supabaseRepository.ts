@@ -246,6 +246,9 @@ export const supabaseRepository: EnderecamentoRepository = {
   },
 
   async saveData({ notas, movimentos, notasCanceladas }) {
+    omitNfCommercialFields = false
+    omitItemExtendedFields = false
+
     const sb = getSupabase()
     const keepIds = notas.map((n) => n.id)
 
