@@ -127,6 +127,16 @@ function findInfNFe(doc: Document): Element | null {
   )
 }
 
+export function parseNfeReferenciaChaves(xmlText: string): string[] {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(xmlText, 'application/xml')
+  const inf = findInfNFe(doc)
+  if (!inf) return []
+  return Array.from(inf.getElementsByTagName('NFref'))
+    .map((ref) => textOf(ref, 'refNFe').replace(/^NFe/, ''))
+    .filter(Boolean)
+}
+
 export function parseNfeXml(xmlText: string): NotaFiscal {
   const parser = new DOMParser()
   const doc = parser.parseFromString(xmlText, 'application/xml')

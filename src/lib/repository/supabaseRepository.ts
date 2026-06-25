@@ -149,6 +149,7 @@ function mapMovimentos(rows: MovRow[]): MovimentoRegistro[] {
     createdAt: m.created_at,
     itens: m.payload?.itens ?? [],
     ...(m.payload?.justificativaSaida ? { justificativaSaida: m.payload.justificativaSaida } : {}),
+    ...(m.payload?.nfSaida ? { nfSaida: m.payload.nfSaida } : {}),
     ...(m.payload?.excluido ? { excluido: true } : {}),
     ...(m.payload?.excluidoEm ? { excluidoEm: m.payload.excluidoEm } : {}),
   }))
@@ -167,6 +168,7 @@ function movimentoUpsertRow(mov: MovimentoRegistro, notaIds: Set<string>) {
       itens: mov.itens,
       ...(nfInDb ? {} : { nfIdHistorico: mov.nfId }),
       ...(mov.justificativaSaida ? { justificativaSaida: mov.justificativaSaida } : {}),
+      ...(mov.nfSaida ? { nfSaida: mov.nfSaida } : {}),
       ...(mov.excluido ? { excluido: true, excluidoEm: mov.excluidoEm ?? null } : {}),
     },
   }

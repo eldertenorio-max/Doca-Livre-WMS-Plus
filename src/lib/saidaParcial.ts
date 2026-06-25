@@ -3,6 +3,15 @@ import { patchNfeItemQuantidade } from './desmembrarItem'
 import { isUnidadePeso, pesoKgItem, quantidadeEstoqueItem, unidadeEstoqueItem } from './nfeUnidades'
 import type { AddressId, MovimentoItemSnapshot, NfeItem, NotaFiscal } from '../types'
 
+export type SaidaLimitesPorItem = Record<number, number>
+
+export function quantidadeBaseSaida(item: NfeItem, limites?: SaidaLimitesPorItem): number {
+  const qtd = quantidadeEstoqueItem(item)
+  const lim = limites?.[item.index]
+  if (lim == null) return qtd
+  return Math.min(qtd, lim)
+}
+
 export type SaidaItemDraft = {
   itemIndex: number
   quantidadeSaida: number
@@ -52,8 +61,9 @@ export function paletesDisponiveisItem(
 export function sobraItem(
   item: NfeItem,
   confirmados: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): number {
-  const qtd = quantidadeEstoqueItem(item)
+  const qtd = quantidadeBaseSaida(item, limites)
   const saido = confirmados
     .filter((p) => p.itemIndex === item.index)
     .reduce((s, p) => s + p.quantidadeCaixas, 0)
@@ -146,11 +156,12 @@ export function calcularSaidaPalete(
   addressId: AddressId,
   quantidadeCaixas: number,
   paletesConfirmados: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): SaidaPaleteCalculo | null {
   if (!item.allocatedAddresses.includes(addressId)) return null
   if (quantidadeCaixas <= 0) return null
 
-  const qtdItem = quantidadeEstoqueItem(item)
+  const qtdItem = quantidadeBaseSaida(item, limites)
   const jaSaido = caixasJaSaidasItem(item.index, paletesConfirmados)
   const disponivel = qtdItem - jaSaido
   if (quantidadeCaixas > disponivel + 1e-9) return null
@@ -222,6 +233,7 @@ export function totaisSaidaItem(
   nf: NotaFiscal,
   item: NfeItem,
   paletesConfirmados: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): TotaisSaidaItem {
   const drafts = paletesConfirmados.filter((p) => p.itemIndex === item.index)
   let caixas = 0
@@ -229,7 +241,7 @@ export function totaisSaidaItem(
   let pesoLiquido = 0
   let valor = 0
   for (const p of drafts) {
-    const c = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [])
+    const c = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [], limites)
     if (!c) continue
     caixas += p.quantidadeCaixas
     pesoBruto += c.pesoBrutoSaida ?? 0
@@ -241,13 +253,14 @@ export function totaisSaidaItem(
     pesoBruto,
     pesoLiquido,
     valor,
-    sobra: sobraItem(item, paletesConfirmados),
+    sobra: sobraItem(item, paletesConfirmados, limites),
   }
 }
 
 export function resumoSaidaNf(
   nf: NotaFiscal,
   paletesConfirmados: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): ResumoSaidaNf {
   const byItem = new Map<number, SaidaPaleteDraft[]>()
   for (const p of paletesConfirmados) {
@@ -268,7 +281,7 @@ export function resumoSaidaNf(
     if (!item) continue
 
     const paletes: SaidaResumoPalete[] = drafts.map((p) => {
-      const c = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [])
+      const c = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [], limites)
       return {
         addressId: p.addressId,
         quantidadeCaixas: p.quantidadeCaixas,
@@ -278,7 +291,7 @@ export function resumoSaidaNf(
       }
     })
 
-    const t = totaisSaidaItem(nf, item, paletesConfirmados)
+    const t = totaisSaidaItem(nf, item, paletesConfirmados, limites)
     itens.push({
       itemIndex,
       codigo: item.codigo,
@@ -339,6 +352,7 @@ export function enderecosALiberar(
 export function sobrasPorItem(
   items: NfeItem[],
   paletes: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): Record<number, number> {
   const saido = new Map<number, number>()
   for (const p of paletes) {
@@ -346,7 +360,7 @@ export function sobrasPorItem(
   }
   const sobras: Record<number, number> = {}
   for (const item of items) {
-    const qtd = quantidadeEstoqueItem(item)
+    const qtd = quantidadeBaseSaida(item, limites)
     sobras[item.index] = Math.max(0, qtd - (saido.get(item.index) ?? 0))
   }
   return sobras

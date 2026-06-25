@@ -1,18 +1,19 @@
 import { useMemo } from 'react'
 import type { NotaFiscal } from '../types'
-import { resumoSaidaNf, type SaidaPaleteDraft } from '../lib/saidaParcial'
+import { resumoSaidaNf, type SaidaLimitesPorItem, type SaidaPaleteDraft } from '../lib/saidaParcial'
 import { formatAddressLabel } from '../layout/camaras'
 import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 
 type Props = {
   nf: NotaFiscal
   paletesConfirmados: SaidaPaleteDraft[]
+  limitesPorItem?: SaidaLimitesPorItem
 }
 
-export function SaidaResumoTotal({ nf, paletesConfirmados }: Props) {
+export function SaidaResumoTotal({ nf, paletesConfirmados, limitesPorItem }: Props) {
   const resumo = useMemo(
-    () => resumoSaidaNf(nf, paletesConfirmados),
-    [nf, paletesConfirmados],
+    () => resumoSaidaNf(nf, paletesConfirmados, limitesPorItem),
+    [nf, paletesConfirmados, limitesPorItem],
   )
 
   if (resumo.itens.length === 0) return null

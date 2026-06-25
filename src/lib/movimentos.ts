@@ -3,6 +3,7 @@ import type {
   JustificativaSaidaId,
   MovimentoItemSnapshot,
   MovimentoRegistro,
+  NfeDocumentoResumo,
   NfeItem,
   NotaFiscal,
   PersistedData,
@@ -238,6 +239,7 @@ export function criarMovimentoSaida(
   justificativaSaida: JustificativaSaidaId,
   saidas?: SaidaItemDraft[],
   paletes?: SaidaPaleteDraft[],
+  options?: { nfSaida?: NfeDocumentoResumo },
 ): MovimentoRegistro {
   return {
     id: `mov-saida-${nf.id}-${Date.now()}`,
@@ -247,6 +249,7 @@ export function criarMovimentoSaida(
     emitente: nf.emitente,
     createdAt: new Date().toISOString(),
     justificativaSaida,
+    ...(options?.nfSaida ? { nfSaida: options.nfSaida } : {}),
     itens:
       paletes && paletes.length > 0
         ? snapshotSaidaPaletes(nf, paletes)

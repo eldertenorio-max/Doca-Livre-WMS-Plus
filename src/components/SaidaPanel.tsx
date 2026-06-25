@@ -1,15 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
-import type { AddressId, JustificativaSaidaId, NotaFiscal } from '../types'
-import type { SaidaPaleteDraft } from '../lib/saidaParcial'
+import type { AddressId, JustificativaSaidaId, NfeItem, NotaFiscal, SaidaXmlDocumento } from '../types'
+import type { SaidaLimitesPorItem, SaidaPaleteDraft } from '../lib/saidaParcial'
 import { nfTemEnderecos } from '../lib/movimentos'
 import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
 import { NfResumoGrid } from './NfResumoGrid'
 import { SaidaItensTable } from './SaidaItensTable'
 import { SaidaResumoTotal } from './SaidaResumoTotal'
 
+export type SaidaModoBusca = 'numero' | 'xml'
+
 type Props = {
+  modoBusca: SaidaModoBusca
+  onModoBuscaChange: (modo: SaidaModoBusca) => void
   nfBusca: NotaFiscal | null
+  saidaXml: SaidaXmlDocumento | null
+  notasOrigem: NotaFiscal[]
+  origemSelecionadaId: string
+  onOrigemSelecionadaChange: (nfId: string) => void
+  onVincularOrigem: () => void
+  onUploadXml: (file: File) => void
+  itensSaida: NfeItem[]
+  limitesPorItem?: SaidaLimitesPorItem
+  vinculoAvisos: string[]
   itemIndex: number | null
   modoPalete: boolean
   qtdPaletesInput: string
@@ -30,11 +43,23 @@ type Props = {
   onFinalizarSaida: (justificativa: JustificativaSaidaId) => void
   onCancelarSaida: () => void
   buscaErro: string | null
+  uploadXmlErro: string | null
   selecaoErro: string | null
 }
 
 export function SaidaPanel({
+  modoBusca,
+  onModoBuscaChange,
   nfBusca,
+  saidaXml,
+  notasOrigem,
+  origemSelecionadaId,
+  onOrigemSelecionadaChange,
+  onVincularOrigem,
+  onUploadXml,
+  itensSaida,
+  limitesPorItem,
+  vinculoAvisos,
   itemIndex,
   modoPalete,
   qtdPaletesInput,
@@ -55,6 +80,7 @@ export function SaidaPanel({
   onFinalizarSaida,
   onCancelarSaida,
   buscaErro,
+  uploadXmlErro,
   selecaoErro,
 }: Props) {
   const [numero, setNumero] = useState('')
@@ -64,43 +90,167 @@ export function SaidaPanel({
 
   useEffect(() => {
     setJustificativa(null)
-  }, [nfBusca?.id])
+  }, [nfBusca?.id, saidaXml?.chave])
 
   function handleBuscar() {
     onBuscar(numero.trim())
     setNumero('')
   }
 
+  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) onUploadXml(file)
+    e.target.value = ''
+  }
+
   const podeFinalizar = paletesConfirmados.length > 0 && justificativa != null
+  const aguardandoVinculo = modoBusca === 'xml' && saidaXml != null && nfBusca == null
+  const itensComEstoque = itensSaida.filter((it) => it.allocatedAddresses.length > 0)
 
   return (
     <>
       <div className="sidebar-block">
-        <p className="muted">
-          Busque a NF, selecione o item na tabela, informe os paletes abaixo do item, marque no
-          painel e confirme as caixas.
-        </p>
-        <div className="saida-busca">
-          <input
-            type="text"
-            className="input-nf"
-            placeholder="Número da NF"
-            value={numero}
-            onChange={(e) => setNumero(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
+        <div className="saida-modo-busca" role="tablist" aria-label="Forma de buscar saída">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={modoBusca === 'numero'}
+            className={`saida-modo-btn${modoBusca === 'numero' ? ' saida-modo-btn--active' : ''}`}
+            onClick={() => onModoBuscaChange('numero')}
             disabled={modoPalete}
-          />
-          <button type="button" className="btn primary" onClick={handleBuscar} disabled={modoPalete}>
-            Buscar
+          >
+            Buscar NF
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={modoBusca === 'xml'}
+            className={`saida-modo-btn${modoBusca === 'xml' ? ' saida-modo-btn--active' : ''}`}
+            onClick={() => onModoBuscaChange('xml')}
+            disabled={modoPalete}
+          >
+            XML de saída
           </button>
         </div>
-        {buscaErro && <p className="error">{buscaErro}</p>}
+
+        {modoBusca === 'numero' ? (
+          <>
+            <p className="muted">
+              Busque a NF de origem no estoque, selecione o item na tabela e informe os paletes.
+            </p>
+            <div className="saida-busca">
+              <input
+                type="text"
+                className="input-nf"
+                placeholder="Número da NF"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
+                disabled={modoPalete}
+              />
+              <button type="button" className="btn primary" onClick={handleBuscar} disabled={modoPalete}>
+                Buscar
+              </button>
+            </div>
+            {buscaErro && <p className="error">{buscaErro}</p>}
+          </>
+        ) : (
+          <>
+            <p className="muted">
+              Suba o XML da NF de saída, vincule à NF de origem já endereçada no sistema e siga o
+              processo normal.
+            </p>
+            {!saidaXml && (
+              <label className="upload-btn">
+                <input
+                  type="file"
+                  accept=".xml,text/xml,application/xml"
+                  hidden
+                  onChange={handleFile}
+                  disabled={modoPalete}
+                />
+                Subir XML da NF de saída
+              </label>
+            )}
+            {uploadXmlErro && <p className="error">{uploadXmlErro}</p>}
+          </>
+        )}
       </div>
 
-      {nfBusca && nfTemEnderecos(nfBusca) && (
+      {modoBusca === 'xml' && saidaXml && (
+        <div className="sidebar-block nf-detail saida-xml-doc">
+          <h3 className="nf-section-title nf-section-title--sm">NF de saída {saidaXml.numero}</h3>
+          <dl className="meta-list meta-list--nf">
+            <div>
+              <dt>Emitente</dt>
+              <dd>{saidaXml.emitente || '—'}</dd>
+            </div>
+            <div>
+              <dt>Emissão</dt>
+              <dd>{formatDate(saidaXml.dataEmissao)}</dd>
+            </div>
+            {saidaXml.serie && (
+              <div>
+                <dt>Série</dt>
+                <dd>{saidaXml.serie}</dd>
+              </div>
+            )}
+          </dl>
+
+          {aguardandoVinculo && (
+            <div className="saida-vinculo-origem">
+              <p className="muted saida-vinculo-intro">Vincule à NF de origem no estoque:</p>
+              {notasOrigem.length === 0 ? (
+                <p className="error">Nenhuma NF com estoque endereçado no sistema.</p>
+              ) : (
+                <>
+                  <select
+                    className="input-nf saida-vinculo-select"
+                    value={origemSelecionadaId}
+                    onChange={(e) => onOrigemSelecionadaChange(e.target.value)}
+                    disabled={modoPalete}
+                  >
+                    <option value="">Selecione a NF de origem…</option>
+                    {notasOrigem.map((nf) => (
+                      <option key={nf.id} value={nf.id}>
+                        NF {nf.numero} · {nf.emitente || '—'}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn primary full"
+                    disabled={!origemSelecionadaId || modoPalete}
+                    onClick={onVincularOrigem}
+                  >
+                    Vincular e listar itens
+                  </button>
+                </>
+              )}
+              {buscaErro && <p className="error">{buscaErro}</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {nfBusca && nfTemEnderecos(nfBusca) && itensComEstoque.length > 0 && (
         <div className="sidebar-block nf-detail">
           <div className="nf-detail-head">
-            <h3>NF {nfBusca.numero}</h3>
+            <div>
+              <h3>
+                {saidaXml ? (
+                  <>
+                    Saída NF {saidaXml.numero}
+                    <span className="muted saida-origem-ref">
+                      {' '}
+                      · origem NF {nfBusca.numero}
+                    </span>
+                  </>
+                ) : (
+                  <>NF {nfBusca.numero}</>
+                )}
+              </h3>
+            </div>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
@@ -110,13 +260,23 @@ export function SaidaPanel({
             </button>
           </div>
 
+          {vinculoAvisos.length > 0 && (
+            <ul className="saida-vinculo-avisos">
+              {vinculoAvisos.map((msg) => (
+                <li key={msg} className="muted">
+                  {msg}
+                </li>
+              ))}
+            </ul>
+          )}
+
           <dl className="meta-list meta-list--nf">
             <div>
-              <dt>Emitente</dt>
+              <dt>Emitente (origem)</dt>
               <dd>{nfBusca.emitente || '—'}</dd>
             </div>
             <div>
-              <dt>Emissão</dt>
+              <dt>Emissão (origem)</dt>
               <dd>{formatDate(nfBusca.dataEmissao)}</dd>
             </div>
             {nfBusca.serie && (
@@ -127,19 +287,37 @@ export function SaidaPanel({
             )}
           </dl>
 
-          <p className="nf-leitura-subtitle">Totais do documento</p>
-          <NfResumoGrid nf={nfBusca} compact />
+          {saidaXml ? (
+            <>
+              <p className="nf-leitura-subtitle">Totais da NF de saída</p>
+              <NfResumoGrid
+                nf={{
+                  ...nfBusca,
+                  pesoBruto: saidaXml.pesoBruto ?? nfBusca.pesoBruto,
+                  pesoLiquido: saidaXml.pesoLiquido ?? nfBusca.pesoLiquido,
+                  valorTotalNota: saidaXml.valorTotalNota ?? nfBusca.valorTotalNota,
+                }}
+                compact
+              />
+            </>
+          ) : (
+            <>
+              <p className="nf-leitura-subtitle">Totais do documento</p>
+              <NfResumoGrid nf={nfBusca} compact />
+            </>
+          )}
 
-          <h4 className="nf-section-title nf-section-title--sm">Itens da nota</h4>
+          <h4 className="nf-section-title nf-section-title--sm">Itens da saída</h4>
           <p className="muted nf-itens-intro saida-itens-intro">
-            Clique no <strong>item</strong> que vai sair (linha fica verde). Informe os paletes e
-            acompanhe os cálculos <strong>abaixo de cada item</strong>. A coluna{' '}
-            <strong>Sobra</strong> é atualizada conforme você confirma cada palete.
+            {saidaXml
+              ? 'Itens do XML de saída vinculados ao estoque da NF de origem. A quantidade máxima por item segue o XML.'
+              : 'Clique no item que vai sair (linha fica verde). Informe os paletes abaixo de cada item.'}
           </p>
 
           <SaidaItensTable
             nf={nfBusca}
-            items={nfBusca.items}
+            items={itensComEstoque}
+            limitesPorItem={limitesPorItem}
             activeItemIndex={itemIndex}
             paletesConfirmados={paletesConfirmados}
             paleteAtivo={paleteAtivo}
@@ -161,7 +339,11 @@ export function SaidaPanel({
           />
 
           {paletesConfirmados.length > 0 && (
-            <SaidaResumoTotal nf={nfBusca} paletesConfirmados={paletesConfirmados} />
+            <SaidaResumoTotal
+              nf={nfBusca}
+              paletesConfirmados={paletesConfirmados}
+              limitesPorItem={limitesPorItem}
+            />
           )}
 
           {paletesConfirmados.length > 0 && (
@@ -203,7 +385,7 @@ export function SaidaPanel({
         </div>
       )}
 
-      {nfBusca && !nfTemEnderecos(nfBusca) && (
+      {nfBusca && (!nfTemEnderecos(nfBusca) || itensComEstoque.length === 0) && (
         <div className="sidebar-block nf-detail">
           <div className="nf-detail-head">
             <h3>NF {nfBusca.numero}</h3>
@@ -215,30 +397,43 @@ export function SaidaPanel({
               Cancelar saída
             </button>
           </div>
-          <dl className="meta-list meta-list--nf">
-            <div>
-              <dt>Emitente</dt>
-              <dd>{nfBusca.emitente || '—'}</dd>
-            </div>
-            <div>
-              <dt>Emissão</dt>
-              <dd>{formatDate(nfBusca.dataEmissao)}</dd>
-            </div>
-          </dl>
-          <p className="nf-leitura-subtitle">Totais do documento</p>
-          <NfResumoGrid nf={nfBusca} compact />
+          {vinculoAvisos.length > 0 && (
+            <ul className="saida-vinculo-avisos">
+              {vinculoAvisos.map((msg) => (
+                <li key={msg} className="error">
+                  {msg}
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="muted sidebar-block">
-            Esta NF não possui itens em estoque (posições já liberadas).
+            {saidaXml
+              ? 'Nenhum item do XML foi encontrado com estoque na NF de origem vinculada.'
+              : 'Esta NF não possui itens em estoque (posições já liberadas).'}
           </p>
         </div>
       )}
 
-      {confirmarCancelar && nfBusca && (
+      {confirmarCancelar && (nfBusca || saidaXml) && (
         <div className="confirm-backdrop" onClick={() => setConfirmarCancelar(false)}>
           <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
             <h4>Cancelar saída?</h4>
             <p>
-              NF <strong>{nfBusca.numero}</strong>
+              {saidaXml ? (
+                <>
+                  Saída NF <strong>{saidaXml.numero}</strong>
+                  {nfBusca && (
+                    <>
+                      {' '}
+                      (origem NF <strong>{nfBusca.numero}</strong>)
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  NF <strong>{nfBusca?.numero}</strong>
+                </>
+              )}
             </p>
             <p className="confirm-warn">
               A busca e os paletes confirmados serão descartados. Nenhuma posição será liberada.

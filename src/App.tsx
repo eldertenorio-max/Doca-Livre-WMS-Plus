@@ -60,9 +60,16 @@ import {
 import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
-import { parseNfeXml } from './lib/parseNfeXml'
+import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
+import {
+  documentoSaidaFromNota,
+  notasDisponiveisParaSaida,
+  sugerirOrigemSaida,
+  vincularSaidaXmlOrigem,
+} from './lib/saidaXml'
 import type { EntradaItemCampos } from './lib/entradaCampos'
-import type { AddressId, AddressOccupancy, JustificativaSaidaId, NotaFiscal } from './types'
+import type { AddressId, AddressOccupancy, JustificativaSaidaId, NotaFiscal, SaidaXmlDocumento } from './types'
+import type { SaidaModoBusca } from './components/SaidaPanel'
 import './App.css'
 
 function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy> {
@@ -115,6 +122,10 @@ export default function App() {
   const [saidaCaixasPalete, setSaidaCaixasPalete] = useState('')
   const [saidaPaletesConfirmados, setSaidaPaletesConfirmados] = useState<SaidaPaleteDraft[]>([])
   const [saidaSelecaoErro, setSaidaSelecaoErro] = useState<string | null>(null)
+  const [saidaModoBusca, setSaidaModoBusca] = useState<SaidaModoBusca>('numero')
+  const [saidaXmlDoc, setSaidaXmlDoc] = useState<SaidaXmlDocumento | null>(null)
+  const [saidaOrigemSelecionadaId, setSaidaOrigemSelecionadaId] = useState('')
+  const [saidaUploadXmlErro, setSaidaUploadXmlErro] = useState<string | null>(null)
   const [buscaErro, setBuscaErro] = useState<string | null>(null)
   const [nfEditarId, setNfEditarId] = useState<string | null>(null)
   const [editItemIndex, setEditItemIndex] = useState<number | null>(null)
@@ -188,6 +199,18 @@ export default function App() {
   const nfBuscaSaida = nfBuscaSaidaId
     ? state.notas.find((n) => n.id === nfBuscaSaidaId) ?? null
     : null
+  const notasOrigemSaida = useMemo(() => notasDisponiveisParaSaida(state.notas), [state.notas])
+  const saidaVinculo = useMemo(() => {
+    if (!nfBuscaSaida || !saidaXmlDoc) return null
+    return vincularSaidaXmlOrigem(nfBuscaSaida, saidaXmlDoc)
+  }, [nfBuscaSaida, saidaXmlDoc])
+  const saidaItensExibicao = useMemo(() => {
+    if (!nfBuscaSaida) return []
+    if (saidaVinculo) return saidaVinculo.itensExibicao
+    return nfBuscaSaida.items.filter((it) => it.allocatedAddresses.length > 0)
+  }, [nfBuscaSaida, saidaVinculo])
+  const saidaLimitesPorItem = saidaVinculo?.limitesPorItem
+  const saidaVinculoAvisos = saidaVinculo?.avisos ?? []
   const nfEditar = nfEditarId ? state.notas.find((n) => n.id === nfEditarId) ?? null : null
 
   const allocateMode =
@@ -218,14 +241,15 @@ export default function App() {
   ])
 
   const saidaAddresses = useMemo(() => {
-    if (!nfBuscaSaida) return new Set<AddressId>()
-    if (saidaItemIndex != null) {
-      const item = nfBuscaSaida.items.find((it) => it.index === saidaItemIndex)
-      if (item && item.allocatedAddresses.length > 0) {
-        return new Set(item.allocatedAddresses)
-      }
-    }
+    if (!nfBuscaSaida || saidaItemIndex != null) return new Set<AddressId>()
     return new Set(enderecosDaNf(nfBuscaSaida))
+  }, [nfBuscaSaida, saidaItemIndex])
+
+  const saidaItemDestaqueAddresses = useMemo(() => {
+    if (!nfBuscaSaida || saidaItemIndex == null) return new Set<AddressId>()
+    const item = nfBuscaSaida.items.find((it) => it.index === saidaItemIndex)
+    if (!item || item.allocatedAddresses.length === 0) return new Set<AddressId>()
+    return new Set(item.allocatedAddresses)
   }, [nfBuscaSaida, saidaItemIndex])
 
   const saidaFlaggedAddresses = useMemo(() => {
@@ -968,7 +992,67 @@ export default function App() {
     setSaidaSelecaoErro(null)
   }
 
+  function handleModoBuscaSaidaChange(modo: SaidaModoBusca) {
+    setSaidaModoBusca(modo)
+    setBuscaErro(null)
+    setSaidaUploadXmlErro(null)
+    if (modo === 'numero') {
+      setSaidaXmlDoc(null)
+      setSaidaOrigemSelecionadaId('')
+      setNfBuscaSaidaId(null)
+      limparEstadoSaida()
+    }
+  }
+
+  async function handleUploadSaidaXml(file: File) {
+    setSaidaUploadXmlErro(null)
+    setBuscaErro(null)
+    limparEstadoSaida()
+    try {
+      const text = await file.text()
+      const refs = parseNfeReferenciaChaves(text)
+      const parsed = parseNfeXml(text)
+      const doc = documentoSaidaFromNota(parsed)
+      const sugerida = sugerirOrigemSaida(state.notas, doc, refs)
+      setSaidaXmlDoc(doc)
+      setSaidaModoBusca('xml')
+      if (sugerida) {
+        setSaidaOrigemSelecionadaId(sugerida.id)
+        setNfBuscaSaidaId(sugerida.id)
+      } else {
+        setSaidaOrigemSelecionadaId('')
+        setNfBuscaSaidaId(null)
+      }
+    } catch (e) {
+      setSaidaUploadXmlErro(e instanceof Error ? e.message : 'Erro ao ler XML.')
+      setSaidaXmlDoc(null)
+      setNfBuscaSaidaId(null)
+    }
+  }
+
+  function handleVincularOrigemSaida() {
+    setBuscaErro(null)
+    if (!saidaXmlDoc) return
+    const nf = state.notas.find((n) => n.id === saidaOrigemSelecionadaId)
+    if (!nf) {
+      setBuscaErro('Selecione a NF de origem.')
+      return
+    }
+    const vinculo = vincularSaidaXmlOrigem(nf, saidaXmlDoc)
+    if (vinculo.itensExibicao.length === 0) {
+      setBuscaErro('Nenhum item do XML encontrado com estoque na NF selecionada.')
+      setNfBuscaSaidaId(null)
+      return
+    }
+    setNfBuscaSaidaId(nf.id)
+    limparEstadoSaida()
+  }
+
   function handleBuscarSaida(numero: string) {
+    setSaidaModoBusca('numero')
+    setSaidaXmlDoc(null)
+    setSaidaOrigemSelecionadaId('')
+    setSaidaUploadXmlErro(null)
     setBuscaErro(null)
     setSaidaSelecaoErro(null)
     const nf = buscarNfPorNumero(state.notas, numero)
@@ -998,12 +1082,18 @@ export default function App() {
     if (!nfBuscaSaida) return
     const item = nfBuscaSaida.items.find((it) => it.index === index)
     if (!item || item.allocatedAddresses.length === 0) return
+
+    if (saidaItemIndex === index) {
+      if (saidaModoPalete) return
+      resetSelecaoPaletesSaida()
+      setSaidaItemIndex(null)
+      return
+    }
+
     if (paletesDisponiveisItem(item, saidaPaletesConfirmados) <= 0) return
 
-    if (saidaItemIndex !== index) {
-      resetSelecaoPaletesSaida()
-      setSaidaItemIndex(index)
-    }
+    resetSelecaoPaletesSaida()
+    setSaidaItemIndex(index)
   }
 
   function handleIniciarSelecaoSaida() {
@@ -1075,6 +1165,7 @@ export default function App() {
       saidaPaleteAtivo,
       caixas,
       saidaPaletesConfirmados,
+      saidaLimitesPorItem,
     )
     if (!calc) {
       setSaidaSelecaoErro('Quantidade de caixas excede o disponível neste item.')
@@ -1106,7 +1197,7 @@ export default function App() {
         if (
           itemAtual &&
           paletesDisponiveisItem(itemAtual, next) <= 0 &&
-          sobraItem(itemAtual, next) <= 1e-9
+          sobraItem(itemAtual, next, saidaLimitesPorItem) <= 1e-9
         ) {
           setSaidaItemIndex(null)
         }
@@ -1136,6 +1227,17 @@ export default function App() {
       justificativaSaida,
       undefined,
       saidaPaletesConfirmados,
+      saidaXmlDoc
+        ? {
+            nfSaida: {
+              numero: saidaXmlDoc.numero,
+              serie: saidaXmlDoc.serie,
+              chave: saidaXmlDoc.chave,
+              emitente: saidaXmlDoc.emitente,
+              dataEmissao: saidaXmlDoc.dataEmissao,
+            },
+          }
+        : undefined,
     )
     const nextState = {
       ...state,
@@ -1147,11 +1249,17 @@ export default function App() {
     setState(nextState)
     await saveNow(nextState)
     setNfBuscaSaidaId(null)
+    setSaidaXmlDoc(null)
+    setSaidaOrigemSelecionadaId('')
+    setSaidaUploadXmlErro(null)
     limparEstadoSaida()
   }
 
   function handleCancelarSaida() {
     setNfBuscaSaidaId(null)
+    setSaidaXmlDoc(null)
+    setSaidaOrigemSelecionadaId('')
+    setSaidaUploadXmlErro(null)
     limparEstadoSaida()
     setBuscaErro(null)
   }
@@ -1492,7 +1600,18 @@ export default function App() {
           uploadError,
         }}
         saida={{
+          modoBusca: saidaModoBusca,
+          onModoBuscaChange: handleModoBuscaSaidaChange,
           nfBusca: nfBuscaSaida,
+          saidaXml: saidaXmlDoc,
+          notasOrigem: notasOrigemSaida,
+          origemSelecionadaId: saidaOrigemSelecionadaId,
+          onOrigemSelecionadaChange: setSaidaOrigemSelecionadaId,
+          onVincularOrigem: handleVincularOrigemSaida,
+          onUploadXml: handleUploadSaidaXml,
+          itensSaida: saidaItensExibicao,
+          limitesPorItem: saidaLimitesPorItem,
+          vinculoAvisos: saidaVinculoAvisos,
           itemIndex: saidaItemIndex,
           modoPalete: saidaModoPalete,
           qtdPaletesInput: saidaQtdPaletesInput,
@@ -1513,6 +1632,7 @@ export default function App() {
           onFinalizarSaida: handleFinalizarSaida,
           onCancelarSaida: handleCancelarSaida,
           buscaErro,
+          uploadXmlErro: saidaUploadXmlErro,
           selecaoErro: saidaSelecaoErro,
         }}
         historico={{
@@ -1588,7 +1708,14 @@ export default function App() {
           editMode={editMode}
           editAddresses={nfEditar ? editNfAddresses : undefined}
           consultaAddresses={consultaAddresses.size > 0 ? consultaAddresses : undefined}
-          saidaAddresses={nfEditar ? undefined : saidaAddresses}
+          saidaAddresses={
+            nfEditar ? undefined : saidaAddresses.size > 0 ? saidaAddresses : undefined
+          }
+          saidaItemDestaqueAddresses={
+            nfEditar || saidaItemDestaqueAddresses.size === 0
+              ? undefined
+              : saidaItemDestaqueAddresses
+          }
           saidaFlaggedAddresses={editMode ? undefined : saidaFlaggedAddresses}
           paintMode={
             editMode ||

@@ -218,14 +218,24 @@ function SaidaMovimentoCard({ mov }: { mov: MovimentoRegistro }) {
       <MovimentoCabecalho
         mov={mov}
         extra={
-          motivo ? (
-            <>
-              <span className="hist-saida-sep" aria-hidden>
-                ·
-              </span>
-              <span>{motivo}</span>
-            </>
-          ) : undefined
+          <>
+            {mov.nfSaida && (
+              <>
+                <span className="hist-saida-sep" aria-hidden>
+                  ·
+                </span>
+                <span className="muted">doc. saída NF {mov.nfSaida.numero}</span>
+              </>
+            )}
+            {motivo ? (
+              <>
+                <span className="hist-saida-sep" aria-hidden>
+                  ·
+                </span>
+                <span>{motivo}</span>
+              </>
+            ) : null}
+          </>
         }
       />
       <p className="hist-saida-resumo muted">

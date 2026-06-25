@@ -3,9 +3,11 @@ import {
   sobrasPorItem,
   pesoBrutoTotalItem,
   pesoLiquidoTotalItem,
+  quantidadeBaseSaida,
+  type SaidaLimitesPorItem,
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
-import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
+import { unidadeEstoqueItem } from '../lib/nfeUnidades'
 import type { AddressId, NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -18,6 +20,7 @@ import { SaidaItemSubpainel } from './SaidaItemSubpainel'
 type Props = {
   nf: NotaFiscal
   items: NfeItem[]
+  limitesPorItem?: SaidaLimitesPorItem
   activeItemIndex: number | null
   paletesConfirmados: SaidaPaleteDraft[]
   paleteAtivo: string | null
@@ -45,6 +48,7 @@ function stopRowActivate(e: MouseEvent) {
 export function SaidaItensTable({
   nf,
   items,
+  limitesPorItem,
   activeItemIndex,
   paletesConfirmados,
   paleteAtivo,
@@ -65,7 +69,7 @@ export function SaidaItensTable({
   selecaoErro,
 }: Props) {
   const itensEstoque = items.filter((it) => it.allocatedAddresses.length > 0)
-  const sobras = sobrasPorItem(items, paletesConfirmados)
+  const sobras = sobrasPorItem(items, paletesConfirmados, limitesPorItem)
 
   return (
     <div className="nf-itens-table-wrap saida-itens-table-wrap">
@@ -86,7 +90,7 @@ export function SaidaItensTable({
         </thead>
         <tbody>
           {itensEstoque.map((item) => {
-            const qtdItem = quantidadeEstoqueItem(item)
+            const qtdItem = quantidadeBaseSaida(item, limitesPorItem)
             const sobra = sobras[item.index] ?? qtdItem
             const esgotado = sobra <= 1e-9
             const temSaida = sobra < qtdItem - 1e-9
@@ -141,57 +145,60 @@ export function SaidaItensTable({
                     </span>
                   </td>
                 </tr>
-                <tr
-                  className={`nf-itens-row-addr${isActive ? ' nf-itens-row-addr--active' : ''}`}
-                >
-                  <td colSpan={10}>
-                    <ul className="addr-mini nf-itens-addr-list addr-mini--saida">
-                      {item.allocatedAddresses.map((a) => (
-                        <li
-                          key={a}
-                          className={
-                            paleteAtivo === a
-                              ? 'addr-flagged addr-ativo'
-                              : paletesConfirmadosIds.includes(a)
-                                ? 'addr-confirmado'
-                                : paletesSelecionadosIds.includes(a)
-                                  ? 'addr-selecionado'
-                                  : ''
-                          }
-                        >
-                          {formatAddressLabel(a)}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                </tr>
-                <tr
-                  className={`nf-itens-row-saida${isActive ? ' nf-itens-row-saida--active' : ''}`}
-                  onClick={stopRowActivate}
-                >
-                  <td colSpan={10}>
-                    <SaidaItemSubpainel
-                      nf={nf}
-                      item={item}
-                      isActive={isActive}
-                      paletesConfirmados={paletesConfirmados}
-                      paletesSelecionadosIds={selecionadosItem}
-                      paleteAtivo={paleteAtivo}
-                      modoPalete={modoPalete}
-                      qtdPaletesInput={qtdPaletesInput}
-                      qtdPaletesAlvo={qtdPaletesAlvo}
-                      selecaoConcluida={selecaoConcluida}
-                      caixasInput={caixasInput}
-                      onQtdPaletesChange={onQtdPaletesChange}
-                      onIniciarSelecao={onIniciarSelecao}
-                      onConfirmarSelecaoPaletes={onConfirmarSelecaoPaletes}
-                      onCaixasChange={onCaixasChange}
-                      onConfirmarPalete={onConfirmarPalete}
-                      onRemoverPalete={onRemoverPalete}
-                      selecaoErro={isActive ? selecaoErro : null}
-                    />
-                  </td>
-                </tr>
+                {isActive && (
+                  <>
+                    <tr className="nf-itens-row-addr nf-itens-row-addr--active">
+                      <td colSpan={10}>
+                        <ul className="addr-mini nf-itens-addr-list addr-mini--saida">
+                          {item.allocatedAddresses.map((a) => (
+                            <li
+                              key={a}
+                              className={
+                                paleteAtivo === a
+                                  ? 'addr-flagged addr-ativo'
+                                  : paletesConfirmadosIds.includes(a)
+                                    ? 'addr-confirmado'
+                                    : paletesSelecionadosIds.includes(a)
+                                      ? 'addr-selecionado'
+                                      : ''
+                              }
+                            >
+                              {formatAddressLabel(a)}
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                    <tr
+                      className="nf-itens-row-saida nf-itens-row-saida--active"
+                      onClick={stopRowActivate}
+                    >
+                      <td colSpan={10}>
+                        <SaidaItemSubpainel
+                          nf={nf}
+                          item={item}
+                          limitesPorItem={limitesPorItem}
+                          isActive={isActive}
+                          paletesConfirmados={paletesConfirmados}
+                          paletesSelecionadosIds={selecionadosItem}
+                          paleteAtivo={paleteAtivo}
+                          modoPalete={modoPalete}
+                          qtdPaletesInput={qtdPaletesInput}
+                          qtdPaletesAlvo={qtdPaletesAlvo}
+                          selecaoConcluida={selecaoConcluida}
+                          caixasInput={caixasInput}
+                          onQtdPaletesChange={onQtdPaletesChange}
+                          onIniciarSelecao={onIniciarSelecao}
+                          onConfirmarSelecaoPaletes={onConfirmarSelecaoPaletes}
+                          onCaixasChange={onCaixasChange}
+                          onConfirmarPalete={onConfirmarPalete}
+                          onRemoverPalete={onRemoverPalete}
+                          selecaoErro={selecaoErro}
+                        />
+                      </td>
+                    </tr>
+                  </>
+                )}
               </Fragment>
             )
           })}

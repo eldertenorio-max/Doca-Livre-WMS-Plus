@@ -40,6 +40,22 @@ export type NotaFiscal = {
   nfCanceladaOrigemNumero?: string | null
 }
 
+/** Documento NF-e de saída (XML) vinculado à NF de origem no estoque. */
+export type NfeDocumentoResumo = {
+  numero: string
+  serie: string
+  chave: string
+  emitente: string
+  dataEmissao: string
+}
+
+export type SaidaXmlDocumento = NfeDocumentoResumo & {
+  items: NfeItem[]
+  pesoBruto?: number
+  pesoLiquido?: number
+  valorTotalNota?: number
+}
+
 export type NfeItemCancelado = {
   index: number
   codigo: string
@@ -117,6 +133,8 @@ export type MovimentoRegistro = {
   valorTotal?: number
   /** Motivo da saída (venda, transferência, etc.). */
   justificativaSaida?: JustificativaSaidaId
+  /** NF de saída (documento) quando a retirada foi iniciada por XML de saída. */
+  nfSaida?: NfeDocumentoResumo
   /** Registro mantido no histórico após exclusão na aba Movimentação. */
   excluido?: boolean
   excluidoEm?: string

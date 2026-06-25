@@ -6,17 +6,20 @@ import {
   caixasPorPalete,
   paletesDisponiveisItem,
   parseQuantidadeSaida,
+  quantidadeBaseSaida,
   totaisSaidaItem,
+  type SaidaLimitesPorItem,
   type SaidaPaleteCalculo,
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
 import { formatAddressLabel } from '../layout/camaras'
-import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
+import { unidadeEstoqueItem } from '../lib/nfeUnidades'
 import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 
 type Props = {
   nf: NotaFiscal
   item: NfeItem
+  limitesPorItem?: SaidaLimitesPorItem
   isActive: boolean
   paletesConfirmados: SaidaPaleteDraft[]
   paletesSelecionadosIds: AddressId[]
@@ -42,6 +45,7 @@ function stopRowActivate(e: MouseEvent) {
 export function SaidaItemSubpainel({
   nf,
   item,
+  limitesPorItem,
   isActive,
   paletesConfirmados,
   paletesSelecionadosIds,
@@ -61,15 +65,15 @@ export function SaidaItemSubpainel({
 }: Props) {
   const confirmadosItem = paletesConfirmados.filter((p) => p.itemIndex === item.index)
   const paletesDisponiveis = paletesDisponiveisItem(item, paletesConfirmados)
-  const totais = totaisSaidaItem(nf, item, paletesConfirmados)
+  const totais = totaisSaidaItem(nf, item, paletesConfirmados, limitesPorItem)
 
   const paleteAtivoDoItem =
     paleteAtivo && item.allocatedAddresses.includes(paleteAtivo) ? paleteAtivo : null
   const caixas = parseQuantidadeSaida(caixasInput)
   const calcPreview: SaidaPaleteCalculo | null = useMemo(() => {
     if (!isActive || !paleteAtivoDoItem || caixas == null || caixas <= 0) return null
-    return calcularSaidaPalete(nf, item, paleteAtivoDoItem, caixas, paletesConfirmados)
-  }, [isActive, nf, item, paleteAtivoDoItem, caixas, paletesConfirmados])
+    return calcularSaidaPalete(nf, item, paleteAtivoDoItem, caixas, paletesConfirmados, limitesPorItem)
+  }, [isActive, nf, item, paleteAtivoDoItem, caixas, paletesConfirmados, limitesPorItem])
 
   const totaisExibicao = useMemo(() => {
     if (!calcPreview) return totais
@@ -82,7 +86,8 @@ export function SaidaItemSubpainel({
     }
   }, [totais, calcPreview])
 
-  const maxCaixas = quantidadeEstoqueItem(item) - caixasJaSaidasItem(item.index, paletesConfirmados)
+  const maxCaixas =
+    quantidadeBaseSaida(item, limitesPorItem) - caixasJaSaidasItem(item.index, paletesConfirmados)
 
   const qtdInputValida = useMemo(() => {
     const n = Number(qtdPaletesInput.trim().replace(',', '.'))

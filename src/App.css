@@ -2572,6 +2572,66 @@ html.scroll-locked .sidebar.sidebar--fixed {
   margin-top: 10px;
 }
 
+.saida-modo-busca {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.saida-modo-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.saida-modo-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.saida-modo-btn--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated));
+  color: var(--text);
+  font-weight: 600;
+}
+
+.saida-modo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.saida-vinculo-origem {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saida-vinculo-select {
+  width: 100%;
+}
+
+.saida-vinculo-avisos {
+  margin: 0 0 10px;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.saida-origem-ref {
+  font-size: 0.85em;
+  font-weight: 400;
+}
+
+.saida-xml-doc {
+  margin-top: 0;
+}
+
 .consulta-modo-tabs {
   display: flex;
   gap: 6px;

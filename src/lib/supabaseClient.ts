@@ -97,6 +97,7 @@ type MovRow = {
     itens: import('../types').MovimentoItemSnapshot[]
     nfIdHistorico?: string
     justificativaSaida?: import('../types').JustificativaSaidaId
+    nfSaida?: import('../types').NfeDocumentoResumo
     excluido?: boolean
     excluidoEm?: string | null
   }
