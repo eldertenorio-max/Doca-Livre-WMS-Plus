@@ -3,7 +3,8 @@ import type { EntradaItemCampos } from '../lib/entradaCampos'
 import { normalizeDataFabricacao, todayDateInputMax } from '../lib/entradaCampos'
 import { canDesmembrarNfeItem } from '../lib/desmembrarItem'
 import { itemEnderecamentoCompleto, paletesLimiteItem } from '../lib/paletes'
-import type { NfeItem } from '../types'
+import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../lib/saidaParcial'
+import type { NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
   formatPesoBruto,
@@ -12,6 +13,7 @@ import {
 } from '../lib/formatNfeItem'
 
 type Props = {
+  nf: NotaFiscal
   items: NfeItem[]
   activeItemIndex: number | null
   onSelectItem: (index: number) => void
@@ -34,6 +36,7 @@ function stopRowActivate(e: SyntheticEvent) {
 }
 
 export function NfItensTable({
+  nf,
   items,
   activeItemIndex,
   onSelectItem,
@@ -53,6 +56,7 @@ export function NfItensTable({
             <th scope="col">Descrição</th>
             <th scope="col">Un.</th>
             <th scope="col" className="nf-itens-col-num">Peso br.</th>
+            <th scope="col" className="nf-itens-col-num">P. líq.</th>
             <th scope="col" className="nf-itens-col-num">Qtd.</th>
             <th scope="col" className="nf-itens-col-num">V. unit.</th>
             <th scope="col" className="nf-itens-col-num">V. total</th>
@@ -89,14 +93,19 @@ export function NfItensTable({
                     {item.descricao || '—'}
                   </td>
                   <td className="nf-itens-col-un">{item.unidade || '—'}</td>
-                  <td className="nf-itens-col-num">{formatPesoBruto(item.pesoBruto)}</td>
+                  <td className="nf-itens-col-num">
+                    {formatPesoBruto(pesoBrutoTotalItem(nf, item) ?? item.pesoBruto)}
+                  </td>
+                  <td className="nf-itens-col-num">
+                    {formatPesoBruto(pesoLiquidoTotalItem(nf, item))}
+                  </td>
                   <td className="nf-itens-col-num">{formatQuantidadeNfe(item.quantidade)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorUnitario)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorTotal)}</td>
                 </tr>
                 <tr className="nf-itens-row-campos" onClick={stopRowActivate}>
                   <td className="nf-itens-col-status" aria-hidden />
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="nf-itens-campos-row">
                       <label className="nf-itens-campo">
                         <span>UP</span>
@@ -200,7 +209,7 @@ export function NfItensTable({
                 </tr>
                 {showEnderecos && (
                   <tr className="nf-itens-row-addr">
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       <ul className="addr-mini nf-itens-addr-list">
                         {item.allocatedAddresses.map((a) => (
                           <li key={a}>{formatAddressLabel(a)}</li>

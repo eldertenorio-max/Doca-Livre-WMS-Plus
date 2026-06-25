@@ -214,7 +214,7 @@
 
 .nf-chip--active {
   border-color: var(--accent);
-  outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -544,7 +544,7 @@
 
 .nf-itens-table {
   width: 100%;
-  min-width: 560px;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.86rem;
 }
@@ -1158,7 +1158,7 @@
 }
 
 .cell--destaque-verde .cell-nf {
-  position: relative;
+    position: relative;
   z-index: 1;
   text-shadow: 0 0 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.35);
 }
@@ -1189,7 +1189,7 @@
   height: max(2px, 12%);
   background: rgb(0 0 0 / 0.22);
   pointer-events: none;
-  z-index: 1;
+    z-index: 1;
 }
 
 .cell--sem-nivel5::before,
@@ -1412,7 +1412,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 }
 
 .modal-section {
-  margin-bottom: 16px;
+    margin-bottom: 16px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
@@ -1426,7 +1426,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 .detail-modal {
   padding: 0;
   display: flex;
-  flex-direction: column;
+    flex-direction: column;
   max-height: min(90dvh, calc(100dvh - 40px));
   overflow: hidden;
 }
@@ -1492,7 +1492,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
 .detail-product-block {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -1768,8 +1768,8 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
 .sidebar-section-icon svg {
   width: 18px;
-  height: 18px;
-}
+    height: 18px;
+  }
 
 .sidebar-section-title {
   flex: 0;
@@ -2293,7 +2293,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
   margin-top: 8px;
   text-align: center;
   padding: 10px 14px;
-  border-radius: 6px;
+    border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
   background: var(--upload-muted-bg);
@@ -2315,7 +2315,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
   list-style: none;
   margin: 12px 0 0;
   padding: 0;
-  display: flex;
+    display: flex;
   flex-direction: column;
   gap: 10px;
 }
@@ -2399,7 +2399,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 }
 
 .btn-sm {
-  padding: 6px 12px;
+    padding: 6px 12px;
   font-size: 0.8rem;
 }
 
@@ -2517,9 +2517,9 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
 .consulta-inventario-toolbar {
   display: flex;
-  align-items: center;
+    align-items: center;
   justify-content: space-between;
-  gap: 8px;
+    gap: 8px;
   margin-bottom: 6px;
 }
 
@@ -3169,7 +3169,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
 .hist-filters {
   display: flex;
-  flex-wrap: wrap;
+    flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
 }
@@ -3292,7 +3292,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 .hist-delete {
   display: flex;
   align-items: center;
-  justify-content: center;
+    justify-content: center;
   width: 28px;
   height: 28px;
   border: none;
@@ -3325,7 +3325,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
   border-radius: 10px;
   padding: 18px;
   max-width: 340px;
-  width: 100%;
+      width: 100%;
 }
 
 .confirm-box h4 {
@@ -3367,7 +3367,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
   background: var(--overlay-strong);
   display: flex;
   align-items: center;
-  justify-content: center;
+      justify-content: center;
   padding: 20px;
   z-index: 300;
 }
@@ -3503,7 +3503,7 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
   .saida-busca .input-nf,
   .saida-busca .btn {
-    width: 100%;
+  width: 100%;
   }
 
   .confirm-box,

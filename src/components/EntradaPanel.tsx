@@ -158,6 +158,7 @@ export function EntradaPanel({
               quando o mesmo produto vier com mais de uma data.
             </p>
             <NfItensTable
+              nf={activeNf}
               items={activeNf.items}
               activeItemIndex={activeItemIndex}
               onSelectItem={onSelectItem}

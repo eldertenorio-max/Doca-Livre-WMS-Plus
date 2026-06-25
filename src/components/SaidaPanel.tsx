@@ -119,6 +119,7 @@ export function SaidaPanel({
           </p>
 
           <SaidaItensTable
+            nf={nfBusca}
             items={nfBusca.items}
             paletesConfirmados={paletesConfirmados}
             paleteAtivo={paleteAtivo}

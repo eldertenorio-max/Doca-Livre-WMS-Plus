@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
-import { sobrasPorItem } from '../lib/saidaParcial'
+import { sobrasPorItem, pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../lib/saidaParcial'
 import type { SaidaPaleteDraft } from '../lib/saidaParcial'
-import type { NfeItem } from '../types'
+import type { NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
   formatPesoBruto,
@@ -10,6 +10,7 @@ import {
 } from '../lib/formatNfeItem'
 
 type Props = {
+  nf: NotaFiscal
   items: NfeItem[]
   paletesConfirmados: SaidaPaleteDraft[]
   paleteAtivo: string | null
@@ -17,6 +18,7 @@ type Props = {
 }
 
 export function SaidaItensTable({
+  nf,
   items,
   paletesConfirmados,
   paleteAtivo,
@@ -35,6 +37,7 @@ export function SaidaItensTable({
             <th scope="col">Descrição</th>
             <th scope="col">Un.</th>
             <th scope="col" className="nf-itens-col-num">Peso br.</th>
+            <th scope="col" className="nf-itens-col-num">P. líq.</th>
             <th scope="col" className="nf-itens-col-num">Qtd.</th>
             <th scope="col" className="nf-itens-col-num">V. unit.</th>
             <th scope="col" className="nf-itens-col-num">V. total</th>
@@ -59,7 +62,12 @@ export function SaidaItensTable({
                     {item.descricao || '—'}
                   </td>
                   <td className="nf-itens-col-un">{item.unidade || '—'}</td>
-                  <td className="nf-itens-col-num">{formatPesoBruto(item.pesoBruto)}</td>
+                  <td className="nf-itens-col-num">
+                    {formatPesoBruto(pesoBrutoTotalItem(nf, item) ?? item.pesoBruto)}
+                  </td>
+                  <td className="nf-itens-col-num">
+                    {formatPesoBruto(pesoLiquidoTotalItem(nf, item))}
+                  </td>
                   <td className="nf-itens-col-num">{formatQuantidadeNfe(item.quantidade)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorUnitario)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorTotal)}</td>
@@ -70,7 +78,7 @@ export function SaidaItensTable({
                   </td>
                 </tr>
                 <tr className="nf-itens-row-addr">
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <ul className="addr-mini nf-itens-addr-list addr-mini--saida">
                       {item.allocatedAddresses.map((a) => (
                         <li

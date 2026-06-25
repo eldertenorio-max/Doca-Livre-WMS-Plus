@@ -45,15 +45,32 @@ export function caixasPorPalete(item: NfeItem): number {
   return item.quantidade / n
 }
 
-export function pesoLiquidoItem(nf: NotaFiscal, item: NfeItem): number | undefined {
-  if (nf.pesoLiquido == null) return undefined
-  const pesoItens = nf.items.reduce((s, it) => s + (it.pesoBruto ?? 0), 0)
-  if (pesoItens > 0 && item.pesoBruto != null) {
-    return nf.pesoLiquido * (item.pesoBruto / pesoItens)
+function quantidadeTotalItens(items: NfeItem[]): number {
+  return items.reduce((s, it) => s + it.quantidade, 0)
+}
+
+/** Peso bruto total do item — proporcional à qtd. na NF (transporte). */
+export function pesoBrutoTotalItem(nf: NotaFiscal, item: NfeItem): number | undefined {
+  const qtdTotal = quantidadeTotalItens(nf.items)
+  if (nf.pesoBruto != null && qtdTotal > 0) {
+    return nf.pesoBruto * (item.quantidade / qtdTotal)
   }
-  const qtdItens = nf.items.reduce((s, it) => s + it.quantidade, 0)
-  if (qtdItens > 0) return nf.pesoLiquido * (item.quantidade / qtdItens)
+  if (item.pesoBruto != null) return item.pesoBruto
   return undefined
+}
+
+/** Peso líquido total do item — proporcional à qtd. na NF (transporte). */
+export function pesoLiquidoTotalItem(nf: NotaFiscal, item: NfeItem): number | undefined {
+  const qtdTotal = quantidadeTotalItens(nf.items)
+  if (nf.pesoLiquido != null && qtdTotal > 0) {
+    return nf.pesoLiquido * (item.quantidade / qtdTotal)
+  }
+  return undefined
+}
+
+/** @deprecated Use pesoLiquidoTotalItem */
+export function pesoLiquidoItem(nf: NotaFiscal, item: NfeItem): number | undefined {
+  return pesoLiquidoTotalItem(nf, item)
 }
 
 export function caixasJaSaidasItem(
@@ -82,7 +99,8 @@ export function calcularSaidaPalete(
 
   const quantidadeSobra = item.quantidade - jaSaido - quantidadeCaixas
   const r = ratio(quantidadeCaixas, item.quantidade)
-  const pesoLiq = pesoLiquidoItem(nf, item)
+  const pesoBrutoTotal = pesoBrutoTotalItem(nf, item)
+  const pesoLiquidoTotal = pesoLiquidoTotalItem(nf, item)
   const capPalete = caixasPorPalete(item)
   const liberaPalete =
     quantidadeSobra <= 1e-9 || quantidadeCaixas >= capPalete - 1e-6
@@ -94,8 +112,8 @@ export function calcularSaidaPalete(
     quantidadeEstoque: item.quantidade,
     quantidadeSobra,
     unidade: item.unidade,
-    ...(item.pesoBruto != null ? { pesoBrutoSaida: item.pesoBruto * r } : {}),
-    ...(pesoLiq != null ? { pesoLiquidoSaida: pesoLiq * r } : {}),
+    ...(pesoBrutoTotal != null ? { pesoBrutoSaida: pesoBrutoTotal * r } : {}),
+    ...(pesoLiquidoTotal != null ? { pesoLiquidoSaida: pesoLiquidoTotal * r } : {}),
     ...(item.valorTotal != null
       ? { valorTotalSaida: item.valorTotal * r }
       : item.valorUnitario != null
