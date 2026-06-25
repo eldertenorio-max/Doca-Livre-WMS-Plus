@@ -1,5 +1,5 @@
 import type { NfeItem, NotaFiscal } from '../types'
-import { isUnidadePeso } from './nfeUnidades'
+import { isUnidadePeso, kgPorCaixaFromDescricao } from './nfeUnidades'
 
 function textOf(el: Element | null, tag: string): string {
   if (!el) return ''
@@ -11,26 +11,6 @@ function numOf(el: Element | null, tag: string): number {
   const raw = textOf(el, tag).replace(',', '.')
   const n = Number(raw)
   return Number.isFinite(n) ? n : 0
-}
-
-function parsePesoBrutoItem(prod: Element): number | undefined {
-  const qCom = numOf(prod, 'qCom')
-  const uCom = textOf(prod, 'uCom')
-  const qTrib = numOf(prod, 'qTrib')
-  const uTrib = textOf(prod, 'uTrib')
-  if (isUnidadePeso(uTrib) && qTrib > 0) return qTrib
-  if (isUnidadePeso(uCom) && qCom > 0) return qCom
-  return undefined
-}
-
-function parsePesoLiquidoItem(prod: Element): number | undefined {
-  const qTrib = numOf(prod, 'qTrib')
-  const uTrib = textOf(prod, 'uTrib')
-  const qCom = numOf(prod, 'qCom')
-  const uCom = textOf(prod, 'uCom')
-  if (isUnidadePeso(uTrib) && qTrib > 0) return qTrib
-  if (isUnidadePeso(uCom) && qCom > 0 && isUnidadePeso(uCom)) return qCom
-  return undefined
 }
 
 type VolumeInfo = { quantidade: number; unidade: string }
@@ -45,14 +25,36 @@ function parseVolumesFromTransport(transp: Element | undefined): VolumeInfo[] {
     .filter((v) => v.quantidade > 0)
 }
 
+function parsePesoKgComercial(prod: Element): number | undefined {
+  const qCom = numOf(prod, 'qCom')
+  const uCom = textOf(prod, 'uCom')
+  const qTrib = numOf(prod, 'qTrib')
+  const uTrib = textOf(prod, 'uTrib')
+  if (isUnidadePeso(uCom) && qCom > 0) return qCom
+  if (isUnidadePeso(uTrib) && qTrib > 0) return qTrib
+  return undefined
+}
+
 function parseItemQuantidadeUnidade(prod: Element): { quantidade: number; unidade: string } {
   const qCom = numOf(prod, 'qCom')
   const uCom = textOf(prod, 'uCom') || 'UN'
   const qTrib = numOf(prod, 'qTrib')
   const uTrib = textOf(prod, 'uTrib')
+  const descricao = textOf(prod, 'xProd')
 
   const comPeso = isUnidadePeso(uCom)
   const tribPeso = isUnidadePeso(uTrib)
+
+  // NF Astraplus/Coval: uCom=KG com peso total, descrição traz "CX 20KG" → quantidade em caixas
+  if (comPeso && qCom > 0) {
+    const kgCx = kgPorCaixaFromDescricao(descricao)
+    if (kgCx != null) {
+      const caixas = qCom / kgCx
+      if (caixas >= 1 && Math.abs(caixas - Math.round(caixas)) < 0.02) {
+        return { quantidade: Math.round(caixas), unidade: 'CX' }
+      }
+    }
+  }
 
   // uCom em peso, contagem comercial em uTrib (ex.: KG + CX)
   if (comPeso && uTrib && !tribPeso && qTrib > 0) {
@@ -64,7 +66,7 @@ function parseItemQuantidadeUnidade(prod: Element): { quantidade: number; unidad
     return { quantidade: qCom, unidade: uCom }
   }
 
-  // uCom em peso sem uTrib, mas qTrib com valor comercial divergente
+  // uCom em peso sem uTrib útil, mas qTrib com valor comercial divergente
   if (comPeso && qTrib > 0 && !tribPeso && qTrib !== qCom) {
     return { quantidade: qTrib, unidade: uTrib || 'UN' }
   }
@@ -155,8 +157,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
     const { quantidade, unidade } = parseItemQuantidadeUnidade(prod)
     const valorUnitario = numOf(prod, 'vUnCom')
     const valorTotal = numOf(prod, 'vProd')
-    const pesoBruto = parsePesoBrutoItem(prod)
-    const pesoLiquido = parsePesoLiquidoItem(prod)
+    const pesoKg = parsePesoKgComercial(prod)
     return {
       index,
       codigo: textOf(prod, 'cProd'),
@@ -164,8 +165,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
       quantidade,
       unidade,
       allocatedAddresses: [],
-      ...(pesoBruto != null ? { pesoBruto } : {}),
-      ...(pesoLiquido != null && !isUnidadePeso(unidade) ? { pesoLiquido } : {}),
+      ...(pesoKg != null ? { pesoBruto: pesoKg, pesoLiquido: pesoKg } : {}),
       ...(valorUnitario > 0 ? { valorUnitario } : {}),
       ...(valorTotal > 0 ? { valorTotal } : {}),
     }

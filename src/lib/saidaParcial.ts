@@ -1,6 +1,6 @@
 import { enderecosDaNf } from './movimentos'
 import { patchNfeItemQuantidade } from './desmembrarItem'
-import { isUnidadePeso, quantidadeEstoqueItem } from './nfeUnidades'
+import { isUnidadePeso, pesoKgItem, quantidadeEstoqueItem, unidadeEstoqueItem } from './nfeUnidades'
 import type { AddressId, MovimentoItemSnapshot, NfeItem, NotaFiscal } from '../types'
 
 export type SaidaItemDraft = {
@@ -80,13 +80,20 @@ function quantidadeTotalItens(items: NfeItem[]): number {
   return items.reduce((s, it) => s + it.quantidade, 0)
 }
 
-/** Peso bruto total do item — proporcional à qtd. na NF (transporte). */
+/** Peso bruto total do item — usa peso da linha (kg) quando disponível. */
 export function pesoBrutoTotalItem(nf: NotaFiscal, item: NfeItem): number | undefined {
-  const qtdTotal = quantidadeTotalItens(nf.items)
-  if (nf.pesoBruto != null && qtdTotal > 0) {
-    return nf.pesoBruto * (item.quantidade / qtdTotal)
-  }
   if (item.pesoBruto != null) return item.pesoBruto
+
+  const pesoKg = pesoKgItem(item)
+  if (pesoKg != null) return pesoKg
+
+  const pesoItens = nf.items.map((it) => pesoKgItem(it)).filter((p): p is number => p != null)
+  const qtdTotal = pesoItens.reduce((s, p) => s + p, 0)
+  const itemPeso = pesoKgItem(item)
+  if (nf.pesoBruto != null && qtdTotal > 0 && itemPeso != null) {
+    return nf.pesoBruto * (itemPeso / qtdTotal)
+  }
+
   return undefined
 }
 
@@ -162,7 +169,7 @@ export function calcularSaidaPalete(
     quantidadeCaixas,
     quantidadeEstoque: qtdItem,
     quantidadeSobra,
-    unidade: item.unidade,
+    unidade: unidadeEstoqueItem(item),
     ...(pesoBrutoTotal != null ? { pesoBrutoSaida: pesoBrutoTotal * r } : {}),
     ...(pesoLiquidoTotal != null ? { pesoLiquidoSaida: pesoLiquidoTotal * r } : {}),
     ...(item.valorTotal != null
@@ -276,7 +283,7 @@ export function resumoSaidaNf(
       itemIndex,
       codigo: item.codigo,
       descricao: item.descricao,
-      unidade: item.unidade,
+      unidade: unidadeEstoqueItem(item),
       paletes,
       caixas: t.caixas,
       pesoBruto: t.pesoBruto,
@@ -403,7 +410,7 @@ export function snapshotSaidaPaletes(
       codigo: item.codigo,
       descricao: item.descricao,
       quantidade: p.quantidadeCaixas,
-      unidade: item.unidade,
+      unidade: unidadeEstoqueItem(item),
       addressIds: [p.addressId],
       paletes: liberar.has(p.addressId) ? 1 : 0,
       quantidadeSaida: p.quantidadeCaixas,

@@ -11,7 +11,7 @@ import {
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
 import { formatAddressLabel } from '../layout/camaras'
-import { quantidadeEstoqueItem } from '../lib/nfeUnidades'
+import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
 import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 
 type Props = {
@@ -148,7 +148,7 @@ export function SaidaItemSubpainel({
         <div className="saida-item-campo saida-item-campo--calc">
           <span className="muted">Sobra</span>
           <strong className="saida-valor--sobra">
-            {formatQuantidadeNfe(totaisExibicao.sobra)} {item.unidade}
+            {formatQuantidadeNfe(totaisExibicao.sobra)} {unidadeEstoqueItem(item)}
           </strong>
         </div>
       </div>
@@ -214,7 +214,7 @@ export function SaidaItemSubpainel({
             Palete: <strong>{formatAddressLabel(paleteAtivoDoItem)}</strong>
             <span className="muted">
               {' '}
-              · até {formatQuantidadeNfe(maxCaixas)} {item.unidade}
+              · até {formatQuantidadeNfe(maxCaixas)} {unidadeEstoqueItem(item)}
               {item.allocatedAddresses.length > 1 && (
                 <> ({formatQuantidadeNfe(caixasPorPalete(item))} por palete)</>
               )}
@@ -256,7 +256,7 @@ export function SaidaItemSubpainel({
                   <strong>{formatAddressLabel(p.addressId)}</strong>
                   <span className="muted">
                     {' '}
-                    · {formatQuantidadeNfe(p.quantidadeCaixas)} {item.unidade}
+                    · {formatQuantidadeNfe(p.quantidadeCaixas)} {unidadeEstoqueItem(item)}
                     {c ? ` · ${formatValorNfe(c.valorTotalSaida)}` : ''}
                   </span>
                 </div>

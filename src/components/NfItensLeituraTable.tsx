@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../lib/saidaParcial'
+import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
 import type { NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -108,14 +109,14 @@ export function NfItensLeituraTable({
                   <td className="nf-itens-col-descricao" title={item.descricao}>
                     {item.descricao || '—'}
                   </td>
-                  <td className="nf-itens-col-un">{item.unidade || '—'}</td>
+                  <td className="nf-itens-col-un">{unidadeEstoqueItem(item) || '—'}</td>
                   <td className="nf-itens-col-num">
                     {formatPesoBruto(pesoBrutoTotalItem(nf, item) ?? item.pesoBruto)}
                   </td>
                   <td className="nf-itens-col-num">
                     {formatPesoBruto(pesoLiquidoTotalItem(nf, item))}
                   </td>
-                  <td className="nf-itens-col-num">{formatQuantidadeNfe(item.quantidade)}</td>
+                  <td className="nf-itens-col-num">{formatQuantidadeNfe(quantidadeEstoqueItem(item))}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorUnitario)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorTotal)}</td>
                 </tr>

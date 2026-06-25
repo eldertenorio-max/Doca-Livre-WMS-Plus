@@ -5,7 +5,7 @@ import {
   pesoLiquidoTotalItem,
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
-import { quantidadeEstoqueItem } from '../lib/nfeUnidades'
+import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
 import type { AddressId, NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -125,7 +125,7 @@ export function SaidaItensTable({
                   <td className="nf-itens-col-descricao" title={item.descricao}>
                     {item.descricao || '—'}
                   </td>
-                  <td className="nf-itens-col-un">{item.unidade || '—'}</td>
+                  <td className="nf-itens-col-un">{unidadeEstoqueItem(item)}</td>
                   <td className="nf-itens-col-num">
                     {formatPesoBruto(pesoBrutoTotalItem(nf, item) ?? item.pesoBruto)}
                   </td>
