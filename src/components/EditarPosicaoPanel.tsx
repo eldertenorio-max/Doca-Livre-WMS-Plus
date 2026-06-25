@@ -94,8 +94,8 @@ export function EditarPosicaoPanel({
           {itemIndex != null && (
             <div className="item-actions">
               <p className="muted">
-                {pendingCount} endereço(s) selecionado(s) — clique ou arraste no painel para marcar
-                ou desmarcar.
+                {pendingCount} endereço(s) selecionado(s) — clique em uma célula vazia no painel
+                para transferir o palete (a origem é liberada automaticamente).
               </p>
               <button
                 type="button"

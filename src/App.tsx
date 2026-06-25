@@ -154,6 +154,7 @@ export default function App() {
     onConfirmLeave?: () => void
   } | null>(null)
   const entradaPendenteDismissedRef = useRef<string | null>(null)
+  const editOriginalAddressesRef = useRef<Set<AddressId>>(new Set())
   const [manualNfModalOpen, setManualNfModalOpen] = useState(false)
   const [manualNfError, setManualNfError] = useState<string | null>(null)
   const [selectedEntradaIds, setSelectedEntradaIds] = useState<string[]>([])
@@ -579,8 +580,17 @@ export default function App() {
 
       setEditPendingSelection((prev) => {
         const next = new Set(prev)
-        if (mode === 'add') next.add(addressId)
-        else next.delete(addressId)
+        if (mode === 'add') {
+          if (next.has(addressId)) return prev
+          // Movimentação: marcar célula vazia transfere um palete da origem
+          if (!occ) {
+            const origem = [...editOriginalAddressesRef.current].find((a) => next.has(a))
+            if (origem) next.delete(origem)
+          }
+          next.add(addressId)
+        } else {
+          next.delete(addressId)
+        }
         return next
       })
       return
@@ -1272,19 +1282,23 @@ export default function App() {
       setNfEditarId(null)
       setEditItemIndex(null)
       setEditPendingSelection(new Set())
+      editOriginalAddressesRef.current = new Set()
       return
     }
     setNfEditarId(nf.id)
     setEditItemIndex(null)
     setEditPendingSelection(new Set())
+    editOriginalAddressesRef.current = new Set()
   }
 
   function handleSelectItemEditar(index: number) {
     if (!nfEditar) return
     const item = nfEditar.items.find((it) => it.index === index)
     if (!item) return
+    const original = new Set(item.allocatedAddresses)
+    editOriginalAddressesRef.current = original
     setEditItemIndex(index)
-    setEditPendingSelection(new Set(item.allocatedAddresses))
+    setEditPendingSelection(new Set(original))
     setDetailAddress(null)
   }
 
@@ -1292,30 +1306,24 @@ export default function App() {
     if (!nfEditar || editItemIndex == null || editPendingSelection.size === 0) return
     const addresses = [...editPendingSelection]
     const currentItemIndex = editItemIndex
+    const item = nfEditar.items.find((it) => it.index === currentItemIndex)
+    if (!item) return
+    const removedFromItem = item.allocatedAddresses.filter((a) => !addresses.includes(a))
 
-    const notas = state.notas.map((nf) => {
-      if (nf.id !== nfEditar.id) {
-        return {
-          ...nf,
-          items: nf.items.map((it) => ({
-            ...it,
-            allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
-          })),
-        }
-      }
-      return {
-        ...nf,
-        items: nf.items.map((it) => {
-          if (it.index !== currentItemIndex) {
-            return {
-              ...it,
-              allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
-            }
-          }
+    const notas = state.notas.map((nf) => ({
+      ...nf,
+      items: nf.items.map((it) => {
+        if (nf.id === nfEditar.id && it.index === currentItemIndex) {
           return { ...it, allocatedAddresses: addresses }
-        }),
-      }
-    })
+        }
+        return {
+          ...it,
+          allocatedAddresses: it.allocatedAddresses.filter(
+            (a) => !addresses.includes(a) && !removedFromItem.includes(a),
+          ),
+        }
+      }),
+    }))
     const updatedNf = notas.find((n) => n.id === nfEditar.id)!
     const nextState = {
       ...state,
@@ -1335,6 +1343,7 @@ export default function App() {
     setNfEditarId(null)
     setEditItemIndex(null)
     setEditPendingSelection(new Set())
+    editOriginalAddressesRef.current = new Set()
     setBuscaEditarErro(null)
   }
 
