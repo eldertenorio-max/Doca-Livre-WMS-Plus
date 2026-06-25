@@ -3,11 +3,14 @@ import type {
   JustificativaSaidaId,
   MovimentoItemSnapshot,
   MovimentoRegistro,
+  NfeItem,
   NotaFiscal,
   PersistedData,
 } from '../types'
 import { remapLegacyAddressId } from '../layout/camaras'
 import { syncVinculosNotas } from './nfCanceladas'
+import { buildNfResumo } from './nfResumo'
+import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from './saidaParcial'
 import type { SaidaItemDraft, SaidaPaleteDraft } from './saidaParcial'
 import { snapshotSaidaItens, snapshotSaidaPaletes } from './saidaParcial'
 
@@ -40,6 +43,53 @@ export function nfTemEnderecos(nf: NotaFiscal): boolean {
   return nf.items.some((it) => it.allocatedAddresses.length > 0)
 }
 
+export function snapshotItemFromNfe(nf: NotaFiscal, it: NfeItem): MovimentoItemSnapshot {
+  const pesoBruto = pesoBrutoTotalItem(nf, it) ?? it.pesoBruto
+  const pesoLiquido = pesoLiquidoTotalItem(nf, it)
+  return {
+    itemIndex: it.index,
+    codigo: it.codigo,
+    descricao: it.descricao,
+    quantidade: it.quantidade,
+    unidade: it.unidade,
+    addressIds: [...it.allocatedAddresses],
+    ...(it.paletes != null
+      ? { paletes: it.paletes }
+      : it.allocatedAddresses.length > 0
+        ? { paletes: it.allocatedAddresses.length }
+        : {}),
+    ...(it.up ? { up: it.up } : {}),
+    ...(it.lote ? { lote: it.lote } : {}),
+    ...(it.dataFabricacao ? { dataFabricacao: it.dataFabricacao } : {}),
+    ...(it.dataValidade ? { dataValidade: it.dataValidade } : {}),
+    ...(pesoBruto != null ? { pesoBruto } : {}),
+    ...(pesoLiquido != null ? { pesoLiquido } : {}),
+    ...(it.valorUnitario != null ? { valorUnitario: it.valorUnitario } : {}),
+    ...(it.valorTotal != null ? { valorTotal: it.valorTotal } : {}),
+  }
+}
+
+export function totaisDocumentoMovimento(nf: NotaFiscal): Pick<
+  MovimentoRegistro,
+  'pesoBruto' | 'pesoLiquido' | 'valorTotal'
+> {
+  const resumo = buildNfResumo(nf)
+  return {
+    ...(resumo.pesoBruto != null ? { pesoBruto: resumo.pesoBruto } : {}),
+    ...(resumo.pesoLiquido != null ? { pesoLiquido: resumo.pesoLiquido } : {}),
+    ...(resumo.valorTotalNota != null ? { valorTotal: resumo.valorTotalNota } : {}),
+  }
+}
+
+function movimentoEntradaDesatualizado(mov: MovimentoRegistro, nf: NotaFiscal): boolean {
+  if (mov.itens.length === 0 && nf.items.length > 0) return true
+  const atual = snapshotItensNf(nf)
+  if (atual.length > mov.itens.length) return true
+  const endMov = mov.itens.reduce((s, it) => s + it.addressIds.length, 0)
+  const endAtual = atual.reduce((s, it) => s + it.addressIds.length, 0)
+  return endAtual > endMov
+}
+
 export function snapshotItensNfPorEnderecos(
   nf: NotaFiscal,
   addressIds: AddressId[],
@@ -50,17 +100,9 @@ export function snapshotItensNfPorEnderecos(
     const ids = it.allocatedAddresses.filter((a) => pick.has(a))
     if (ids.length === 0) continue
     snapshots.push({
-      itemIndex: it.index,
-      codigo: it.codigo,
-      descricao: it.descricao,
-      quantidade: it.quantidade,
-      unidade: it.unidade,
+      ...snapshotItemFromNfe(nf, it),
       addressIds: ids,
       paletes: ids.length,
-      ...(it.up ? { up: it.up } : {}),
-      ...(it.lote ? { lote: it.lote } : {}),
-      ...(it.dataFabricacao ? { dataFabricacao: it.dataFabricacao } : {}),
-      ...(it.dataValidade ? { dataValidade: it.dataValidade } : {}),
     })
   }
   return snapshots
@@ -70,21 +112,7 @@ export function snapshotItensNf(nf: NotaFiscal, itemIndexes?: number[]): Movimen
   const items = itemIndexes
     ? nf.items.filter((it) => itemIndexes.includes(it.index))
     : nf.items
-  return items
-    .filter((it) => it.allocatedAddresses.length > 0)
-    .map((it) => ({
-      itemIndex: it.index,
-      codigo: it.codigo,
-      descricao: it.descricao,
-      quantidade: it.quantidade,
-      unidade: it.unidade,
-      addressIds: [...it.allocatedAddresses],
-      ...(it.up ? { up: it.up } : {}),
-      ...(it.lote ? { lote: it.lote } : {}),
-      ...(it.dataFabricacao ? { dataFabricacao: it.dataFabricacao } : {}),
-      ...(it.dataValidade ? { dataValidade: it.dataValidade } : {}),
-      ...(it.paletes != null ? { paletes: it.paletes } : {}),
-    }))
+  return items.map((it) => snapshotItemFromNfe(nf, it))
 }
 
 export function criarMovimentoEntrada(nf: NotaFiscal): MovimentoRegistro {
@@ -95,6 +123,7 @@ export function criarMovimentoEntrada(nf: NotaFiscal): MovimentoRegistro {
     nfNumero: nf.numero,
     emitente: nf.emitente,
     createdAt: nf.createdAt || new Date().toISOString(),
+    ...totaisDocumentoMovimento(nf),
     itens: snapshotItensNf(nf),
   }
 }
@@ -104,7 +133,33 @@ export function atualizarMovimentoEntrada(mov: MovimentoRegistro, nf: NotaFiscal
     ...mov,
     nfNumero: nf.numero,
     emitente: nf.emitente,
+    ...totaisDocumentoMovimento(nf),
     itens: snapshotItensNf(nf),
+  }
+}
+
+export function criarMovimentoMovimentacao(
+  nf: NotaFiscal,
+  itemIndex: number,
+  addressIds: AddressId[],
+): MovimentoRegistro {
+  const item = nf.items.find((it) => it.index === itemIndex)
+  if (!item) {
+    throw new Error('Item não encontrado para registrar movimentação.')
+  }
+  const snap = {
+    ...snapshotItemFromNfe(nf, item),
+    addressIds: [...addressIds],
+    paletes: addressIds.length,
+  }
+  return {
+    id: `mov-mov-${nf.id}-${itemIndex}-${Date.now()}`,
+    tipo: 'movimentacao',
+    nfId: nf.id,
+    nfNumero: nf.numero,
+    emitente: nf.emitente,
+    createdAt: new Date().toISOString(),
+    itens: [snap],
   }
 }
 
@@ -167,7 +222,7 @@ export function sincronizarMovimentosEntrada(data: PersistedData): PersistedData
       }
       continue
     }
-    if (existing.itens.length === 0 && nfTemEnderecos(nf)) {
+    if (movimentoEntradaDesatualizado(existing, nf)) {
       const updated = atualizarMovimentoEntrada(existing, nf)
       movimentos = movimentos.map((m) => (m.id === existing.id ? updated : m))
       changed = true

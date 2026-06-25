@@ -3280,6 +3280,10 @@ html.scroll-locked .sidebar.sidebar--fixed {
   border-left: 3px solid #d29922;
 }
 
+.hist-card--movimentacao {
+  border-left: 3px solid var(--accent);
+}
+
 .hist-card--cancelada {
   border-left: 3px solid var(--danger);
 }
@@ -3304,6 +3308,10 @@ html.scroll-locked .sidebar.sidebar--fixed {
 
 .hist-tipo--saida {
   color: #d29922;
+}
+
+.hist-tipo--movimentacao {
+  color: var(--accent-hover);
 }
 
 .hist-tipo--cancelada {
@@ -3408,6 +3416,30 @@ html.scroll-locked .sidebar.sidebar--fixed {
 .hist-saida-item-meta {
   flex-basis: 100%;
   font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.hist-doc-totais {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+}
+
+.hist-sem-itens {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+}
+
+.hist-item-enderecos {
+  flex-basis: 100%;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--border);
+  font-size: 0.74rem;
+  color: var(--cell-saida);
+}
+
+.hist-item-enderecos li + li {
   margin-top: 2px;
 }
 

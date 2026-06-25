@@ -41,6 +41,7 @@ import {
 } from './lib/saidaParcial'
 import {
   buscarNfPorNumero,
+  criarMovimentoMovimentacao,
   criarMovimentoSaida,
   enderecosDaNf,
   excluirMovimento,
@@ -1211,7 +1212,10 @@ export default function App() {
     const nextState = {
       ...state,
       notas,
-      movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
+      movimentos: [
+        criarMovimentoMovimentacao(updatedNf, currentItemIndex, addresses),
+        ...upsertMovimentoEntrada(state.movimentos, updatedNf),
+      ],
     }
     setState(nextState)
     await saveNow(nextState)
@@ -1521,6 +1525,7 @@ export default function App() {
         historico={{
           movimentos: movimentosOrdenados,
           canceladas: state.notasCanceladas,
+          notas: state.notas,
         }}
         canceladas={{
           canceladas: canceladasAtivas,

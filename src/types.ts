@@ -44,6 +44,10 @@ export type NfeItemCancelado = {
   descricao: string
   quantidade: number
   unidade: string
+  pesoBruto?: number
+  pesoLiquido?: number
+  valorUnitario?: number
+  valorTotal?: number
 }
 
 export type NotaFiscalCancelada = {
@@ -54,6 +58,9 @@ export type NotaFiscalCancelada = {
   emitente: string
   dataEmissao: string
   items: NfeItemCancelado[]
+  pesoBruto?: number
+  pesoLiquido?: number
+  valorTotal?: number
   vinculoNfNovaId: string | null
   vinculoNfNovaNumero: string | null
   createdAt: string
@@ -62,7 +69,7 @@ export type NotaFiscalCancelada = {
   excluidoEm?: string
 }
 
-export type MovimentoTipo = 'entrada' | 'saida'
+export type MovimentoTipo = 'entrada' | 'saida' | 'movimentacao'
 
 export type JustificativaSaidaId =
   | 'venda'
@@ -84,6 +91,10 @@ export type MovimentoItemSnapshot = {
   dataFabricacao?: string
   dataValidade?: string
   paletes?: number
+  pesoBruto?: number
+  pesoLiquido?: number
+  valorUnitario?: number
+  valorTotal?: number
   /** Quantidade retirada nesta saída parcial. */
   quantidadeSaida?: number
   /** Quantidade que permanece no estoque após a saída. */
@@ -98,6 +109,10 @@ export type MovimentoRegistro = {
   emitente: string
   createdAt: string
   itens: MovimentoItemSnapshot[]
+  /** Totais do documento no momento do registro (entrada). */
+  pesoBruto?: number
+  pesoLiquido?: number
+  valorTotal?: number
   /** Motivo da saída (venda, transferência, etc.). */
   justificativaSaida?: JustificativaSaidaId
   /** Registro mantido no histórico após exclusão na aba Movimentação. */
