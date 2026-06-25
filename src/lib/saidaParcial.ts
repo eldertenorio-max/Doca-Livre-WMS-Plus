@@ -151,6 +151,41 @@ export function calcularSaidaPalete(
   }
 }
 
+export type TotaisSaidaItem = {
+  caixas: number
+  pesoBruto: number
+  pesoLiquido: number
+  valor: number
+  sobra: number
+}
+
+export function totaisSaidaItem(
+  nf: NotaFiscal,
+  item: NfeItem,
+  paletesConfirmados: SaidaPaleteDraft[],
+): TotaisSaidaItem {
+  const drafts = paletesConfirmados.filter((p) => p.itemIndex === item.index)
+  let caixas = 0
+  let pesoBruto = 0
+  let pesoLiquido = 0
+  let valor = 0
+  for (const p of drafts) {
+    const c = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [])
+    if (!c) continue
+    caixas += p.quantidadeCaixas
+    pesoBruto += c.pesoBrutoSaida ?? 0
+    pesoLiquido += c.pesoLiquidoSaida ?? 0
+    valor += c.valorTotalSaida ?? 0
+  }
+  return {
+    caixas,
+    pesoBruto,
+    pesoLiquido,
+    valor,
+    sobra: sobraItem(item, paletesConfirmados),
+  }
+}
+
 export function consolidarDraftsPorItem(paletes: SaidaPaleteDraft[]): SaidaItemDraft[] {
   const map = new Map<number, number>()
   for (const p of paletes) {

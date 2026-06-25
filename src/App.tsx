@@ -1497,13 +1497,6 @@ export default function App() {
           modoPalete: saidaModoPalete,
           qtdPaletesInput: saidaQtdPaletesInput,
           qtdPaletesAlvo: saidaQtdPaletesAlvo,
-          paletesDisponiveis:
-            nfBuscaSaida && saidaItemIndex != null
-              ? (() => {
-                  const item = nfBuscaSaida.items.find((it) => it.index === saidaItemIndex)
-                  return item ? paletesDisponiveisItem(item, saidaPaletesConfirmados) : 0
-                })()
-              : 0,
           paletesSelecionados: [...saidaPaletesSelecionados],
           selecaoConcluida: saidaSelecaoConcluida,
           paleteAtivo: saidaPaleteAtivo,

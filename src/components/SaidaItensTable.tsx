@@ -1,17 +1,18 @@
-import { Fragment } from 'react'
+import { Fragment, type MouseEvent } from 'react'
 import {
   sobrasPorItem,
   pesoBrutoTotalItem,
   pesoLiquidoTotalItem,
+  type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
-import type { SaidaPaleteDraft } from '../lib/saidaParcial'
-import type { NfeItem, NotaFiscal } from '../types'
+import type { AddressId, NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
   formatPesoBruto,
   formatQuantidadeNfe,
   formatValorNfe,
 } from '../lib/formatNfeItem'
+import { SaidaItemSubpainel } from './SaidaItemSubpainel'
 
 type Props = {
   nf: NotaFiscal
@@ -21,7 +22,23 @@ type Props = {
   paleteAtivo: string | null
   paletesConfirmadosIds: string[]
   paletesSelecionadosIds?: string[]
+  modoPalete: boolean
+  qtdPaletesInput: string
+  qtdPaletesAlvo: number | null
+  selecaoConcluida: boolean
+  caixasInput: string
   onSelectItem: (index: number) => void
+  onQtdPaletesChange: (value: string) => void
+  onIniciarSelecao: () => void
+  onConfirmarSelecaoPaletes: () => void
+  onCaixasChange: (value: string) => void
+  onConfirmarPalete: () => void
+  onRemoverPalete: (addressId: AddressId) => void
+  selecaoErro: string | null
+}
+
+function stopRowActivate(e: MouseEvent) {
+  e.stopPropagation()
 }
 
 export function SaidaItensTable({
@@ -32,7 +49,19 @@ export function SaidaItensTable({
   paleteAtivo,
   paletesConfirmadosIds,
   paletesSelecionadosIds = [],
+  modoPalete,
+  qtdPaletesInput,
+  qtdPaletesAlvo,
+  selecaoConcluida,
+  caixasInput,
   onSelectItem,
+  onQtdPaletesChange,
+  onIniciarSelecao,
+  onConfirmarSelecaoPaletes,
+  onCaixasChange,
+  onConfirmarPalete,
+  onRemoverPalete,
+  selecaoErro,
 }: Props) {
   const itensEstoque = items.filter((it) => it.allocatedAddresses.length > 0)
   const sobras = sobrasPorItem(items, paletesConfirmados)
@@ -61,6 +90,9 @@ export function SaidaItensTable({
             const temSaida = sobra < item.quantidade - 1e-9
             const isActive = activeItemIndex === item.index
             const selecionavel = !esgotado
+            const selecionadosItem = paletesSelecionadosIds.filter((a) =>
+              item.allocatedAddresses.includes(a),
+            )
 
             return (
               <Fragment key={item.index}>
@@ -129,6 +161,33 @@ export function SaidaItensTable({
                         </li>
                       ))}
                     </ul>
+                  </td>
+                </tr>
+                <tr
+                  className={`nf-itens-row-saida${isActive ? ' nf-itens-row-saida--active' : ''}`}
+                  onClick={stopRowActivate}
+                >
+                  <td colSpan={10}>
+                    <SaidaItemSubpainel
+                      nf={nf}
+                      item={item}
+                      isActive={isActive}
+                      paletesConfirmados={paletesConfirmados}
+                      paletesSelecionadosIds={selecionadosItem}
+                      paleteAtivo={paleteAtivo}
+                      modoPalete={modoPalete}
+                      qtdPaletesInput={qtdPaletesInput}
+                      qtdPaletesAlvo={qtdPaletesAlvo}
+                      selecaoConcluida={selecaoConcluida}
+                      caixasInput={caixasInput}
+                      onQtdPaletesChange={onQtdPaletesChange}
+                      onIniciarSelecao={onIniciarSelecao}
+                      onConfirmarSelecaoPaletes={onConfirmarSelecaoPaletes}
+                      onCaixasChange={onCaixasChange}
+                      onConfirmarPalete={onConfirmarPalete}
+                      onRemoverPalete={onRemoverPalete}
+                      selecaoErro={isActive ? selecaoErro : null}
+                    />
                   </td>
                 </tr>
               </Fragment>

@@ -6,7 +6,6 @@ import { nfTemEnderecos } from '../lib/movimentos'
 import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
 import { NfResumoGrid } from './NfResumoGrid'
 import { SaidaItensTable } from './SaidaItensTable'
-import { SaidaPaleteForm } from './SaidaPaleteForm'
 
 type Props = {
   nfBusca: NotaFiscal | null
@@ -14,7 +13,6 @@ type Props = {
   modoPalete: boolean
   qtdPaletesInput: string
   qtdPaletesAlvo: number | null
-  paletesDisponiveis: number
   paletesSelecionados: AddressId[]
   selecaoConcluida: boolean
   paleteAtivo: AddressId | null
@@ -40,7 +38,6 @@ export function SaidaPanel({
   modoPalete,
   qtdPaletesInput,
   qtdPaletesAlvo,
-  paletesDisponiveis,
   paletesSelecionados,
   selecaoConcluida,
   paleteAtivo,
@@ -79,8 +76,8 @@ export function SaidaPanel({
     <>
       <div className="sidebar-block">
         <p className="muted">
-          Busque a NF, selecione o item na tabela, informe os paletes, marque no painel e confirme
-          as caixas.
+          Busque a NF, selecione o item na tabela, informe os paletes abaixo do item, marque no
+          painel e confirme as caixas.
         </p>
         <div className="saida-busca">
           <input
@@ -134,7 +131,8 @@ export function SaidaPanel({
 
           <h4 className="nf-section-title nf-section-title--sm">Itens da nota</h4>
           <p className="muted nf-itens-intro saida-itens-intro">
-            Clique no <strong>item</strong> que vai sair (linha fica verde). A coluna{' '}
+            Clique no <strong>item</strong> que vai sair (linha fica verde). Informe os paletes e
+            acompanhe os cálculos <strong>abaixo de cada item</strong>. A coluna{' '}
             <strong>Sobra</strong> é atualizada conforme você confirma cada palete.
           </p>
 
@@ -146,25 +144,12 @@ export function SaidaPanel({
             paleteAtivo={paleteAtivo}
             paletesConfirmadosIds={paletesConfirmados.map((p) => p.addressId)}
             paletesSelecionadosIds={paletesSelecionados}
-            onSelectItem={onSelectItem}
-          />
-
-          {itemIndex == null && (
-            <p className="muted saida-selecione-item">Selecione um item na tabela para continuar.</p>
-          )}
-
-          {itemIndex != null && (
-            <SaidaPaleteForm
-            nf={nfBusca}
             modoPalete={modoPalete}
             qtdPaletesInput={qtdPaletesInput}
             qtdPaletesAlvo={qtdPaletesAlvo}
-            paletesDisponiveis={paletesDisponiveis}
-            paletesSelecionados={paletesSelecionados}
             selecaoConcluida={selecaoConcluida}
-            paleteAtivo={paleteAtivo}
             caixasInput={caixasPalete}
-            paletesConfirmados={paletesConfirmados}
+            onSelectItem={onSelectItem}
             onQtdPaletesChange={onQtdPaletesChange}
             onIniciarSelecao={onIniciarSelecao}
             onConfirmarSelecaoPaletes={onConfirmarSelecaoPaletes}
@@ -173,7 +158,6 @@ export function SaidaPanel({
             onRemoverPalete={onRemoverPalete}
             selecaoErro={selecaoErro}
           />
-          )}
 
           {paletesConfirmados.length > 0 && (
             <div className="item-actions">
