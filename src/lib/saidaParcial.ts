@@ -233,7 +233,7 @@ export function snapshotSaidaPaletes(
       descricao: item.descricao,
       quantidade: p.quantidadeCaixas,
       unidade: item.unidade,
-      addressIds: liberar.has(p.addressId) ? [p.addressId] : [],
+      addressIds: [p.addressId],
       paletes: liberar.has(p.addressId) ? 1 : 0,
       quantidadeSaida: p.quantidadeCaixas,
       quantidadeSobra: calc.quantidadeSobra,

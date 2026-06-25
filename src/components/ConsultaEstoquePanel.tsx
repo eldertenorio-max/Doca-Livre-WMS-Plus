@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -11,6 +11,7 @@ import type { NotaFiscal } from '../types'
 import { ConsultaEstoqueInventario } from './ConsultaEstoqueInventario'
 import { ConsultaItemManualForm } from './ConsultaItemManualForm'
 import { ConsultaPaletesForm } from './ConsultaPaletesForm'
+import { NfDetalheLeitura } from './NfDetalheLeitura'
 
 type Props = {
   notas: NotaFiscal[]
@@ -95,6 +96,13 @@ export function ConsultaEstoquePanel({
   }
 
   const agrupados = agruparPorNf(resultados)
+
+  const nfPorId = useMemo(() => new Map(notas.map((n) => [n.id, n])), [notas])
+
+  const enderecosDestaque = useMemo(
+    () => new Set(resultados.map((r) => r.addressId)),
+    [resultados],
+  )
 
   return (
     <>
@@ -208,39 +216,58 @@ export function ConsultaEstoquePanel({
       </div>
 
       {resultados.length > 0 && (
-        <div className="sidebar-block">
+        <div className="sidebar-block consulta-resultados-block">
           <h3>
             {resultados.length}{' '}
             {resultados.length === 1 ? 'endereço encontrado' : 'endereços encontrados'}
           </h3>
           <ul className="consulta-resultados">
-            {agrupados.map((grupo) => (
-              <li key={grupo.nfId} className="consulta-grupo">
-                <p className="consulta-grupo-titulo">
-                  <strong>NF {grupo.nfNumero}</strong>
-                  <span className="muted"> · {grupo.emitente}</span>
-                </p>
-                <ul className="consulta-grupo-itens">
-                  {grupo.itens.map((item) => (
-                    <li key={`${grupo.nfId}-${item.itemIndex}`}>
-                      <span className="consulta-item-codigo">{item.codigo}</span>
-                      <span className="muted"> — {item.descricao}</span>
-                      {(item.lote || item.up) && (
-                        <span className="consulta-item-meta">
-                          {item.lote ? ` · Lote ${item.lote}` : ''}
-                          {item.up ? ` · UP ${item.up}` : ''}
-                        </span>
-                      )}
-                      <ul className="consulta-enderecos">
-                        {item.enderecos.map((addr) => (
-                          <li key={addr}>{formatAddressLabel(addr)}</li>
-                        ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
+            {agrupados.map((grupo) => {
+              const nf = nfPorId.get(grupo.nfId)
+              const enderecosGrupo = new Set(grupo.itens.flatMap((it) => it.enderecos))
+
+              return (
+                <li key={grupo.nfId} className="consulta-grupo nf-detail">
+                  {nf ? (
+                    <NfDetalheLeitura
+                      nf={nf}
+                      highlightAddresses={enderecosDestaque}
+                      itensIntro="Endereços destacados em verde correspondem aos filtros da pesquisa."
+                    />
+                  ) : (
+                    <p className="consulta-grupo-titulo">
+                      <strong>NF {grupo.nfNumero}</strong>
+                      <span className="muted"> · {grupo.emitente}</span>
+                    </p>
+                  )}
+
+                  <h4 className="nf-section-title nf-section-title--sm consulta-enderecos-titulo">
+                    Endereços na pesquisa
+                  </h4>
+                  <ul className="consulta-grupo-itens">
+                    {grupo.itens.map((item) => (
+                      <li key={`${grupo.nfId}-${item.itemIndex}`}>
+                        <span className="consulta-item-codigo">{item.codigo}</span>
+                        <span className="muted"> — {item.descricao}</span>
+                        {(item.lote || item.up) && (
+                          <span className="consulta-item-meta">
+                            {item.lote ? ` · Lote ${item.lote}` : ''}
+                            {item.up ? ` · UP ${item.up}` : ''}
+                          </span>
+                        )}
+                        <ul className="consulta-enderecos">
+                          {item.enderecos.map((addr) => (
+                            <li key={addr} className={enderecosGrupo.has(addr) ? 'addr-flagged' : ''}>
+                              {formatAddressLabel(addr)}
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
@@ -298,19 +325,18 @@ export function ConsultaEstoquePanel({
         )}
 
         {nfAdicionar && (
-          <div className="consulta-nf-adicionar">
+          <div className="consulta-nf-adicionar nf-detail">
             <div className="consulta-nf-adicionar-head">
-              <p className="consulta-grupo-titulo">
-                <strong>NF {nfAdicionar.numero}</strong>
-                <span className="muted"> · {nfAdicionar.emitente}</span>
-              </p>
               <button type="button" className="btn btn-ghost btn-sm" onClick={onLimparNfAdicionar}>
                 Limpar
               </button>
             </div>
-            <p className="muted consulta-nf-adicionar-hint">
-              Replique um item existente ou adicione um item manual:
-            </p>
+            <NfDetalheLeitura
+              nf={nfAdicionar}
+              showItensTable={false}
+              showItensTitle={false}
+              itensIntro="Replique um item existente ou adicione um item manual:"
+            />
             <ul className="consulta-itens-adicionar">
               {nfAdicionar.items.map((item) => {
                 const podeExcluir =

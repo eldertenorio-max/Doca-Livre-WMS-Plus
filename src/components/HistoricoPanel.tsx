@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { MovimentoRegistro, NotaFiscalCancelada } from '../types'
 import { labelJustificativaSaida } from '../lib/justificativaSaida'
 import { formatAddressLabel } from '../layout/camaras'
+import { formatQuantidadeNfe } from '../lib/formatNfeItem'
 
 type HistFiltro = 'todos' | 'movimentacao' | 'entrada' | 'saida' | 'canceladas'
 
@@ -82,19 +83,19 @@ export function HistoricoPanel({ movimentos, canceladas }: Props) {
 }
 
 function MovimentoCard({ mov }: { mov: MovimentoRegistro }) {
+  if (mov.tipo === 'saida') {
+    return <SaidaMovimentoCard mov={mov} />
+  }
+
   const totalEnd = mov.itens.reduce((s, it) => s + it.addressIds.length, 0)
-  const motivoSaida = mov.tipo === 'saida' ? labelJustificativaSaida(mov.justificativaSaida) : null
 
   return (
     <li className={`hist-card hist-card--${mov.tipo}${mov.excluido ? ' hist-card--excluido' : ''}`}>
       <div className="hist-head">
-        <span className={`hist-tipo hist-tipo--${mov.tipo}`}>
-          {mov.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-        </span>
+        <span className="hist-tipo hist-tipo--entrada">Entrada</span>
         {mov.excluido && <span className="hist-excluido-badge">Excluído</span>}
       </div>
       <strong>NF {mov.nfNumero}</strong>
-      {motivoSaida && <p className="hist-motivo-saida">Motivo: {motivoSaida}</p>}
       <p className="muted hist-emitente">{mov.emitente || '—'}</p>
       <p className="muted">
         {formatDate(mov.createdAt)}
@@ -110,6 +111,112 @@ function MovimentoCard({ mov }: { mov: MovimentoRegistro }) {
             </li>
           )),
         )}
+      </ul>
+    </li>
+  )
+}
+
+function SaidaMovimentoCard({ mov }: { mov: MovimentoRegistro }) {
+  const motivo = labelJustificativaSaida(mov.justificativaSaida)
+  const totalCaixas = mov.itens.reduce(
+    (s, it) => s + (it.quantidadeSaida ?? it.quantidade),
+    0,
+  )
+  const posLiberadas = mov.itens.reduce((s, it) => s + (it.paletes ?? 0), 0)
+  const unidade = mov.itens[0]?.unidade ?? 'CX'
+
+  return (
+    <li className={`hist-card hist-card--saida${mov.excluido ? ' hist-card--excluido' : ''}`}>
+      <div className="hist-head">
+        <span className="hist-tipo hist-tipo--saida">Saída</span>
+        {mov.excluido && <span className="hist-excluido-badge">Excluído</span>}
+      </div>
+
+      <p className="hist-saida-linha">
+        <strong>NF {mov.nfNumero}</strong>
+        {motivo && (
+          <>
+            <span className="hist-saida-sep" aria-hidden>
+              ·
+            </span>
+            <span>{motivo}</span>
+          </>
+        )}
+        <span className="hist-saida-sep" aria-hidden>
+          ·
+        </span>
+        <span className="muted hist-saida-emitente-inline">{mov.emitente || '—'}</span>
+        <span className="hist-saida-sep" aria-hidden>
+          ·
+        </span>
+        <span className="muted">{formatDate(mov.createdAt)}</span>
+        {mov.excluidoEm && (
+          <span className="muted"> · excluído em {formatDate(mov.excluidoEm)}</span>
+        )}
+      </p>
+
+      <p className="hist-saida-resumo muted">
+        {formatQuantidadeNfe(totalCaixas)} {unidade} saindo
+        {' · '}
+        {mov.itens.length} palete(s)
+        {posLiberadas > 0 && (
+          <>
+            {' · '}
+            {posLiberadas} pos. liberada(s)
+          </>
+        )}
+      </p>
+
+      <ul className="hist-saida-itens">
+        {mov.itens.map((it, idx) => {
+          const qtdSaida = it.quantidadeSaida ?? it.quantidade
+          const endereco = it.addressIds[0]
+          const parcial = it.paletes === 0 && endereco != null
+
+          return (
+            <li key={`${mov.id}-${it.itemIndex}-${idx}`} className="hist-saida-item">
+              <span className="hist-saida-item-cod">{it.codigo || '—'}</span>
+              <span className="hist-saida-sep" aria-hidden>
+                ·
+              </span>
+              <span className="hist-saida-item-desc" title={it.descricao}>
+                {it.descricao || '—'}
+              </span>
+              {endereco && (
+                <>
+                  <span className="hist-saida-sep" aria-hidden>
+                    ·
+                  </span>
+                  <span className="hist-saida-item-end">{formatAddressLabel(endereco)}</span>
+                </>
+              )}
+              <span className="hist-saida-sep" aria-hidden>
+                ·
+              </span>
+              <span className="hist-saida-item-qtd">
+                {formatQuantidadeNfe(qtdSaida)} {it.unidade}
+              </span>
+              {it.quantidadeSobra != null && (
+                <>
+                  <span className="hist-saida-sep" aria-hidden>
+                    ·
+                  </span>
+                  <span className="muted hist-saida-item-sobra">
+                    sobra {formatQuantidadeNfe(it.quantidadeSobra)} {it.unidade}
+                  </span>
+                </>
+              )}
+              {parcial && <span className="hist-saida-parcial">parcial</span>}
+              {(it.lote || it.up) && (
+                <span className="muted hist-saida-item-meta">
+                  {it.lote && <>lote {it.lote}</>}
+                  {it.lote && it.up && ' · '}
+                  {it.up && <>UP {it.up}</>}
+                </span>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </li>
   )

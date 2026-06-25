@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import type { NotaFiscal } from '../types'
 import { nfTemEnderecos } from '../lib/movimentos'
-import { formatAddressLabel } from '../layout/camaras'
+import { NfDetalheLeitura } from './NfDetalheLeitura'
 
 type Props = {
   nfBusca: NotaFiscal | null
@@ -39,7 +39,26 @@ export function EditarPosicaoPanel({
     setNumero('')
   }
 
-  const itensComEndereco = nfBusca?.items.filter((it) => it.allocatedAddresses.length > 0) ?? []
+  const nfActions = nfBusca ? (
+    <div className="nf-detail-actions">
+      {movimentoEntradaId && (
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={() => setConfirmarExcluir(true)}
+        >
+          Remover do histórico
+        </button>
+      )}
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        onClick={() => setConfirmarCancelar(true)}
+      >
+        Cancelar edição
+      </button>
+    </div>
+  ) : null
 
   return (
     <>
@@ -63,65 +82,20 @@ export function EditarPosicaoPanel({
 
       {nfBusca && nfTemEnderecos(nfBusca) && (
         <div className="sidebar-block nf-detail">
-          <div className="nf-detail-head">
-            <h3>NF {nfBusca.numero}</h3>
-            <div className="nf-detail-actions">
-              {movimentoEntradaId && (
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm"
-                  onClick={() => setConfirmarExcluir(true)}
-                >
-                  Remover do histórico
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => setConfirmarCancelar(true)}
-              >
-                Cancelar edição
-              </button>
-            </div>
-          </div>
-          <p className="muted">{nfBusca.emitente}</p>
-          <p className="muted">Selecione o item para editar:</p>
-
-          <ul className="item-list">
-            {itensComEndereco.map((item) => {
-              const isActive = itemIndex === item.index
-              return (
-                <li key={item.index}>
-                  <button
-                    type="button"
-                    className={`item-row ${isActive ? 'item-row--active' : ''}`}
-                    onClick={() => onSelectItem(item.index)}
-                  >
-                    <span className="item-check">{isActive ? '✎' : '○'}</span>
-                    <span className="item-text">
-                      <strong>{item.codigo}</strong>
-                      <span>{item.descricao}</span>
-                      <span className="muted">
-                        {item.allocatedAddresses.length} endereço(s)
-                      </span>
-                    </span>
-                  </button>
-                  <ul className="addr-mini">
-                    {item.allocatedAddresses.map((a) => (
-                      <li key={a} className={isActive ? 'addr-edit-active' : ''}>
-                        {formatAddressLabel(a)}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              )
-            })}
-          </ul>
+          <NfDetalheLeitura
+            nf={nfBusca}
+            actions={nfActions}
+            activeItemIndex={itemIndex}
+            onSelectItem={onSelectItem}
+            selectablePredicate={(item) => item.allocatedAddresses.length > 0}
+            itensIntro="Selecione um item com endereço para alterar as posições no painel."
+          />
 
           {itemIndex != null && (
             <div className="item-actions">
               <p className="muted">
-                {pendingCount} endereço(s) selecionado(s) — clique ou arraste no painel para marcar ou desmarcar.
+                {pendingCount} endereço(s) selecionado(s) — clique ou arraste no painel para marcar
+                ou desmarcar.
               </p>
               <button
                 type="button"
@@ -141,28 +115,8 @@ export function EditarPosicaoPanel({
 
       {nfBusca && !nfTemEnderecos(nfBusca) && (
         <div className="sidebar-block nf-detail">
-          <div className="nf-detail-head">
-            <h3>NF {nfBusca.numero}</h3>
-            <div className="nf-detail-actions">
-              {movimentoEntradaId && (
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm"
-                  onClick={() => setConfirmarExcluir(true)}
-                >
-                  Remover do histórico
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => setConfirmarCancelar(true)}
-              >
-                Cancelar edição
-              </button>
-            </div>
-          </div>
-          <p className="muted">Esta NF não possui endereços alocados.</p>
+          <NfDetalheLeitura nf={nfBusca} actions={nfActions} />
+          <p className="muted sidebar-block">Esta NF não possui endereços alocados.</p>
         </div>
       )}
 

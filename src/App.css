@@ -617,6 +617,26 @@
   outline-offset: -1px;
 }
 
+.nf-itens-row--clickable {
+  cursor: pointer;
+}
+
+.nf-itens-meta-leitura {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.78rem;
+}
+
+.nf-itens-meta-leitura .muted {
+  margin-right: 0.25em;
+}
+
+.nf-itens-row-meta td {
+  padding-top: 0;
+  padding-bottom: 6px;
+}
+
 .nf-itens-status {
   display: inline-block;
   width: 16px;
@@ -2746,6 +2766,21 @@ html.scroll-locked .sidebar.sidebar--fixed {
   font-size: 0.88rem;
 }
 
+.consulta-grupo.nf-detail {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.consulta-enderecos-titulo {
+  margin-top: 12px;
+}
+
+.consulta-resultados-block .consulta-grupo-itens {
+  margin-top: 6px;
+}
+
 .consulta-grupo-itens {
   list-style: none;
   margin: 0;
@@ -3264,6 +3299,97 @@ html.scroll-locked .sidebar.sidebar--fixed {
   margin: 4px 0 2px;
   font-size: 0.82rem;
   color: var(--text);
+}
+
+.hist-saida-linha {
+  margin: 0 0 4px;
+  line-height: 1.45;
+  font-size: 0.82rem;
+}
+
+.hist-saida-sep {
+  margin: 0 0.35em;
+  color: var(--text-muted);
+  opacity: 0.65;
+}
+
+.hist-saida-emitente-inline {
+  font-style: normal;
+}
+
+.hist-saida-resumo {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+}
+
+.hist-saida-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hist-saida-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.15em;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.hist-saida-item-cod {
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.hist-saida-item-desc {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hist-saida-item-end {
+  flex-shrink: 0;
+  color: var(--cell-saida);
+  font-weight: 600;
+}
+
+.hist-saida-item-qtd {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--cell-saida-flag);
+}
+
+.hist-saida-item-sobra {
+  flex-shrink: 0;
+}
+
+.hist-saida-parcial {
+  flex-shrink: 0;
+  margin-left: 0.25em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: rgb(210 153 34 / 0.15);
+  color: #d29922;
+}
+
+.hist-saida-item-meta {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  margin-top: 2px;
 }
 
 .hist-hint {
