@@ -53,7 +53,10 @@ export function NfSidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-block">
-        <h1>Endereçamento</h1>
+        <h1 className="app-brand-title">
+          <span className="app-brand-title__main">Stock System</span>
+          <span className="app-brand-title__light">Light</span>
+        </h1>
         <p className="muted">Ultrafrio · alocação por NF-e</p>
         {saving && <p className="saving-hint">Salvando…</p>}
         {persistError && <p className="error">{persistError}</p>}

@@ -6,6 +6,7 @@ import { nfTemEnderecos } from '../lib/movimentos'
 import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
 import { NfResumoGrid } from './NfResumoGrid'
 import { SaidaItensTable } from './SaidaItensTable'
+import { SaidaResumoTotal } from './SaidaResumoTotal'
 
 type Props = {
   nfBusca: NotaFiscal | null
@@ -131,9 +132,9 @@ export function SaidaPanel({
 
           <h4 className="nf-section-title nf-section-title--sm">Itens da nota</h4>
           <p className="muted nf-itens-intro saida-itens-intro">
-            Clique no <strong>item</strong> que vai sair (linha fica verde). Os endereços de retirada
-            aparecem em <strong>verde no painel</strong>, como na consulta. Informe os paletes e
-            acompanhe os cálculos abaixo de cada item.
+            Clique no <strong>item</strong> que vai sair (linha fica verde). Informe os paletes e
+            acompanhe os cálculos <strong>abaixo de cada item</strong>. A coluna{' '}
+            <strong>Sobra</strong> é atualizada conforme você confirma cada palete.
           </p>
 
           <SaidaItensTable
@@ -158,6 +159,10 @@ export function SaidaPanel({
             onRemoverPalete={onRemoverPalete}
             selecaoErro={selecaoErro}
           />
+
+          {paletesConfirmados.length > 0 && (
+            <SaidaResumoTotal nf={nfBusca} paletesConfirmados={paletesConfirmados} />
+          )}
 
           {paletesConfirmados.length > 0 && (
             <div className="item-actions">

@@ -29,7 +29,6 @@ type Props = {
   editMode?: boolean
   editAddresses?: Set<AddressId>
   saidaAddresses?: Set<AddressId>
-  saidaItemDestaqueAddresses?: Set<AddressId>
   saidaFlaggedAddresses?: Set<AddressId>
   consultaAddresses?: Set<AddressId>
   paintMode?: boolean
@@ -164,7 +163,6 @@ function RuaGrid({
   editMode,
   editAddresses,
   saidaAddresses,
-  saidaItemDestaqueAddresses,
   saidaFlaggedAddresses,
   consultaAddresses,
   activeNfId,
@@ -257,8 +255,6 @@ function RuaGrid({
                     if (editAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
                     else if (consultaAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
                     else if (saidaFlaggedAddresses?.has(addressId)) className += ' cell--saida-flag'
-                    else if (saidaItemDestaqueAddresses?.has(addressId) && !pending)
-                      className += ' cell--destaque-verde'
                     else if (saidaAddresses?.has(addressId)) className += ' cell--saida'
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
                     if (paintMode && (clickable || pending)) className += ' cell--pintavel'
@@ -418,9 +414,6 @@ function buildLegendItems(props: Props): LegendItem[] {
     items.push({ swatch: 'swatch--destaque', label: 'Movimentação' })
   }
 
-  if (props.saidaItemDestaqueAddresses != null && props.saidaItemDestaqueAddresses.size > 0) {
-    items.push({ swatch: 'swatch--destaque', label: 'Onde retirar' })
-  }
   if (props.saidaAddresses != null && props.saidaAddresses.size > 0) {
     items.push({ swatch: 'swatch--saida', label: 'NF na saída' })
   }
@@ -486,14 +479,9 @@ export function LayoutPanel(props: Props) {
       {props.consultaAddresses && props.consultaAddresses.size > 0 && (
         <p className="layout-hint">Clique em um quadrado para ver os detalhes do endereço.</p>
       )}
-      {props.saidaItemDestaqueAddresses && props.saidaItemDestaqueAddresses.size > 0 && (
-        <p className="layout-hint">
-          Saída: endereços em verde indicam onde retirar o item selecionado — como na consulta.
-        </p>
-      )}
       {props.saidaAddresses && props.saidaAddresses.size > 0 && (
         <p className="layout-hint">
-          Saída: selecione um item na tabela para ver onde retirar no painel.
+          Saída: endereços laranja indicam onde retirar os itens da NF buscada.
         </p>
       )}
     </div>

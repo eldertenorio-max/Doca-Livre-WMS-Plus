@@ -8,6 +8,8 @@ export type NfeItem = {
   unidade: string
   allocatedAddresses: AddressId[]
   pesoBruto?: number
+  /** Peso líquido da linha (quando unidade comercial não é peso). */
+  pesoLiquido?: number
   valorUnitario?: number
   valorTotal?: number
   up?: string

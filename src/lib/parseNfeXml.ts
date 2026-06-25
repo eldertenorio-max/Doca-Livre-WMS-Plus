@@ -1,4 +1,5 @@
 import type { NfeItem, NotaFiscal } from '../types'
+import { isUnidadePeso } from './nfeUnidades'
 
 function textOf(el: Element | null, tag: string): string {
   if (!el) return ''
@@ -12,11 +13,6 @@ function numOf(el: Element | null, tag: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function isUnidadePeso(unidade: string): boolean {
-  const u = unidade.trim().toUpperCase()
-  return u === 'KG' || u === 'KGM' || u === 'QUILO' || u === 'QUILOGRAMA'
-}
-
 function parsePesoBrutoItem(prod: Element): number | undefined {
   const qCom = numOf(prod, 'qCom')
   const uCom = textOf(prod, 'uCom')
@@ -24,6 +20,16 @@ function parsePesoBrutoItem(prod: Element): number | undefined {
   const uTrib = textOf(prod, 'uTrib')
   if (isUnidadePeso(uTrib) && qTrib > 0) return qTrib
   if (isUnidadePeso(uCom) && qCom > 0) return qCom
+  return undefined
+}
+
+function parsePesoLiquidoItem(prod: Element): number | undefined {
+  const qTrib = numOf(prod, 'qTrib')
+  const uTrib = textOf(prod, 'uTrib')
+  const qCom = numOf(prod, 'qCom')
+  const uCom = textOf(prod, 'uCom')
+  if (isUnidadePeso(uTrib) && qTrib > 0) return qTrib
+  if (isUnidadePeso(uCom) && qCom > 0 && isUnidadePeso(uCom)) return qCom
   return undefined
 }
 
@@ -45,9 +51,24 @@ function parseItemQuantidadeUnidade(prod: Element): { quantidade: number; unidad
   const qTrib = numOf(prod, 'qTrib')
   const uTrib = textOf(prod, 'uTrib')
 
-  if (isUnidadePeso(uCom) && uTrib && !isUnidadePeso(uTrib) && qTrib > 0) {
+  const comPeso = isUnidadePeso(uCom)
+  const tribPeso = isUnidadePeso(uTrib)
+
+  // uCom em peso, contagem comercial em uTrib (ex.: KG + CX)
+  if (comPeso && uTrib && !tribPeso && qTrib > 0) {
     return { quantidade: qTrib, unidade: uTrib }
   }
+
+  // uCom comercial, peso em uTrib (ex.: CX + KG)
+  if (!comPeso && tribPeso && qCom > 0) {
+    return { quantidade: qCom, unidade: uCom }
+  }
+
+  // uCom em peso sem uTrib, mas qTrib com valor comercial divergente
+  if (comPeso && qTrib > 0 && !tribPeso && qTrib !== qCom) {
+    return { quantidade: qTrib, unidade: uTrib || 'UN' }
+  }
+
   return { quantidade: qCom, unidade: uCom }
 }
 
@@ -55,8 +76,18 @@ function applyTransportVolumeToItems(items: NfeItem[], volumes: VolumeInfo[]): v
   if (volumes.length === 0 || items.length !== 1) return
   const item = items[0]
   if (!isUnidadePeso(item.unidade)) return
-  item.quantidade = volumes[0].quantidade
-  item.unidade = volumes[0].unidade
+
+  const vol = volumes[0]
+  if (isUnidadePeso(vol.unidade)) return
+
+  const pesoReferencia = item.pesoBruto ?? item.pesoLiquido ?? item.quantidade
+  // Evita trocar quantidade por qVol que reproduz o peso (erro comum de alguns emitentes)
+  if (pesoReferencia > 0 && Math.abs(vol.quantidade - pesoReferencia) / pesoReferencia < 0.001) {
+    return
+  }
+
+  item.quantidade = vol.quantidade
+  item.unidade = vol.unidade
 }
 
 function parseQuantidadeVolume(volumes: VolumeInfo[]): string | undefined {
@@ -125,6 +156,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
     const valorUnitario = numOf(prod, 'vUnCom')
     const valorTotal = numOf(prod, 'vProd')
     const pesoBruto = parsePesoBrutoItem(prod)
+    const pesoLiquido = parsePesoLiquidoItem(prod)
     return {
       index,
       codigo: textOf(prod, 'cProd'),
@@ -133,6 +165,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
       unidade,
       allocatedAddresses: [],
       ...(pesoBruto != null ? { pesoBruto } : {}),
+      ...(pesoLiquido != null && !isUnidadePeso(unidade) ? { pesoLiquido } : {}),
       ...(valorUnitario > 0 ? { valorUnitario } : {}),
       ...(valorTotal > 0 ? { valorTotal } : {}),
     }

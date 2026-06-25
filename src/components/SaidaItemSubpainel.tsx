@@ -11,6 +11,7 @@ import {
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
 import { formatAddressLabel } from '../layout/camaras'
+import { quantidadeEstoqueItem } from '../lib/nfeUnidades'
 import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 
 type Props = {
@@ -81,7 +82,7 @@ export function SaidaItemSubpainel({
     }
   }, [totais, calcPreview])
 
-  const maxCaixas = item.quantidade - caixasJaSaidasItem(item.index, paletesConfirmados)
+  const maxCaixas = quantidadeEstoqueItem(item) - caixasJaSaidasItem(item.index, paletesConfirmados)
 
   const qtdInputValida = useMemo(() => {
     const n = Number(qtdPaletesInput.trim().replace(',', '.'))

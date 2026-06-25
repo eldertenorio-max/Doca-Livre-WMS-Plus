@@ -16,6 +16,7 @@ export function patchNfeItemQuantidade(item: NfeItem, rawQty: string | number): 
     ...item,
     quantidade: novaQuantidade,
     ...(item.pesoBruto != null ? { pesoBruto: item.pesoBruto * ratio } : {}),
+    ...(item.pesoLiquido != null ? { pesoLiquido: item.pesoLiquido * ratio } : {}),
     ...(item.valorUnitario != null
       ? { valorTotal: item.valorUnitario * novaQuantidade }
       : item.valorTotal != null && prevQty > 0

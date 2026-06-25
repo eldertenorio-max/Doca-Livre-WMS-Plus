@@ -5,6 +5,7 @@ import {
   pesoLiquidoTotalItem,
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
+import { quantidadeEstoqueItem } from '../lib/nfeUnidades'
 import type { AddressId, NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -85,9 +86,10 @@ export function SaidaItensTable({
         </thead>
         <tbody>
           {itensEstoque.map((item) => {
-            const sobra = sobras[item.index] ?? item.quantidade
+            const qtdItem = quantidadeEstoqueItem(item)
+            const sobra = sobras[item.index] ?? qtdItem
             const esgotado = sobra <= 1e-9
-            const temSaida = sobra < item.quantidade - 1e-9
+            const temSaida = sobra < qtdItem - 1e-9
             const isActive = activeItemIndex === item.index
             const selecionavel = !esgotado
             const selecionadosItem = paletesSelecionadosIds.filter((a) =>
@@ -130,7 +132,7 @@ export function SaidaItensTable({
                   <td className="nf-itens-col-num">
                     {formatPesoBruto(pesoLiquidoTotalItem(nf, item))}
                   </td>
-                  <td className="nf-itens-col-num">{formatQuantidadeNfe(item.quantidade)}</td>
+                  <td className="nf-itens-col-num">{formatQuantidadeNfe(qtdItem)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorUnitario)}</td>
                   <td className="nf-itens-col-num">{formatValorNfe(item.valorTotal)}</td>
                   <td className="nf-itens-col-num">

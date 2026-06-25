@@ -1,5 +1,6 @@
 import { enderecosDaNf } from './movimentos'
 import { patchNfeItemQuantidade } from './desmembrarItem'
+import { isUnidadePeso, quantidadeEstoqueItem } from './nfeUnidades'
 import type { AddressId, MovimentoItemSnapshot, NfeItem, NotaFiscal } from '../types'
 
 export type SaidaItemDraft = {
@@ -52,10 +53,11 @@ export function sobraItem(
   item: NfeItem,
   confirmados: SaidaPaleteDraft[],
 ): number {
+  const qtd = quantidadeEstoqueItem(item)
   const saido = confirmados
     .filter((p) => p.itemIndex === item.index)
     .reduce((s, p) => s + p.quantidadeCaixas, 0)
-  return Math.max(0, item.quantidade - saido)
+  return Math.max(0, qtd - saido)
 }
 
 export function parseQuantidadeSaida(raw: string): number | null {
@@ -68,9 +70,10 @@ export function parseQuantidadeSaida(raw: string): number | null {
 
 /** Caixas atribuídas a cada palete do item (média quando há vários paletes). */
 export function caixasPorPalete(item: NfeItem): number {
+  const qtd = quantidadeEstoqueItem(item)
   const n = item.allocatedAddresses.length
-  if (n <= 0) return item.quantidade
-  return item.quantidade / n
+  if (n <= 0) return qtd
+  return qtd / n
 }
 
 function quantidadeTotalItens(items: NfeItem[]): number {
@@ -87,12 +90,31 @@ export function pesoBrutoTotalItem(nf: NotaFiscal, item: NfeItem): number | unde
   return undefined
 }
 
-/** Peso líquido total do item — proporcional à qtd. na NF (transporte). */
+/** Peso líquido total do item — proporcional ao peso bruto ou valor na NF. */
 export function pesoLiquidoTotalItem(nf: NotaFiscal, item: NfeItem): number | undefined {
+  if (item.pesoLiquido != null) return item.pesoLiquido
+
+  const pesoBruto = pesoBrutoTotalItem(nf, item)
+  if (nf.pesoLiquido != null && pesoBruto != null && nf.pesoBruto != null && nf.pesoBruto > 0) {
+    return nf.pesoLiquido * (pesoBruto / nf.pesoBruto)
+  }
+
+  if (isUnidadePeso(item.unidade) && item.quantidade > 0) {
+    return item.quantidade
+  }
+
+  if (nf.pesoLiquido != null && item.valorTotal != null && item.valorTotal > 0) {
+    const valorItens = nf.items.reduce((s, it) => s + (it.valorTotal ?? 0), 0)
+    if (valorItens > 0) {
+      return nf.pesoLiquido * (item.valorTotal / valorItens)
+    }
+  }
+
   const qtdTotal = quantidadeTotalItens(nf.items)
-  if (nf.pesoLiquido != null && qtdTotal > 0) {
+  if (nf.pesoLiquido != null && qtdTotal > 0 && nf.items.every((it) => it.unidade === item.unidade)) {
     return nf.pesoLiquido * (item.quantidade / qtdTotal)
   }
+
   return undefined
 }
 
@@ -121,12 +143,13 @@ export function calcularSaidaPalete(
   if (!item.allocatedAddresses.includes(addressId)) return null
   if (quantidadeCaixas <= 0) return null
 
+  const qtdItem = quantidadeEstoqueItem(item)
   const jaSaido = caixasJaSaidasItem(item.index, paletesConfirmados)
-  const disponivel = item.quantidade - jaSaido
+  const disponivel = qtdItem - jaSaido
   if (quantidadeCaixas > disponivel + 1e-9) return null
 
-  const quantidadeSobra = item.quantidade - jaSaido - quantidadeCaixas
-  const r = ratio(quantidadeCaixas, item.quantidade)
+  const quantidadeSobra = qtdItem - jaSaido - quantidadeCaixas
+  const r = ratio(quantidadeCaixas, qtdItem)
   const pesoBrutoTotal = pesoBrutoTotalItem(nf, item)
   const pesoLiquidoTotal = pesoLiquidoTotalItem(nf, item)
   const capPalete = caixasPorPalete(item)
@@ -137,7 +160,7 @@ export function calcularSaidaPalete(
     addressId,
     itemIndex: item.index,
     quantidadeCaixas,
-    quantidadeEstoque: item.quantidade,
+    quantidadeEstoque: qtdItem,
     quantidadeSobra,
     unidade: item.unidade,
     ...(pesoBrutoTotal != null ? { pesoBrutoSaida: pesoBrutoTotal * r } : {}),
@@ -157,6 +180,35 @@ export type TotaisSaidaItem = {
   pesoLiquido: number
   valor: number
   sobra: number
+}
+
+export type SaidaResumoPalete = {
+  addressId: AddressId
+  quantidadeCaixas: number
+  pesoBruto?: number
+  pesoLiquido?: number
+  valor?: number
+}
+
+export type SaidaResumoItem = {
+  itemIndex: number
+  codigo: string
+  descricao: string
+  unidade: string
+  paletes: SaidaResumoPalete[]
+  caixas: number
+  pesoBruto: number
+  pesoLiquido: number
+  valor: number
+}
+
+export type ResumoSaidaNf = {
+  itens: SaidaResumoItem[]
+  totalPaletes: number
+  totalCaixas: number
+  pesoBruto: number
+  pesoLiquido: number
+  valor: number
 }
 
 export function totaisSaidaItem(
@@ -183,6 +235,70 @@ export function totaisSaidaItem(
     pesoLiquido,
     valor,
     sobra: sobraItem(item, paletesConfirmados),
+  }
+}
+
+export function resumoSaidaNf(
+  nf: NotaFiscal,
+  paletesConfirmados: SaidaPaleteDraft[],
+): ResumoSaidaNf {
+  const byItem = new Map<number, SaidaPaleteDraft[]>()
+  for (const p of paletesConfirmados) {
+    const list = byItem.get(p.itemIndex) ?? []
+    list.push(p)
+    byItem.set(p.itemIndex, list)
+  }
+
+  const itens: SaidaResumoItem[] = []
+  let totalPaletes = 0
+  let totalCaixas = 0
+  let pesoBruto = 0
+  let pesoLiquido = 0
+  let valor = 0
+
+  for (const [itemIndex, drafts] of byItem) {
+    const item = nf.items.find((it) => it.index === itemIndex)
+    if (!item) continue
+
+    const paletes: SaidaResumoPalete[] = drafts.map((p) => {
+      const c = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [])
+      return {
+        addressId: p.addressId,
+        quantidadeCaixas: p.quantidadeCaixas,
+        ...(c?.pesoBrutoSaida != null ? { pesoBruto: c.pesoBrutoSaida } : {}),
+        ...(c?.pesoLiquidoSaida != null ? { pesoLiquido: c.pesoLiquidoSaida } : {}),
+        ...(c?.valorTotalSaida != null ? { valor: c.valorTotalSaida } : {}),
+      }
+    })
+
+    const t = totaisSaidaItem(nf, item, paletesConfirmados)
+    itens.push({
+      itemIndex,
+      codigo: item.codigo,
+      descricao: item.descricao,
+      unidade: item.unidade,
+      paletes,
+      caixas: t.caixas,
+      pesoBruto: t.pesoBruto,
+      pesoLiquido: t.pesoLiquido,
+      valor: t.valor,
+    })
+    totalPaletes += drafts.length
+    totalCaixas += t.caixas
+    pesoBruto += t.pesoBruto
+    pesoLiquido += t.pesoLiquido
+    valor += t.valor
+  }
+
+  itens.sort((a, b) => a.itemIndex - b.itemIndex)
+
+  return {
+    itens,
+    totalPaletes,
+    totalCaixas,
+    pesoBruto,
+    pesoLiquido,
+    valor,
   }
 }
 
@@ -223,7 +339,8 @@ export function sobrasPorItem(
   }
   const sobras: Record<number, number> = {}
   for (const item of items) {
-    sobras[item.index] = Math.max(0, item.quantidade - (saido.get(item.index) ?? 0))
+    const qtd = quantidadeEstoqueItem(item)
+    sobras[item.index] = Math.max(0, qtd - (saido.get(item.index) ?? 0))
   }
   return sobras
 }
@@ -247,7 +364,8 @@ export function aplicarSaidaParcial(
       const qSaida = saidaMap.get(it.index) ?? 0
       if (qSaida <= 0) return it
 
-      const sobraQtd = it.quantidade - qSaida
+      const qtdItem = quantidadeEstoqueItem(it)
+      const sobraQtd = qtdItem - qSaida
       const addresses = it.allocatedAddresses.filter((a) => !pickAddr.has(a))
 
       if (sobraQtd <= 0) {
