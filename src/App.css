@@ -3629,6 +3629,32 @@ html.scroll-locked .sidebar.sidebar--fixed {
   font-size: 0.78rem;
 }
 
+.hist-detalhes-wrap {
+  margin-top: 4px;
+}
+
+.hist-detalhes-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--accent-hover);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hist-detalhes-toggle:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+}
+
+.hist-detalhes-body {
+  margin-top: 8px;
+}
+
 .hist-saida-itens {
   list-style: none;
   margin: 0;

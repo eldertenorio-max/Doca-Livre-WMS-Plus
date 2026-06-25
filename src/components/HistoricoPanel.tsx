@@ -98,6 +98,24 @@ export function HistoricoPanel({ movimentos, canceladas, notas = [] }: Props) {
   )
 }
 
+function HistDetalhesColapsaveis({ children }: { children: ReactNode }) {
+  const [aberto, setAberto] = useState(false)
+
+  return (
+    <div className="hist-detalhes-wrap">
+      <button
+        type="button"
+        className="hist-detalhes-toggle"
+        aria-expanded={aberto}
+        onClick={() => setAberto((v) => !v)}
+      >
+        {aberto ? 'Ocultar detalhes' : 'Mostrar detalhes'}
+      </button>
+      {aberto && <div className="hist-detalhes-body">{children}</div>}
+    </div>
+  )
+}
+
 function MovimentoCard({ mov }: { mov: MovimentoRegistro }) {
   if (mov.tipo === 'saida') return <SaidaMovimentoCard mov={mov} />
   if (mov.tipo === 'movimentacao') return <MovimentacaoMovimentoCard mov={mov} />
@@ -183,7 +201,9 @@ function EntradaMovimentoCard({ mov }: { mov: MovimentoRegistro }) {
         {' · '}
         {totalEnd} endereço(s)
       </p>
-      <HistItensLista itens={mov.itens} modo="entrada" movId={mov.id} />
+      <HistDetalhesColapsaveis>
+        <HistItensLista itens={mov.itens} modo="entrada" movId={mov.id} />
+      </HistDetalhesColapsaveis>
     </MovimentoCardShell>
   )
 }
@@ -197,7 +217,9 @@ function MovimentacaoMovimentoCard({ mov }: { mov: MovimentoRegistro }) {
       <p className="hist-saida-resumo muted">
         Reposicionamento de {mov.itens.length} item(ns) · {totalEnd} endereço(s)
       </p>
-      <HistItensLista itens={mov.itens} modo="movimentacao" movId={mov.id} />
+      <HistDetalhesColapsaveis>
+        <HistItensLista itens={mov.itens} modo="movimentacao" movId={mov.id} />
+      </HistDetalhesColapsaveis>
     </MovimentoCardShell>
   )
 }
@@ -261,7 +283,9 @@ function SaidaMovimentoCard({ mov }: { mov: MovimentoRegistro }) {
           </>
         )}
       </p>
-      <HistItensLista itens={mov.itens} modo="saida" movId={mov.id} />
+      <HistDetalhesColapsaveis>
+        <HistItensLista itens={mov.itens} modo="saida" movId={mov.id} />
+      </HistDetalhesColapsaveis>
     </MovimentoCardShell>
   )
 }
@@ -449,57 +473,59 @@ function CanceladaCard({
         )}
       </p>
       {dados.items.length > 0 ? (
-        <ul className="hist-saida-itens">
-          {dados.items.map((it) => (
-            <li key={`${cancelada.id}-${it.index}`} className="hist-saida-item">
-              <span className="hist-saida-item-cod">{it.codigo || '—'}</span>
-              <span className="hist-saida-sep" aria-hidden>
-                ·
-              </span>
-              <span className="hist-saida-item-desc" title={it.descricao}>
-                {it.descricao || '—'}
-              </span>
-              <span className="hist-saida-sep" aria-hidden>
-                ·
-              </span>
-              <span className="hist-saida-item-qtd">
-                {formatQuantidadeNfe(it.quantidade)} {it.unidade}
-              </span>
-              {it.pesoBruto != null && (
-                <>
-                  <span className="hist-saida-sep" aria-hidden>
-                    ·
-                  </span>
-                  <span className="muted">P. br. {formatPesoBruto(it.pesoBruto)}</span>
-                </>
-              )}
-              {it.pesoLiquido != null && (
-                <>
-                  <span className="hist-saida-sep" aria-hidden>
-                    ·
-                  </span>
-                  <span className="muted">P. líq. {formatPesoBruto(it.pesoLiquido)}</span>
-                </>
-              )}
-              {it.valorUnitario != null && (
-                <>
-                  <span className="hist-saida-sep" aria-hidden>
-                    ·
-                  </span>
-                  <span className="muted">V. unit. {formatValorNfe(it.valorUnitario)}</span>
-                </>
-              )}
-              {it.valorTotal != null && (
-                <>
-                  <span className="hist-saida-sep" aria-hidden>
-                    ·
-                  </span>
-                  <span>{formatValorNfe(it.valorTotal)}</span>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+        <HistDetalhesColapsaveis>
+          <ul className="hist-saida-itens">
+            {dados.items.map((it) => (
+              <li key={`${cancelada.id}-${it.index}`} className="hist-saida-item">
+                <span className="hist-saida-item-cod">{it.codigo || '—'}</span>
+                <span className="hist-saida-sep" aria-hidden>
+                  ·
+                </span>
+                <span className="hist-saida-item-desc" title={it.descricao}>
+                  {it.descricao || '—'}
+                </span>
+                <span className="hist-saida-sep" aria-hidden>
+                  ·
+                </span>
+                <span className="hist-saida-item-qtd">
+                  {formatQuantidadeNfe(it.quantidade)} {it.unidade}
+                </span>
+                {it.pesoBruto != null && (
+                  <>
+                    <span className="hist-saida-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span className="muted">P. br. {formatPesoBruto(it.pesoBruto)}</span>
+                  </>
+                )}
+                {it.pesoLiquido != null && (
+                  <>
+                    <span className="hist-saida-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span className="muted">P. líq. {formatPesoBruto(it.pesoLiquido)}</span>
+                  </>
+                )}
+                {it.valorUnitario != null && (
+                  <>
+                    <span className="hist-saida-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span className="muted">V. unit. {formatValorNfe(it.valorUnitario)}</span>
+                  </>
+                )}
+                {it.valorTotal != null && (
+                  <>
+                    <span className="hist-saida-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span>{formatValorNfe(it.valorTotal)}</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </HistDetalhesColapsaveis>
       ) : (
         <p className="muted hist-sem-itens">Itens não disponíveis no registro de cancelamento.</p>
       )}
