@@ -7,6 +7,7 @@ import { LayoutPanel } from './components/LayoutPanel'
 import { StageModal } from './components/StageModal'
 import { EntradaDestinoModal } from './components/EntradaDestinoModal'
 import { EscolhaEstoqueModal } from './components/EscolhaEstoqueModal'
+import { PainelDashboard } from './components/PainelDashboard'
 import { PrintLayoutDocument } from './components/PrintLayoutDocument'
 import { CAMARAS } from './layout/camaras'
 import { listarItensStage } from './layout/stage'
@@ -83,7 +84,13 @@ import type { EntradaItemCampos } from './lib/entradaCampos'
 import { quantidadeEstoqueItem } from './lib/nfeUnidades'
 import type { SaidaItemDraft } from './lib/saidaParcial'
 import type { AddressId, AddressOccupancy, JustificativaSaidaId, LocalizacaoEstoque, MotivoRemocaoEstoqueId, MovimentoRegistro, NotaFiscal, SaidaXmlDocumento } from './types'
+import {
+  defaultPainelFiltros,
+  type PainelFiltros,
+  type PainelGraficoId,
+} from './lib/painelAnalytics'
 import type { MovimentacaoModo } from './components/EditarPosicaoPanel'
+import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import type { SaidaModoBusca, SaidaOrigemEstoque } from './components/SaidaPanel'
 import './App.css'
 
@@ -105,6 +112,45 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
     }
   }
   return map
+}
+
+const PAINEL_FILTROS_KEY = 'ultrafrio-painel-filtros'
+const PAINEL_GRAFICOS_KEY = 'ultrafrio-painel-graficos'
+
+function loadPainelFiltros(): PainelFiltros {
+  try {
+    const raw = localStorage.getItem(PAINEL_FILTROS_KEY)
+    if (raw) return { ...defaultPainelFiltros(), ...JSON.parse(raw) }
+  } catch {
+    /* ignore */
+  }
+  return defaultPainelFiltros()
+}
+
+function savePainelFiltros(filtros: PainelFiltros) {
+  try {
+    localStorage.setItem(PAINEL_FILTROS_KEY, JSON.stringify(filtros))
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadPainelGraficos(): PainelGraficoId[] {
+  try {
+    const raw = localStorage.getItem(PAINEL_GRAFICOS_KEY)
+    if (raw) return JSON.parse(raw) as PainelGraficoId[]
+  } catch {
+    /* ignore */
+  }
+  return []
+}
+
+function savePainelGraficos(ids: PainelGraficoId[]) {
+  try {
+    localStorage.setItem(PAINEL_GRAFICOS_KEY, JSON.stringify(ids))
+  } catch {
+    /* ignore */
+  }
 }
 
 export default function App() {
@@ -187,6 +233,9 @@ export default function App() {
   const [saidaStageItemIndex, setSaidaStageItemIndex] = useState<number | null>(null)
   const [saidaStageQtdInput, setSaidaStageQtdInput] = useState('')
   const [saidaStageConfirmados, setSaidaStageConfirmados] = useState<SaidaItemDraft[]>([])
+  const [sidebarSectionAberta, setSidebarSectionAberta] = useState<SidebarSectionId | null>(null)
+  const [painelFiltros, setPainelFiltros] = useState<PainelFiltros>(() => loadPainelFiltros())
+  const [painelGraficos, setPainelGraficos] = useState<PainelGraficoId[]>(() => loadPainelGraficos())
 
   useEffect(() => {
     stateRef.current = state
@@ -342,6 +391,8 @@ export default function App() {
     paletesTotal != null ? Math.max(0, paletesTotal - pendingSelection.size) : null
 
   const panelPaletesTotal = paletesTotal
+
+  const painelAberto = sidebarSectionAberta === 'painel'
 
   const movimentosHistorico = useMemo(
     () => [...state.movimentos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -1846,6 +1897,36 @@ export default function App() {
     setDetailAddress(null)
   }
 
+  function handlePainelFiltrosChange(patch: Partial<PainelFiltros>) {
+    setPainelFiltros((prev) => {
+      const next = { ...prev, ...patch }
+      savePainelFiltros(next)
+      return next
+    })
+  }
+
+  function handleAdicionarGraficoPainel(id: PainelGraficoId) {
+    setPainelGraficos((prev) => {
+      if (prev.includes(id)) return prev
+      const next = [...prev, id]
+      savePainelGraficos(next)
+      return next
+    })
+  }
+
+  function handleRemoverGraficoPainel(id: PainelGraficoId) {
+    setPainelGraficos((prev) => {
+      const next = prev.filter((g) => g !== id)
+      savePainelGraficos(next)
+      return next
+    })
+  }
+
+  function handleLimparGraficosPainel() {
+    setPainelGraficos([])
+    savePainelGraficos([])
+  }
+
   const stageItens = useMemo(() => listarItensStage(state.notas), [state.notas])
 
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
@@ -1865,6 +1946,7 @@ export default function App() {
         sidebarFixed={sidebarFixed}
         onToggleSidebarMode={toggleSidebarMode}
         onBeforeLeaveEntrada={trySairEntradaIncompleta}
+        onOpenSectionChange={setSidebarSectionAberta}
         entrada={{
           notas: state.notas,
           activeNfId: state.activeNfId,
@@ -1942,6 +2024,15 @@ export default function App() {
           canceladas: state.notasCanceladas,
           notas: state.notas,
         }}
+        painel={{
+          filtros: painelFiltros,
+          graficosAtivos: painelGraficos,
+          movimentos: movimentosHistorico,
+          onFiltrosChange: handlePainelFiltrosChange,
+          onAdicionarGrafico: handleAdicionarGraficoPainel,
+          onRemoverGrafico: handleRemoverGraficoPainel,
+          onLimparGraficos: handleLimparGraficosPainel,
+        }}
         canceladas={{
           canceladas: canceladasAtivas,
           notas: state.notas,
@@ -2001,6 +2092,14 @@ export default function App() {
       />
 
       <main className="main-panel">
+        {painelAberto ? (
+          <PainelDashboard
+            filtros={painelFiltros}
+            graficosAtivos={painelGraficos}
+            movimentos={movimentosHistorico}
+            notas={state.notas}
+          />
+        ) : (
         <LayoutPanel
           occupancy={displayOccupancy}
           pendingSelection={panelPendingSelection}
@@ -2033,6 +2132,7 @@ export default function App() {
           paletesTotal={panelPaletesTotal}
           saidaMode={saidaModoPalete}
         />
+        )}
       </main>
 
       <PrintLayoutDocument camaraIds={printCamaras} />

@@ -467,6 +467,9 @@ export function LayoutPanel(props: Props) {
       </div>
 
       <div className="camaras-stack">
+        {CAMARAS.map((cam) => (
+          <CamaraSection key={cam.id} cam={cam} mobile={mobile} paint={paint} {...props} />
+        ))}
         {props.notas && props.onStageOpen && (
           <StageSection
             notas={props.notas}
@@ -474,9 +477,6 @@ export function LayoutPanel(props: Props) {
             onOpen={props.onStageOpen}
           />
         )}
-        {CAMARAS.map((cam) => (
-          <CamaraSection key={cam.id} cam={cam} mobile={mobile} paint={paint} {...props} />
-        ))}
       </div>
 
       {props.editMode && props.activeNfNumero && (

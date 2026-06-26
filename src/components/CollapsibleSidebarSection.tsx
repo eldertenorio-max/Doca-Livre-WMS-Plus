@@ -6,6 +6,7 @@ export type SidebarSectionId =
   | 'editar'
   | 'consulta'
   | 'historico'
+  | 'painel'
   | 'canceladas'
   | 'imprimir'
 
@@ -179,6 +180,50 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
           strokeWidth="1.5"
           strokeLinecap="round"
           opacity="0.45"
+        />
+      </svg>
+    )
+  }
+
+  if (id === 'painel') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+        <rect
+          className="icon-painel-card"
+          x="3"
+          y="4"
+          width="8"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <rect
+          className="icon-painel-card"
+          x="13"
+          y="4"
+          width="8"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <rect
+          className="icon-painel-card"
+          x="3"
+          y="13"
+          width="18"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <path
+          className="icon-painel-bar"
+          d="M5.5 9.5h3M15 9.5h3M5.5 16.5h12"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
         />
       </svg>
     )

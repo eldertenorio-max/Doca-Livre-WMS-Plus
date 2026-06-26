@@ -5,6 +5,7 @@ import { EditarPosicaoPanel } from './EditarPosicaoPanel'
 import { EntradaPanel } from './EntradaPanel'
 import { HistoricoPanel } from './HistoricoPanel'
 import { ImprimirPanel } from './ImprimirPanel'
+import { PainelPanel } from './PainelPanel'
 import { SaidaPanel } from './SaidaPanel'
 import { ThemeToggle } from './ThemeToggle'
 import { SidebarModeToggle } from './SidebarModeToggle'
@@ -24,9 +25,11 @@ type Props = {
   editar: ComponentProps<typeof EditarPosicaoPanel>
   consulta: ComponentProps<typeof ConsultaEstoquePanel>
   historico: ComponentProps<typeof HistoricoPanel>
+  painel: ComponentProps<typeof PainelPanel>
   canceladas: ComponentProps<typeof CanceladasPanel>
   imprimir: ComponentProps<typeof ImprimirPanel>
   onBeforeLeaveEntrada?: (proceed: () => void) => void
+  onOpenSectionChange?: (id: SidebarSectionId | null) => void
 }
 
 export function AppSidebar({
@@ -41,14 +44,18 @@ export function AppSidebar({
   editar,
   consulta,
   historico,
+  painel,
   canceladas,
   imprimir,
   onBeforeLeaveEntrada,
+  onOpenSectionChange,
 }: Props) {
   const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
 
   function sectionOpenChange(id: SidebarSectionId, open: boolean) {
-    setOpenSection(open ? id : null)
+    const next = open ? id : null
+    setOpenSection(next)
+    onOpenSectionChange?.(next)
   }
 
   const guardOtherSection = (nextOpen: boolean, proceed: () => void) => {
@@ -158,6 +165,16 @@ export function AppSidebar({
         onBeforeToggle={guardOtherSection}
       >
         <HistoricoPanel {...historico} />
+      </CollapsibleSidebarSection>
+
+      <CollapsibleSidebarSection
+        id="painel"
+        title="Painel"
+        open={openSection === 'painel'}
+        onOpenChange={(open) => sectionOpenChange('painel', open)}
+        onBeforeToggle={guardOtherSection}
+      >
+        <PainelPanel {...painel} />
       </CollapsibleSidebarSection>
 
       <CollapsibleSidebarSection
