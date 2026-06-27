@@ -26,7 +26,11 @@ export function MovimentacaoVozControle({
       return
     }
     if (!origemSelecionada) return
-    start(onDestinoFalado, onErro)
+    start(onDestinoFalado, onErro, {
+      extended: true,
+      maxDurationMs: 20000,
+      silenceAfterSpeechMs: 3500,
+    })
   }
 
   return (
@@ -43,7 +47,8 @@ export function MovimentacaoVozControle({
             {origemSelecionada ? (
               <>
                 Origem: <strong>{formatAddressLabel(origemSelecionada)}</strong> — toque no
-                microfone e fale o destino (ex.: &quot;câmara 6 rua 1 coluna 2 nível 3&quot;).
+                microfone e fale o destino com calma (até ~20 s). Ex.: &quot;câmara 6 rua 1 coluna 2
+                nível 3&quot;.
               </>
             ) : (
               <>Selecione um endereço na lista acima e depois fale para onde mover.</>

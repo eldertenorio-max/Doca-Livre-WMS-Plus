@@ -28,7 +28,17 @@ const PT_NUMBERS: Record<string, number> = {
   quatorze: 14,
   catorze: 14,
   quinze: 15,
+  dezesseis: 16,
+  dezessete: 17,
+  dezoito: 18,
+  dezenove: 19,
+  vinte: 20,
 }
+
+const CAMARA_KEYS = ['camara', 'camera', 'cam', 'chamara', 'sala']
+const RUA_KEYS = ['rua', 'corredor']
+const COL_KEYS = ['coluna', 'colunas', 'col', 'posicao', 'pos', 'palete', 'porta']
+const NIVEL_KEYS = ['nivel', 'niv', 'andar', 'altura', 'prateleira']
 
 function parseTokenNumber(token: string): number | null {
   const t = token
@@ -50,7 +60,7 @@ function normalizeTranscript(text: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
-    .replace(/[·.,;]/g, ' ')
+    .replace(/[·.,;!?]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -65,6 +75,37 @@ function tryMakeAddress(
   return makeAddressId(camara, rua, nivel, col)
 }
 
+function extractField(s: string, keywords: string[]): number | null {
+  for (const kw of keywords) {
+    const re = new RegExp(`(?:^|\\s)${kw}\\s+(\\S+)`, 'i')
+    const m = s.match(re)
+    if (!m?.[1]) continue
+    const n = parseTokenNumber(m[1])
+    if (n != null) return n
+  }
+  return null
+}
+
+function extractNumbersInOrder(s: string): number[] {
+  const nums: number[] = []
+  for (const token of s.split(/\s+/)) {
+    const n = parseTokenNumber(token)
+    if (n != null) nums.push(n)
+  }
+  return nums
+}
+
+function tryParseFromParts(
+  camara: number | null,
+  rua: number | null,
+  col: number | null,
+  nivel: number | null,
+): AddressId | null {
+  const addr = tryMakeAddress(camara, rua, col, nivel)
+  if (!addr || !enderecoCelulaValida(addr)) return null
+  return addr
+}
+
 /** Interpreta fala ou texto livre como endereço do armazém (ex.: "câmara 6 rua 1 coluna 2 nível 3"). */
 export function parseEnderecoFalado(text: string): AddressId | null {
   const raw = text.trim()
@@ -72,7 +113,7 @@ export function parseEnderecoFalado(text: string): AddressId | null {
 
   const idMatch = raw.match(/C(\d+)\s*[-·]\s*R(\d+)\s*[-·]\s*N(\d+)\s*[-·]\s*P(\d+)/i)
   if (idMatch) {
-    return tryMakeAddress(
+    return tryParseFromParts(
       Number(idMatch[1]),
       Number(idMatch[2]),
       Number(idMatch[4]),
@@ -82,21 +123,47 @@ export function parseEnderecoFalado(text: string): AddressId | null {
 
   const s = normalizeTranscript(raw)
 
+  const byKeyword = tryParseFromParts(
+    extractField(s, CAMARA_KEYS),
+    extractField(s, RUA_KEYS),
+    extractField(s, COL_KEYS),
+    extractField(s, NIVEL_KEYS),
+  )
+  if (byKeyword) return byKeyword
+
   const patterns = [
-    /cam(?:ara)?\s*(\w+)\s+rua\s*(\w+)\s+(?:col(?:una)?|pos(?:icao)?|posicao)\s*(\w+)\s+(?:niv(?:el)?)\s*(\w+)/,
-    /cam(?:ara)?\s*(\w+)\s+rua\s*(\w+)\s+col\s*(\w+)\s+niv\s*(\w+)/,
+    /cam(?:ara|era)?\s*(\w+)\s+rua\s*(\w+)\s+(?:col(?:una)?|pos(?:icao)?|posicao)\s*(\w+)\s+(?:niv(?:el)?)\s*(\w+)/,
+    /cam(?:ara|era)?\s*(\w+)\s+rua\s*(\w+)\s+col\s*(\w+)\s+niv\s*(\w+)/,
+    /(\w+)\s+rua\s*(\w+)\s+col(?:una)?\s*(\w+)\s+niv(?:el)?\s*(\w+)/,
   ]
 
   for (const re of patterns) {
     const m = s.match(re)
     if (!m) continue
-    const addr = tryMakeAddress(
+    const addr = tryParseFromParts(
       parseTokenNumber(m[1]),
       parseTokenNumber(m[2]),
       parseTokenNumber(m[3]),
       parseTokenNumber(m[4]),
     )
     if (addr) return addr
+  }
+
+  if (/cam|rua|col|niv|pos|andar/.test(s)) {
+    const nums = extractNumbersInOrder(s)
+    if (nums.length >= 4) {
+      const addr = tryParseFromParts(nums[0], nums[1], nums[2], nums[3])
+      if (addr) return addr
+    }
+  }
+
+  const compact = s.replace(/[^\d]/g, '')
+  if (compact.length >= 4 && compact.length <= 6) {
+    const digits = compact.split('').map(Number)
+    if (digits.length === 4) {
+      const addr = tryParseFromParts(digits[0], digits[1], digits[2], digits[3])
+      if (addr) return addr
+    }
   }
 
   return null

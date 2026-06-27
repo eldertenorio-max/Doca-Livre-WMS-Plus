@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { AppSidebar } from './components/AppSidebar'
+import { VoiceAssistantHUD } from './components/VoiceAssistantHUD'
+import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
 import { ManualNfModal, type ManualNfModalResult } from './components/ManualNfModal'
 import { IntroSplash } from './components/IntroSplash'
@@ -16,6 +18,7 @@ import { PaletesLimiteAlert } from './components/PaletesLimiteAlert'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
 import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
+import { useVoiceAssistant } from './hooks/useVoiceAssistant'
 import { allItemsAllocated } from './lib/repository'
 import { adicionarNotaManual } from './lib/manualNf'
 import { desmembrarNfeItem, patchNfeItemQuantidade } from './lib/desmembrarItem'
@@ -60,7 +63,13 @@ import {
   syncVinculosNotas,
   vincularNotaCancelada,
 } from './lib/nfCanceladas'
-import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
+import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, CONSULTA_FILTROS_VAZIOS, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
+import {
+  describeVoiceCommand,
+  painelFiltrosPorDias,
+  parseVoiceCommand,
+} from './lib/parseVoiceCommand'
+import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
@@ -143,8 +152,12 @@ export default function App() {
     error,
     clearError,
   } = useEnderecamentoStore()
-  const { theme, toggleTheme } = useTheme()
+  const { theme, toggleTheme, setTheme } = useTheme()
   const { sidebarMode, setSidebarMode } = useSidebarMode()
+  const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
+  const [voicePrefs, setVoicePrefs] = useState<VoicePrefs>(() => getStoredVoicePrefs())
+  const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null)
+  const openSectionRef = useRef<SidebarSectionId | null>(null)
   const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -224,6 +237,14 @@ export default function App() {
   useEffect(() => {
     stateRef.current = state
   }, [state])
+
+  useEffect(() => {
+    openSectionRef.current = openSection
+  }, [openSection])
+
+  useEffect(() => {
+    storeVoicePrefs(voicePrefs)
+  }, [voicePrefs])
 
   const emAndamentoIds = useMemo(
     () => state.notas.filter((n) => n.status === 'em_andamento').map((n) => n.id),
@@ -1757,7 +1778,7 @@ export default function App() {
     const destId = parseEnderecoFalado(transcript)
     if (!destId) {
       setVozErro(
-        'Não entendi o endereço. Fale por exemplo: "câmara 6 rua 1 coluna 2 nível 3".',
+        `Não entendi "${transcript.trim()}". Fale devagar: "câmara 6 rua 1 coluna 2 nível 3".`,
       )
       return
     }
@@ -2192,6 +2213,111 @@ export default function App() {
     })
   }
 
+  const handleOpenSection = useCallback(
+    (id: SidebarSectionId | null) => {
+      const apply = () => {
+        if (id === 'painel') {
+          setSidebarMode('fullscreen')
+        } else if (id != null && sidebarMode === 'fullscreen') {
+          setSidebarMode('open')
+        }
+        setOpenSection(id)
+      }
+      if (openSectionRef.current === 'entrada' && id !== 'entrada') {
+        trySairEntradaIncompleta(apply)
+      } else {
+        apply()
+      }
+    },
+    [trySairEntradaIncompleta, setSidebarMode, sidebarMode],
+  )
+
+  const handleVoicePrefsChange = useCallback((patch: Partial<VoicePrefs>) => {
+    setVoicePrefs((prev) => ({ ...prev, ...patch }))
+  }, [])
+
+  const handleVoiceCommandText = useCallback(
+    (text: string) => {
+      const cmd = parseVoiceCommand(text)
+      if (!cmd) {
+        setVoiceFeedback('Comando vazio ou não reconhecido.')
+        return
+      }
+
+      if (cmd.type === 'parar') {
+        setVoiceFeedback('Assistente desarmado.')
+        return
+      }
+
+      const msg = describeVoiceCommand(cmd)
+      setVoiceFeedback(msg)
+
+      switch (cmd.type) {
+        case 'open_section':
+          handleOpenSection(cmd.section)
+          break
+        case 'buscar_nota':
+          handleOpenSection('editar')
+          handleBuscarEditar(cmd.numero)
+          break
+        case 'consultar': {
+          handleOpenSection('consulta')
+          const filtros: ConsultaEstoqueFiltros = {
+            ...CONSULTA_FILTROS_VAZIOS,
+            ...cmd.filtros,
+          }
+          handleBuscarConsulta(filtros)
+          break
+        }
+        case 'painel_periodo':
+          handleOpenSection('painel')
+          handlePainelFiltrosChange(painelFiltrosPorDias(cmd.dias))
+          break
+        case 'confirmar_movimentacao':
+          handleOpenSection('editar')
+          void handleSalvarEditar()
+          break
+        case 'sidebar_mode':
+          setSidebarMode(cmd.mode)
+          break
+        case 'toggle_theme':
+          setTheme(cmd.theme)
+          break
+        case 'endereco':
+          handleOpenSection('editar')
+          if (vozOrigemAddress) {
+            handleVozDestino(cmd.addressId)
+          } else {
+            setVoiceFeedback(
+              'Abra a movimentação, selecione a origem na lista e repita o endereço de destino.',
+            )
+          }
+          break
+        case 'desconhecido':
+          break
+      }
+    },
+    [
+      handleOpenSection,
+      setSidebarMode,
+      setTheme,
+      vozOrigemAddress,
+    ],
+  )
+
+  const voiceAssistant = useVoiceAssistant({
+    enabled: voicePrefs.enabled,
+    wakePhrase: voicePrefs.wakePhrase,
+    onCommandText: handleVoiceCommandText,
+    onError: (message) => setVoiceFeedback(message),
+  })
+
+  useEffect(() => {
+    if (!voiceFeedback) return
+    const t = setTimeout(() => setVoiceFeedback(null), 5000)
+    return () => clearTimeout(t)
+  }, [voiceFeedback])
+
   const stageItens = useMemo(() => listarItensStage(state.notas), [state.notas])
 
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
@@ -2210,6 +2336,8 @@ export default function App() {
         onToggleTheme={toggleTheme}
         sidebarMode={sidebarMode}
         onSidebarModeChange={setSidebarMode}
+        openSection={openSection}
+        onOpenSectionChange={handleOpenSection}
         onBeforeLeaveEntrada={trySairEntradaIncompleta}
         entrada={{
           notas: state.notas,
@@ -2372,6 +2500,21 @@ export default function App() {
           onClearAll: () => setPrintCamaras([]),
           onPrint: schedulePrint,
         }}
+        cadastroVoz={{
+          prefs: voicePrefs,
+          supported: voiceAssistant.supported,
+          assistantActive: voicePrefs.enabled && voiceAssistant.phase !== 'off',
+          onPrefsChange: handleVoicePrefsChange,
+          onTestWakePhrase: voiceAssistant.testPhrase,
+        }}
+      />
+
+      <VoiceAssistantHUD
+        phase={voiceAssistant.phase}
+        liveText={voiceAssistant.liveText}
+        lastHint={voiceAssistant.lastHint}
+        feedback={voiceFeedback}
+        wakePhrase={voicePrefs.wakePhrase}
       />
 
       <main className="main-panel">
