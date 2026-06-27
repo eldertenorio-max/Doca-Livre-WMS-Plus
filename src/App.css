@@ -2152,7 +2152,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--border);
@@ -2196,9 +2196,9 @@ html.scroll-locked .sidebar.sidebar--wide {
   flex-shrink: 0;
   margin-top: auto;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   padding: 8px 0 10px;
   box-sizing: border-box;
@@ -2206,22 +2206,11 @@ html.scroll-locked .sidebar.sidebar--wide {
   border-top: 1px solid var(--border);
 }
 
-.sidebar:not(.sidebar--wide) .sidebar-bottom-bar {
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 8px;
-}
-
 .sidebar-bottom-bar .theme-toggle {
   flex: 0 0 auto;
-  width: 44px;
-  min-height: 44px;
-  padding: 8px;
-}
-
-.sidebar:not(.sidebar--wide) .sidebar-bottom-bar .theme-toggle {
   width: 100%;
   min-height: 40px;
+  padding: 8px;
 }
 
 .sidebar-header .muted,
