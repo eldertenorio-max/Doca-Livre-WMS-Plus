@@ -122,6 +122,9 @@ export function useVoiceAssistant({
   const stopRecognitionRef = useRef<() => void>(() => {})
   const scheduleRecognitionRestartRef = useRef<() => void>(() => {})
   const restartingRef = useRef(false)
+  const localSpeechHoldRef = useRef(0)
+  const pausedForLocalSpeechRef = useRef(false)
+  const enabledRef = useRef(enabled)
 
   const audioStreamRef = useRef<MediaStream | null>(null)
   const audioRecorderRef = useRef<MediaRecorder | null>(null)
@@ -146,6 +149,10 @@ export function useVoiceAssistant({
   useEffect(() => {
     requireVoiceMatchRef.current = requireVoiceMatch
   }, [requireVoiceMatch])
+
+  useEffect(() => {
+    enabledRef.current = enabled
+  }, [enabled])
 
   const clearArmedTimer = useCallback(() => {
     if (armedTimerRef.current) {
@@ -379,7 +386,7 @@ export function useVoiceAssistant({
       }
 
       rec.onend = () => {
-        if (!runningRef.current || restartingRef.current) return
+        if (!runningRef.current || restartingRef.current || pausedForLocalSpeechRef.current) return
         scheduleRecognitionRestartRef.current()
       }
     },
@@ -387,7 +394,7 @@ export function useVoiceAssistant({
   )
 
   const scheduleRecognitionRestart = useCallback(() => {
-    if (!runningRef.current) return
+    if (!runningRef.current || pausedForLocalSpeechRef.current) return
     clearRestartTimer()
     restartTimerRef.current = setTimeout(() => {
       restartTimerRef.current = null
@@ -445,6 +452,8 @@ export function useVoiceAssistant({
 
   const stopRecognition = useCallback(() => {
     runningRef.current = false
+    localSpeechHoldRef.current = 0
+    pausedForLocalSpeechRef.current = false
     clearRestartTimer()
     recRef.current?.abort()
     recRef.current = null
@@ -468,6 +477,8 @@ export function useVoiceAssistant({
   }, [stopRecognition])
 
   const startRecognition = useCallback(async () => {
+    if (pausedForLocalSpeechRef.current) return
+
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor) {
       onErrorRef.current?.('Reconhecimento de voz não disponível neste navegador.')
@@ -495,6 +506,43 @@ export function useVoiceAssistant({
     rec.start()
   }, [bindRecognitionHandlers, clearListeningBuffers, startAudioCapture])
 
+  const suspendForLocalSpeech = useCallback(() => {
+    localSpeechHoldRef.current += 1
+    if (localSpeechHoldRef.current > 1) return
+
+    pausedForLocalSpeechRef.current = true
+    clearRestartTimer()
+    clearArmedTimer()
+    clearSilenceTimer()
+    armedRef.current = false
+    restartingRef.current = false
+
+    const oldRec = recRef.current
+    recRef.current = null
+    try {
+      oldRec?.abort()
+    } catch {
+      /* ignore */
+    }
+
+    stopAudioCapture()
+    setLiveText('')
+    setLastHint('Microfone em uso na movimentação')
+  }, [clearArmedTimer, clearRestartTimer, clearSilenceTimer, stopAudioCapture])
+
+  const resumeAfterLocalSpeech = useCallback(() => {
+    if (localSpeechHoldRef.current <= 0) return
+    localSpeechHoldRef.current -= 1
+    if (localSpeechHoldRef.current > 0) return
+
+    pausedForLocalSpeechRef.current = false
+    setLastHint(null)
+
+    if (runningRef.current && enabledRef.current) {
+      void startRecognition()
+    }
+  }, [startRecognition])
+
   useEffect(() => {
     setSupported(getSpeechRecognitionCtor() != null)
   }, [])
@@ -521,5 +569,7 @@ export function useVoiceAssistant({
     testPhrase,
     stop: stopRecognition,
     cancelArmed,
+    suspendForLocalSpeech,
+    resumeAfterLocalSpeech,
   }
 }

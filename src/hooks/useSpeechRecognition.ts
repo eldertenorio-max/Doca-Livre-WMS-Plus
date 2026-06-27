@@ -36,13 +36,17 @@ export type SpeechListenOptions = {
   extended?: boolean
   maxDurationMs?: number
   silenceAfterSpeechMs?: number
+  /** Libera o microfone global (ex.: assistente "ok estoque") antes de escutar. */
+  onPrepareMic?: () => void
+  /** Restaura o microfone global após a escuta local. */
+  onReleaseMic?: () => void
 }
 
-const DEFAULT_EXTENDED: Required<SpeechListenOptions> = {
+const DEFAULT_EXTENDED = {
   extended: false,
   maxDurationMs: 18000,
   silenceAfterSpeechMs: 3200,
-}
+} satisfies Omit<SpeechListenOptions, 'onPrepareMic' | 'onReleaseMic'>
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   if (typeof window === 'undefined') return null
@@ -64,9 +68,11 @@ export function useSpeechRecognition() {
   const sessionRef = useRef<{
     onResult: (text: string) => void
     onError?: (message: string) => void
+    onReleaseMic?: () => void
     extended: boolean
     accumulated: string
     finished: boolean
+    restartAttempted: boolean
   } | null>(null)
 
   const clearTimers = useCallback(() => {
@@ -79,6 +85,10 @@ export function useSpeechRecognition() {
     setSupported(getSpeechRecognitionCtor() != null)
     return () => {
       clearTimers()
+      const session = sessionRef.current
+      if (session && !session.finished) {
+        session.onReleaseMic?.()
+      }
       recRef.current?.abort()
       recRef.current = null
       sessionRef.current = null
@@ -102,6 +112,7 @@ export function useSpeechRecognition() {
       } else if (reason === 'timeout') {
         session.onError?.('Tempo esgotado. Toque no microfone e fale o endereço com calma.')
       }
+      session.onReleaseMic?.()
       sessionRef.current = null
     },
     [clearTimers],
@@ -148,9 +159,11 @@ export function useSpeechRecognition() {
       const session = {
         onResult,
         onError,
+        onReleaseMic: options?.onReleaseMic,
         extended: opts.extended,
         accumulated: '',
         finished: false,
+        restartAttempted: false,
       }
       sessionRef.current = session
 
@@ -214,30 +227,64 @@ export function useSpeechRecognition() {
         setListening(false)
         setInterimTranscript('')
         recRef.current = null
+        session.onReleaseMic?.()
         sessionRef.current = null
       }
 
       rec.onend = () => {
         if (session.finished) return
-        if (opts.extended && session.accumulated) {
-          finishSession('result')
+        if (opts.extended) {
+          if (session.accumulated) {
+            finishSession('result')
+            return
+          }
+          if (!session.restartAttempted) {
+            session.restartAttempted = true
+            try {
+              rec.start()
+            } catch {
+              session.onError?.(
+                'Não ouvi nada. Fale o endereço mais alto ou verifique o microfone.',
+              )
+              finishSession('manual')
+            }
+            return
+          }
+          session.onError?.('Não ouvi nada. Fale o endereço de destino com calma.')
+          finishSession('manual')
           return
         }
-        if (!opts.extended) {
-          setListening(false)
-          setInterimTranscript('')
-          recRef.current = null
-          sessionRef.current = null
-        }
+        setListening(false)
+        setInterimTranscript('')
+        recRef.current = null
+        session.onReleaseMic?.()
+        sessionRef.current = null
       }
 
       setInterimTranscript('')
       setListening(true)
-      rec.start()
+      options?.onPrepareMic?.()
 
-      if (opts.extended) {
-        timersRef.current.max = setTimeout(() => finishSession('timeout'), opts.maxDurationMs)
+      const beginRec = () => {
+        if (session.finished) return
+        try {
+          rec.start()
+          if (opts.extended) {
+            timersRef.current.max = setTimeout(() => finishSession('timeout'), opts.maxDurationMs)
+          }
+        } catch {
+          session.finished = true
+          clearTimers()
+          onError?.('Microfone indisponível. Tente de novo em instantes.')
+          setListening(false)
+          setInterimTranscript('')
+          recRef.current = null
+          session.onReleaseMic?.()
+          sessionRef.current = null
+        }
       }
+
+      window.setTimeout(beginRec, 400)
     },
     [clearTimers, finishSession, scheduleSilenceFinish],
   )

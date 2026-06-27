@@ -24,6 +24,8 @@ type Props = {
   onVozDestino: (transcript: string) => void
   onVozErro: (message: string) => void
   onLimparVozErro: () => void
+  onPrepareLocalSpeech?: () => void
+  onReleaseLocalSpeech?: () => void
   enderecosOcupados: Set<AddressId>
   enderecosSelecionados: Set<AddressId>
   onBuscar: (numero: string) => void
@@ -55,6 +57,8 @@ export function EditarPosicaoPanel({
   onVozDestino,
   onVozErro,
   onLimparVozErro,
+  onPrepareLocalSpeech,
+  onReleaseLocalSpeech,
   enderecosOcupados,
   enderecosSelecionados,
   onBuscar,
@@ -248,6 +252,8 @@ export function EditarPosicaoPanel({
                         onErro={onVozErro}
                         erro={vozErro}
                         onLimparErro={onLimparVozErro}
+                        onPrepareMic={onPrepareLocalSpeech}
+                        onReleaseMic={onReleaseLocalSpeech}
                       />
                       <button
                         type="button"

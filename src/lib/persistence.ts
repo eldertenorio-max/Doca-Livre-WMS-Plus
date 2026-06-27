@@ -2,6 +2,7 @@ import { sanitizarNotasEntrada, todosItensEnderecados } from './excluirItemNf'
 import {
   limparMovimentosEntradaOrfaos,
   migrarRuasNosDados,
+  recuperarEnderecosPerdidos,
   sincronizarMovimentosEntrada,
 } from './movimentos'
 import { syncVinculosNotas } from './nfCanceladas'
@@ -21,7 +22,11 @@ function normalizarStatusNotas(notas: NotaFiscal[]): NotaFiscal[] {
 
 export function normalizePersistedData(data: PersistedData): PersistedData {
   const base = limparMovimentosEntradaOrfaos(
-    syncVinculosNotas(sincronizarMovimentosEntrada(migrarRuasNosDados(data))),
+    syncVinculosNotas(
+      recuperarEnderecosPerdidos(
+        sincronizarMovimentosEntrada(migrarRuasNosDados(data)),
+      ),
+    ),
   )
   return {
     ...base,

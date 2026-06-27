@@ -10,6 +10,7 @@ import type {
   PersistedData,
 } from '../types'
 import { remapLegacyAddressId } from '../layout/camaras'
+import { itemNoStage } from '../layout/stage'
 import { syncVinculosNotas } from './nfCanceladas'
 import { buildNfResumo } from './nfResumo'
 import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from './saidaParcial'
@@ -43,6 +44,66 @@ export function migrarRuasNosDados(data: PersistedData): PersistedData {
 
 export function nfTemEnderecos(nf: NotaFiscal): boolean {
   return nf.items.some((it) => it.allocatedAddresses.length > 0)
+}
+
+function entradaComMaisEnderecos(
+  movimentos: MovimentoRegistro[],
+  nfId: string,
+): MovimentoRegistro | undefined {
+  return movimentos
+    .filter((m) => m.tipo === 'entrada' && m.nfId === nfId && !m.excluido)
+    .sort((a, b) => {
+      const endA = a.itens.reduce((sum, it) => sum + it.addressIds.length, 0)
+      const endB = b.itens.reduce((sum, it) => sum + it.addressIds.length, 0)
+      return endB - endA
+    })[0]
+}
+
+/**
+ * Recupera endereços perdidos no estoque usando o snapshot do movimento de entrada
+ * (quando a NF ainda existe, mas allocatedAddresses ficou vazio indevidamente).
+ */
+export function recuperarEnderecosPerdidos(data: PersistedData): PersistedData {
+  const ocupacao = new Map<AddressId, string>()
+  for (const nf of data.notas) {
+    for (const it of nf.items) {
+      for (const addr of it.allocatedAddresses) {
+        ocupacao.set(addr, nf.id)
+      }
+    }
+  }
+
+  let changed = false
+  const notas = data.notas.map((nf) => {
+    const entrada = entradaComMaisEnderecos(data.movimentos, nf.id)
+    if (!entrada) return nf
+
+    const items = nf.items.map((it) => {
+      if (itemNoStage(it) || it.allocatedAddresses.length > 0) return it
+
+      const snap = entrada.itens.find((s) => s.itemIndex === it.index)
+      if (!snap || snap.addressIds.length === 0) return it
+
+      const enderecos = snap.addressIds.filter(
+        (addr) => !ocupacao.has(addr) || ocupacao.get(addr) === nf.id,
+      )
+      if (enderecos.length === 0) return it
+
+      for (const addr of enderecos) ocupacao.set(addr, nf.id)
+      changed = true
+      return {
+        ...it,
+        localizacao: 'armazem' as const,
+        allocatedAddresses: enderecos,
+        paletes: enderecos.length,
+      }
+    })
+
+    if (items.every((it, i) => it === nf.items[i])) return nf
+    return { ...nf, items }
+  })
+
+  return changed ? { ...data, notas } : data
 }
 
 export function snapshotItemFromNfe(nf: NotaFiscal, it: NfeItem): MovimentoItemSnapshot {

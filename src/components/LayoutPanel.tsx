@@ -53,6 +53,8 @@ type Props = {
   editStagePending?: Set<AddressId>
   stageDropEnabled?: boolean
   onStageDrop?: () => void
+  /** Endereço selecionado na lista (ex.: origem por voz) — destaca e rola até o quadrado no mapa. */
+  focusAddressId?: AddressId | null
 }
 
 function rowLabelWidth(cellSize: number, mobile: boolean): number {
@@ -225,6 +227,7 @@ function RuaGrid({
   paintMode,
   paint,
   editStagePending,
+  focusAddressId,
 }: {
   camaraId: number
   config: RuaConfig
@@ -310,6 +313,7 @@ function RuaGrid({
                     if (occ) className += ' cell--ocupado'
                     if (editMoveOrigens?.has(addressId)) className += ' cell--selecionado'
                     else if (editMoveDestinos?.has(addressId)) className += ' cell--destaque-verde'
+                    else if (focusAddressId === addressId) className += ' cell--voz-origem'
                     else if (stagePending) className += ' cell--stage-pending'
                     else if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
@@ -374,6 +378,7 @@ function RuaGrid({
                       <button
                         key={addressId}
                         type="button"
+                        data-address-id={addressId}
                         className={className}
                         style={{
                           width: cellSize,
@@ -381,7 +386,6 @@ function RuaGrid({
                           ...(portaBg ?? {}),
                         }}
                         disabled={!canInteract}
-                        data-address-id={addressId}
                         data-can-interact={canInteract ? 'true' : 'false'}
                         data-pending={pending ? 'true' : 'false'}
                         title={title}
@@ -563,10 +567,35 @@ function buildLegendItems(props: Props): LegendItem[] {
   return items
 }
 
+function useScrollToFocusAddress(focusAddressId: AddressId | null | undefined) {
+  useEffect(() => {
+    if (!focusAddressId) return
+    const id = focusAddressId
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`button[data-address-id="${id}"]`)
+      if (!el) return
+
+      const scrollParent = el.closest<HTMLElement>('.rua-grid-scroll')
+      if (scrollParent) {
+        const targetLeft =
+          el.offsetLeft - scrollParent.clientWidth / 2 + el.offsetWidth / 2
+        scrollParent.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+      }
+
+      const camaraSection = el.closest<HTMLElement>('.camara-section')
+      camaraSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusAddressId])
+}
+
 export function LayoutPanel(props: Props) {
   const mobile = useIsMobile()
   const paintMode = props.paintMode ?? false
   const paint = useCellPaint(paintMode, props.onCellPaint, props.onCellClick)
+  useScrollToFocusAddress(props.focusAddressId)
 
   return (
     <div className={`layout-panel ${mobile ? 'layout-panel--mobile' : ''} ${paintMode ? 'layout-panel--paint' : ''}`}>

@@ -1785,7 +1785,7 @@ export default function App() {
       setVozOrigemAddress(addressId)
       return
     }
-    setVozOrigemAddress((prev) => (prev === addressId ? null : addressId))
+    setVozOrigemAddress(addressId)
   }
 
   function handleVozDestino(transcript: string) {
@@ -2482,6 +2482,8 @@ export default function App() {
           onVozDestino: handleVozDestino,
           onVozErro: setVozErro,
           onLimparVozErro: () => setVozErro(null),
+          onPrepareLocalSpeech: voiceAssistant.suspendForLocalSpeech,
+          onReleaseLocalSpeech: voiceAssistant.resumeAfterLocalSpeech,
           enderecosOcupados: editEnderecosOcupados,
           enderecosSelecionados: editPendingSelection,
           onBuscar: handleBuscarEditar,
@@ -2593,6 +2595,9 @@ export default function App() {
           editStagePending={editStagePending}
           stageDropEnabled={editStagePending.size > 0}
           onStageDrop={() => void handleAplicarStageDrop()}
+          focusAddressId={
+            nfEditar && editItemIndex != null && !editMarcandoStage ? vozOrigemAddress : null
+          }
         />
       </main>
 

@@ -1837,6 +1837,17 @@
   filter: brightness(1.1);
 }
 
+.cell--voz-origem {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  z-index: 4;
+}
+
+.cell--ocupado.cell--voz-origem {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 .cell--confirmado {
   background-color: var(--cell-ocup);
   outline: 3px solid var(--cell-sel);
@@ -2398,7 +2409,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   padding: 0;
   border: none;
@@ -2455,10 +2466,11 @@ html.scroll-locked .sidebar.sidebar--wide {
   z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   width: 100%;
-  padding: 8px 10px 10px;
+  padding: 8px 0 10px;
+  padding-left: calc((100% - var(--sidebar-icon-size)) / 2);
   box-sizing: border-box;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
@@ -2466,9 +2478,7 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .sidebar.sidebar--wide .sidebar-bottom-bar {
-  align-items: flex-start;
-  padding: 8px 16px 10px;
-  padding-left: 20px;
+  padding: 8px 4px 10px;
 }
 
 .sidebar-bottom-bar .theme-toggle {

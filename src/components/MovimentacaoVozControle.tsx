@@ -8,6 +8,8 @@ type Props = {
   onErro: (message: string) => void
   erro: string | null
   onLimparErro: () => void
+  onPrepareMic?: () => void
+  onReleaseMic?: () => void
 }
 
 export function MovimentacaoVozControle({
@@ -16,6 +18,8 @@ export function MovimentacaoVozControle({
   onErro,
   erro,
   onLimparErro,
+  onPrepareMic,
+  onReleaseMic,
 }: Props) {
   const { listening, supported, interimTranscript, start, stop } = useSpeechRecognition()
 
@@ -30,6 +34,8 @@ export function MovimentacaoVozControle({
       extended: true,
       maxDurationMs: 20000,
       silenceAfterSpeechMs: 3500,
+      onPrepareMic,
+      onReleaseMic,
     })
   }
 
