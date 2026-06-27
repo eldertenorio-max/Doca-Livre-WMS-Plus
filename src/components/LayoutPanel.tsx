@@ -30,6 +30,8 @@ type Props = {
   activeNfId?: string | null
   allocateMode: boolean
   editMode?: boolean
+  /** Item selecionado na movimentação (reposicionar / stage). */
+  editItemAtivo?: boolean
   editAddresses?: Set<AddressId>
   editMoveOrigem?: AddressId | null
   editMoveDestino?: AddressId | null
@@ -209,6 +211,7 @@ function RuaGrid({
   pendingSelection,
   allocateMode,
   editMode,
+  editItemAtivo,
   editAddresses,
   editMoveOrigem = null,
   editMoveDestino = null,
@@ -309,7 +312,7 @@ function RuaGrid({
                     else if (stagePending) className += ' cell--stage-pending'
                     else if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
-                    if (editAddresses?.has(addressId) && !pending && !editMode) className += ' cell--destaque-verde'
+                    if (editAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
                     else if (consultaAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
                     else if (saidaFlaggedAddresses?.has(addressId)) className += ' cell--saida-flag'
                     else if (saidaItemDestaqueAddresses?.has(addressId) && !pending)
@@ -322,7 +325,7 @@ function RuaGrid({
                       addressId,
                       kind,
                       allocateMode,
-                      editMode,
+                      editItemAtivo,
                       occ,
                       pending,
                       editMoveOrigem,
@@ -508,7 +511,7 @@ function buildLegendItems(props: Props): LegendItem[] {
   const consultaAtiva =
     props.consultaAddresses != null && props.consultaAddresses.size > 0
   const movimentacaoAtiva =
-    props.editMode || (props.editAddresses != null && props.editAddresses.size > 0)
+    props.editItemAtivo || (props.editAddresses != null && props.editAddresses.size > 0)
 
   if (consultaAtiva) {
     items.push({ swatch: 'swatch--consulta', label: 'Consulta' })
@@ -584,7 +587,7 @@ export function LayoutPanel(props: Props) {
         )}
       </div>
 
-      {props.editMode && props.activeNfNumero && (
+      {props.editItemAtivo && props.activeNfNumero && (
         <p className="layout-hint">
           {props.stageDropEnabled
             ? 'Clique na área STAGE abaixo para confirmar a movimentação dos paletes marcados.'
@@ -595,7 +598,7 @@ export function LayoutPanel(props: Props) {
                 : 'Passo 1: clique no endereço ocupado de onde vai tirar (roxo).'}
         </p>
       )}
-      {props.editAddresses && props.editAddresses.size > 0 && !props.editMode && (
+      {props.editAddresses && props.editAddresses.size > 0 && !props.editItemAtivo && (
         <p className="layout-hint">
           Selecione um item na barra lateral para editar as posições.
         </p>

@@ -2248,6 +2248,7 @@ export default function App() {
           activeNfId={nfEditar?.id ?? activeNf?.id ?? null}
           allocateMode={panelAllocateMode}
           editMode={editMode || (nfEditar != null && !editMarcandoStage)}
+          editItemAtivo={editMode}
           editMoveOrigem={nfEditar ? editMoveOrigem : null}
           editMoveDestino={nfEditar ? editMoveDestino : null}
           editMarcandoStage={nfEditar ? editMarcandoStage : false}
