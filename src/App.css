@@ -948,7 +948,7 @@
   outline: 2px solid var(--cell-destaque-borda);
   outline-offset: -1px;
 }
-.swatch--porta { background: var(--cell-porta); }
+.swatch--porta { background: url('/porta-camara.png') center / cover no-repeat; }
 .swatch--nv5 { background: var(--cell-nv5); border: 1px solid var(--border); }
 
 .camaras-stack {
@@ -1599,7 +1599,18 @@
 }
 
 .cell--porta {
-  background: var(--cell-porta);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.porta-label {
+  pointer-events: none;
+  z-index: 2;
+  background: url('/porta-camara.png') center / cover no-repeat;
+  border: 1px solid color-mix(in srgb, #1d4ed8 35%, var(--border));
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 .cell--sem-nivel5 {
@@ -1635,18 +1646,7 @@
   background: var(--rack-bay);
 }
 
-.porta-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.5px;
-}
-
-.layout-hint {
+.cell--sem-nivel5 {
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-top: 8px;
@@ -2632,8 +2632,8 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .print-swatch--porta {
-  background: #e8e8e8;
-  border: 1px solid #333;
+  background: url('/porta-camara.png') center / cover no-repeat;
+  border: 1px solid #1d4ed8;
 }
 
 .print-swatch--nv5 {
@@ -2713,10 +2713,19 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .print-cell--porta {
-  background: #ececec;
+  background: transparent;
+  border-color: transparent;
 }
 
-.print-cell--sem-nivel5,
+.print-porta-label {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  background: url('/porta-camara.png') center / cover no-repeat;
+  border: 0.35mm solid #1d4ed8;
+  border-radius: 0.5mm;
+  overflow: hidden;
+}
 .print-cell--bloqueado {
   position: relative;
 }
@@ -2752,19 +2761,6 @@ html.scroll-locked .sidebar.sidebar--wide {
 
 .print-cell--bloqueado {
   background: #fff;
-}
-
-.print-porta-label {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: #333;
-  letter-spacing: 0.05em;
-  pointer-events: none;
-  border: 0.5mm dashed #666;
-  background: rgba(255, 255, 255, 0.55);
 }
 
 @media print {

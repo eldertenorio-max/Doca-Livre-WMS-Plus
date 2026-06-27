@@ -96,7 +96,6 @@ function PrintRuaGrid({ camaraId, config, dims }: { camaraId: number; config: Ru
   const { cellW, cellH, labelW } = dims
   const colFont = printColAxisFont(cellW)
   const rowFont = printRowAxisFont(cellH)
-  const portaFont = Math.max(11, Math.round(Math.min(cellW, cellH) * 0.5))
 
   return (
     <div className="print-rua-grid">
@@ -165,13 +164,10 @@ function PrintRuaGrid({ camaraId, config, dims }: { camaraId: number; config: Ru
           {config.porta && (
             <div
               className="print-porta-label"
-              style={{
-                ...printPortaOverlayStyleMm(config.porta, cellW, cellH, CELL_GAP),
-                fontSize: portaFont,
-              }}
-            >
-              PORTA
-            </div>
+              role="img"
+              aria-label="Porta da câmara"
+              style={printPortaOverlayStyleMm(config.porta, cellW, cellH, CELL_GAP)}
+            />
           )}
         </div>
       </div>

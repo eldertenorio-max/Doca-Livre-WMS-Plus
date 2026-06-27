@@ -348,14 +348,13 @@ function RuaGrid({
             {config.porta && (
               <div
                 className="porta-label"
+                role="img"
+                aria-label="Porta da câmara"
                 style={{
                   ...portaOverlayStyle(config.porta, cellSize, CELL_GAP),
                   position: 'absolute',
-                  fontSize: cellSize >= 36 ? 10 : 9,
                 }}
-              >
-                PORTA
-              </div>
+              />
             )}
           </div>
         </div>
