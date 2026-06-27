@@ -127,16 +127,6 @@ export function AppSidebar({
       </div>
 
       <CollapsibleSidebarSection
-        id="cadastroVoz"
-        title="Cadastro de voz"
-        open={openSection === 'cadastroVoz'}
-        onOpenChange={(open) => sectionOpenChange('cadastroVoz', open)}
-        onBeforeToggle={guardOtherSection}
-      >
-        <CadastroVozPanel {...cadastroVoz} />
-      </CollapsibleSidebarSection>
-
-      <CollapsibleSidebarSection
         id="consulta"
         title="Consulta estoque"
         open={openSection === 'consulta'}
@@ -204,6 +194,16 @@ export function AppSidebar({
         onBeforeToggle={guardOtherSection}
       >
         <PainelPanel {...painel} />
+      </CollapsibleSidebarSection>
+
+      <CollapsibleSidebarSection
+        id="cadastroVoz"
+        title="Cadastro de voz"
+        open={openSection === 'cadastroVoz'}
+        onOpenChange={(open) => sectionOpenChange('cadastroVoz', open)}
+        onBeforeToggle={guardOtherSection}
+      >
+        <CadastroVozPanel {...cadastroVoz} />
       </CollapsibleSidebarSection>
 
       <CollapsibleSidebarSection
