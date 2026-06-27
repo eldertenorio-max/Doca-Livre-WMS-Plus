@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { MOTIVOS_REMOCAO_ESTOQUE } from '../lib/motivoRemocaoEstoque'
 import type { AddressId, MotivoRemocaoEstoqueId, NotaFiscal } from '../types'
-import { formatAddressLabel } from '../layout/camaras'
 import { itemNoStage } from '../layout/stage'
 import { nfTemEstoqueArmazem, nfTemEstoqueStage } from '../lib/stageEstoque'
 import { NfDetalheLeitura } from './NfDetalheLeitura'
@@ -13,8 +12,8 @@ type Props = {
   itemIndex: number | null
   pendingCount: number
   stagePendingCount: number
-  moveOrigem: AddressId | null
-  moveDestino: AddressId | null
+  moveOrigensCount: number
+  moveDestinosCount: number
   marcandoStage: boolean
   onSetMarcandoStage: (value: boolean) => void
   enderecosOcupados: Set<AddressId>
@@ -37,8 +36,8 @@ export function EditarPosicaoPanel({
   itemIndex,
   pendingCount,
   stagePendingCount,
-  moveOrigem,
-  moveDestino,
+  moveOrigensCount,
+  moveDestinosCount,
   marcandoStage,
   onSetMarcandoStage,
   enderecosOcupados,
@@ -94,6 +93,9 @@ export function EditarPosicaoPanel({
       ? nfBusca.items.find((it) => it.index === itemIndex) ?? null
       : null
   const itemStage = itemAtivo != null && itemNoStage(itemAtivo)
+  const restantesDistribuir = Math.max(0, moveOrigensCount - moveDestinosCount)
+  const distribuicaoCompleta =
+    moveOrigensCount > 0 && moveOrigensCount === moveDestinosCount
 
   return (
     <>
@@ -188,13 +190,39 @@ export function EditarPosicaoPanel({
                     )
                   ) : (
                     <>
-                      <p className="muted">
-                        {moveOrigem
-                          ? moveDestino
-                            ? `Origem: ${formatAddressLabel(moveOrigem)} → Destino: ${formatAddressLabel(moveDestino)}`
-                            : `Origem: ${formatAddressLabel(moveOrigem)} — agora clique no destino vazio no mapa.`
-                          : 'Passo 1: clique em qualquer quadrado ocupado da NF (de onde tirar). Passo 2: clique no vazio (onde colocar).'}
-                      </p>
+                      <div className="movimentacao-distribuicao">
+                        <p className="movimentacao-distribuicao-title">Distribuição</p>
+                        {moveOrigensCount === 0 ? (
+                          <p className="muted">
+                            <strong>Passo 1:</strong> clique ou arraste nos quadrados{' '}
+                            <strong>ocupados</strong> no mapa para marcar o que vai tirar.
+                          </p>
+                        ) : (
+                          <>
+                            <p>
+                              <strong>{moveOrigensCount}</strong> palete
+                              {moveOrigensCount !== 1 ? 's' : ''} para tirar
+                            </p>
+                            <p>
+                              Destinos escolhidos:{' '}
+                              <strong>
+                                {moveDestinosCount} / {moveOrigensCount}
+                              </strong>
+                            </p>
+                            {restantesDistribuir > 0 ? (
+                              <p className="movimentacao-distribuicao-restante">
+                                Restam <strong>{restantesDistribuir}</strong> quadrado
+                                {restantesDistribuir !== 1 ? 's' : ''} branco
+                                {restantesDistribuir !== 1 ? 's' : ''} para distribuir
+                              </p>
+                            ) : (
+                              <p className="movimentacao-distribuicao-ok">
+                                Distribuição completa — confirme abaixo.
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
                       <button
                         type="button"
                         className="btn success full"
@@ -202,7 +230,7 @@ export function EditarPosicaoPanel({
                           onSalvar()
                           setNumero('')
                         }}
-                        disabled={!moveOrigem || !moveDestino || stagePendingCount > 0}
+                        disabled={!distribuicaoCompleta || stagePendingCount > 0}
                       >
                         Confirmar movimentação
                       </button>

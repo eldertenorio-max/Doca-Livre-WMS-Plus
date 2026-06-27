@@ -1188,6 +1188,42 @@
   flex: 1;
 }
 
+.movimentacao-distribuicao {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--highlight-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
+}
+
+.movimentacao-distribuicao-title {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.movimentacao-distribuicao p {
+  margin: 0 0 6px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.movimentacao-distribuicao p:last-child {
+  margin-bottom: 0;
+}
+
+.movimentacao-distribuicao-restante {
+  color: var(--warning);
+}
+
+.movimentacao-distribuicao-ok {
+  color: var(--success);
+  font-weight: 600;
+}
+
 .stage-section--drop-target {
   outline: 2px solid #f59e0b;
   outline-offset: 4px;

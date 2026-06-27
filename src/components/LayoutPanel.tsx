@@ -34,8 +34,8 @@ type Props = {
   /** Item selecionado na movimentação (reposicionar / stage). */
   editItemAtivo?: boolean
   editAddresses?: Set<AddressId>
-  editMoveOrigem?: AddressId | null
-  editMoveDestino?: AddressId | null
+  editMoveOrigens?: Set<AddressId>
+  editMoveDestinos?: Set<AddressId>
   editMarcandoStage?: boolean
   saidaAddresses?: Set<AddressId>
   saidaItemDestaqueAddresses?: Set<AddressId>
@@ -214,8 +214,8 @@ function RuaGrid({
   editMode,
   editItemAtivo,
   editAddresses,
-  editMoveOrigem = null,
-  editMoveDestino = null,
+  editMoveOrigens,
+  editMoveDestinos,
   editMarcandoStage = false,
   saidaAddresses,
   saidaItemDestaqueAddresses,
@@ -308,8 +308,8 @@ function RuaGrid({
                       !!activeNfId &&
                       occ.nfId === activeNfId
                     if (occ) className += ' cell--ocupado'
-                    if (editMoveOrigem === addressId) className += ' cell--selecionado'
-                    else if (editMoveDestino === addressId) className += ' cell--destaque-verde'
+                    if (editMoveOrigens?.has(addressId)) className += ' cell--selecionado'
+                    else if (editMoveDestinos?.has(addressId)) className += ' cell--destaque-verde'
                     else if (stagePending) className += ' cell--stage-pending'
                     else if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
@@ -329,23 +329,37 @@ function RuaGrid({
                       editItemAtivo,
                       occ,
                       pending,
-                      editMoveOrigem,
-                      editMoveDestino,
+                      editMoveOrigens,
+                      editMoveDestinos,
                     )
+                    const origensCount = editMoveOrigens?.size ?? 0
                     const canInteract = Boolean(
-                      editMoveOrigem === addressId ||
-                        editMoveDestino === addressId ||
-                        occ ||
+                      editMoveOrigens?.has(addressId) ||
+                        editMoveDestinos?.has(addressId) ||
                         pending ||
+                        stagePending ||
                         (editMode &&
-                          !editMarcandoStage &&
-                          editMoveOrigem &&
+                          editMarcandoStage &&
                           clickable &&
                           !occ) ||
-                        (editMode && editMarcandoStage && clickable && !occ) ||
-                        (allocateMode && clickable),
+                        (editMode &&
+                          !editMarcandoStage &&
+                          (occ ||
+                            (origensCount > 0 && clickable && !occ))) ||
+                        (!editItemAtivo &&
+                          editAddresses &&
+                          occ &&
+                          activeNfId &&
+                          occ.nfId === activeNfId) ||
+                        (allocateMode && clickable && !editItemAtivo),
                     )
-                    if (editMode && (clickable || pending)) className += ' cell--alocavel'
+                    if (
+                      (editMode && !editMarcandoStage && (occ || origensCount > 0)) ||
+                      (editMode && editMarcandoStage && (clickable || pending)) ||
+                      (!editItemAtivo && editAddresses && occ)
+                    ) {
+                      className += ' cell--alocavel'
+                    }
 
                     const portaBg =
                       kind === 'porta' && config.porta
@@ -481,19 +495,20 @@ function cellTooltip(
   editMode?: boolean,
   occ?: AddressOccupancy,
   pending?: boolean,
-  editMoveOrigem?: AddressId | null,
-  editMoveDestino?: AddressId | null,
+  editMoveOrigens?: Set<AddressId>,
+  editMoveDestinos?: Set<AddressId>,
 ): string {
   const label = formatAddressLabel(addressId)
   if (pending) return `${label} — Selecionando (clique para remover)`
-  if (editMoveOrigem === addressId) return `${label} — Origem (de onde tirar)`
-  if (editMoveDestino === addressId) return `${label} — Destino (onde colocar)`
+  if (editMoveOrigens?.has(addressId)) return `${label} — Marcar para tirar (clique para desmarcar)`
+  if (editMoveDestinos?.has(addressId)) return `${label} — Destino (onde colocar)`
   if (occ) return `${label} — NF ${occ.nfNumero}${editMode ? ' (clique para marcar origem)' : ' (confirmado)'}`
   if (kind === 'porta') return `${label} — Porta`
   if (kind === 'bloqueado') return `${label} — Indisponível`
   if (kind === 'sem-nivel5') return `${label} — Nível 5 inexistente`
-  if (editMode && editMoveOrigem) return `${label} — Disponível (clique para marcar destino)`
-  if (editMode) return `${label} — Disponível (marque a origem primeiro)`
+  if (editMode && (editMoveOrigens?.size ?? 0) > 0)
+    return `${label} — Disponível (clique para marcar destino)`
+  if (editMode) return `${label} — Disponível (marque origens ocupadas primeiro)`
   if (allocateMode) return `${label} — Disponível (clique ou arraste para selecionar)`
   return `${label} — Disponível`
 }
@@ -596,10 +611,12 @@ export function LayoutPanel(props: Props) {
           {props.stageDropEnabled
             ? 'Clique na área STAGE abaixo para confirmar a movimentação dos paletes marcados.'
             : props.editMarcandoStage
-              ? 'Modo STAGE: clique nos endereços ocupados do item para marcar envio ao stage.'
-              : props.editMoveOrigem
-                ? 'Passo 2: clique no quadrado vazio onde vai colocar o palete (verde).'
-                : 'Passo 1: clique no endereço ocupado de onde vai tirar (roxo).'}
+              ? 'Modo STAGE: clique ou arraste nos endereços ocupados do item para marcar envio ao stage.'
+              : (props.editMoveOrigens?.size ?? 0) === 0
+                ? 'Passo 1: clique ou arraste nos quadrados ocupados para marcar o que vai tirar.'
+                : (props.editMoveDestinos?.size ?? 0) < (props.editMoveOrigens?.size ?? 0)
+                  ? `Passo 2: clique nos quadrados brancos — ${(props.editMoveOrigens?.size ?? 0) - (props.editMoveDestinos?.size ?? 0)} destino(s) restante(s) de ${props.editMoveOrigens?.size ?? 0}.`
+                  : 'Distribuição completa — confirme na barra lateral.'}
         </p>
       )}
       {props.editAddresses && props.editAddresses.size > 0 && !props.editItemAtivo && (
