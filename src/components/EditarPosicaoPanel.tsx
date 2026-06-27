@@ -193,7 +193,7 @@ export function EditarPosicaoPanel({
                           ? moveDestino
                             ? `Origem: ${formatAddressLabel(moveOrigem)} → Destino: ${formatAddressLabel(moveDestino)}`
                             : `Origem: ${formatAddressLabel(moveOrigem)} — agora clique no destino vazio no mapa.`
-                          : 'Passo 1: clique no endereço ocupado de onde vai tirar. Passo 2: clique no vazio onde vai colocar.'}
+                          : 'Passo 1: clique em qualquer quadrado ocupado da NF (de onde tirar). Passo 2: clique no vazio (onde colocar).'}
                       </p>
                       <button
                         type="button"

@@ -334,12 +334,12 @@ function RuaGrid({
                         occ ||
                         pending ||
                         (editMode &&
-                          editMarcandoStage &&
-                          (occ || (clickable && !occ))) ||
-                        (editMode &&
                           !editMarcandoStage &&
-                          (occ || (editMoveOrigem && clickable && !occ))) ||
-                        ((allocateMode || (editMode && editMarcandoStage)) && clickable),
+                          editMoveOrigem &&
+                          clickable &&
+                          !occ) ||
+                        (editMode && editMarcandoStage && clickable && !occ) ||
+                        (allocateMode && clickable),
                     )
                     if (editMode && (clickable || pending)) className += ' cell--alocavel'
 
