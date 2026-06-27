@@ -3,7 +3,7 @@ import {
   NIVEIS,
   cellKind,
   makeAddressId,
-  portaCellBackgroundStyle,
+  portaOverlayStyle,
   rackGridOverlaySize,
   type CamaraConfig,
   type RuaConfig,
@@ -112,6 +112,22 @@ function PrintRuaGrid({ camaraId, config, dims }: { camaraId: number; config: Ru
         </div>
 
         <div className="print-cells-area">
+          {config.porta && (() => {
+            const box = portaOverlayStyle(config.porta, cellW, CELL_GAP, cellH)
+            return (
+              <div
+                className="print-porta-overlay"
+                aria-hidden
+                style={{
+                  left: `${box.left}mm`,
+                  top: `${box.top}mm`,
+                  width: `${box.width}mm`,
+                  height: `${box.height}mm`,
+                  backgroundImage: `url("${portaCamaraUrl}")`,
+                }}
+              />
+            )
+          })()}
           <div className="print-cells-stack" style={{ gap: `${CELL_GAP}mm` }}>
             {NIVEIS.map((nivel) => (
               <div
@@ -133,10 +149,6 @@ function PrintRuaGrid({ camaraId, config, dims }: { camaraId: number; config: Ru
                     config.colunasBloqueadas,
                     config.celulasBloqueadas,
                   )
-                  const portaStyle =
-                    kind === 'porta' && config.porta
-                      ? portaCellBackgroundStyle(col, nivel, config.porta, portaCamaraUrl, cellW, cellH, 'mm')
-                      : null
                   return (
                     <div
                       key={makeAddressId(camaraId, config.rua, nivel, col)}
@@ -144,7 +156,6 @@ function PrintRuaGrid({ camaraId, config, dims }: { camaraId: number; config: Ru
                       style={{
                         width: `${cellW}mm`,
                         height: `${cellH}mm`,
-                        ...(portaStyle ?? {}),
                       }}
                     />
                   )
