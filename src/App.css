@@ -1508,17 +1508,35 @@
   opacity: 1;
 }
 
-.cell-nf {
+.cell-ocup-labels {
   position: relative;
   z-index: 1;
-  font-weight: 700;
-  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   line-height: 1.05;
   text-align: center;
-  word-break: break-all;
-  padding: 1px;
+  transform: translateY(-3px);
+  padding: 1px 2px;
+  max-width: 100%;
   pointer-events: none;
   user-select: none;
+}
+
+.cell-nf {
+  font-weight: 700;
+  color: #ffffff;
+  word-break: break-all;
+}
+
+.cell-codigo {
+  font-weight: 600;
+  font-size: 0.82em;
+  color: rgb(255 255 255 / 0.92);
+  word-break: break-all;
+  letter-spacing: -0.02em;
 }
 
 .cell--disponivel {
@@ -1620,8 +1638,8 @@
   box-shadow: inset 0 0 0 100vmax var(--cell-destaque-overlay);
 }
 
-.cell--destaque-verde .cell-nf {
-    position: relative;
+.cell--destaque-verde .cell-ocup-labels {
+  position: relative;
   z-index: 1;
   text-shadow: 0 0 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.35);
 }

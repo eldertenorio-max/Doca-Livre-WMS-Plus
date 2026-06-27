@@ -373,10 +373,15 @@ function RuaGrid({
                       >
                         {occ && (
                           <span
-                            className="cell-nf"
-                            style={{ fontSize: cellNfFontSize(cellSize) }}
+                            className="cell-ocup-labels"
+                            style={{ fontSize: cellOcupFontSize(cellSize) }}
                           >
-                            {cellNfLabel(occ.nfNumero, cellSize)}
+                            <span className="cell-nf">
+                              {cellNfLabel(occ.nfNumero, cellSize)}
+                            </span>
+                            <span className="cell-codigo">
+                              {cellCodigoLabel(occ.codigo, cellSize)}
+                            </span>
                           </span>
                         )}
                       </button>
@@ -442,17 +447,24 @@ function CamaraSection({
   )
 }
 
-function cellNfFontSize(cellSize: number): number {
-  if (cellSize >= 48) return 13
-  if (cellSize >= 36) return 12
-  if (cellSize >= 28) return 10
-  return 9
+function cellOcupFontSize(cellSize: number): number {
+  if (cellSize >= 48) return 12
+  if (cellSize >= 36) return 11
+  if (cellSize >= 28) return 9
+  return 8
 }
 
 function cellNfLabel(numero: string, cellSize: number): string {
   if (cellSize >= 36) return numero
   if (cellSize >= 28) return numero.length > 6 ? numero.slice(-6) : numero
   return numero.length > 4 ? numero.slice(-4) : numero
+}
+
+function cellCodigoLabel(codigo: string, cellSize: number): string {
+  if (cellSize >= 48) return codigo.length > 14 ? `${codigo.slice(0, 13)}…` : codigo
+  if (cellSize >= 36) return codigo.length > 11 ? `${codigo.slice(0, 10)}…` : codigo
+  if (cellSize >= 28) return codigo.length > 9 ? `${codigo.slice(0, 8)}…` : codigo
+  return codigo.length > 7 ? `${codigo.slice(0, 6)}…` : codigo
 }
 
 function cellTooltip(
