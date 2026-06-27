@@ -64,6 +64,7 @@ import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, type Consul
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
+import { parseEnderecoFalado, validarEnderecoDestinoVoz } from './lib/parseEnderecoFalado'
 import {
   documentoSaidaFromNota,
   notasDisponiveisParaSaida,
@@ -172,6 +173,8 @@ export default function App() {
   const [editMoveOrigens, setEditMoveOrigens] = useState<Set<AddressId>>(new Set())
   const [editMoveDestinos, setEditMoveDestinos] = useState<Set<AddressId>>(new Set())
   const [editMarcandoStage, setEditMarcandoStage] = useState(false)
+  const [vozOrigemAddress, setVozOrigemAddress] = useState<AddressId | null>(null)
+  const [vozErro, setVozErro] = useState<string | null>(null)
   const [buscaEditarErro, setBuscaEditarErro] = useState<string | null>(null)
   const [consultaResultados, setConsultaResultados] = useState<ConsultaEstoqueResultado[]>([])
   const [consultaErro, setConsultaErro] = useState<string | null>(null)
@@ -1705,22 +1708,83 @@ export default function App() {
       editOriginalAddressesRef.current = new Set()
       setEditItemIndex(index)
       setEditPendingSelection(new Set())
-      setEditMoveOrigens(new Set())
-      setEditMoveDestinos(new Set())
-      setEditMarcandoStage(false)
-      setDetailAddress(null)
+    setEditMoveOrigens(new Set())
+    setEditMoveDestinos(new Set())
+    setVozOrigemAddress(null)
+    setVozErro(null)
+    setEditMarcandoStage(false)
+    setDetailAddress(null)
+    return
+  }
+
+  if (item.allocatedAddresses.length === 0) return
+  const original = new Set(item.allocatedAddresses)
+  editOriginalAddressesRef.current = original
+  setEditItemIndex(index)
+  setEditPendingSelection(new Set())
+  setEditMoveOrigens(new Set())
+  setEditMoveDestinos(new Set())
+  setVozOrigemAddress(null)
+  setVozErro(null)
+    setEditMarcandoStage(false)
+    setDetailAddress(null)
+  }
+
+  function handleSelectVozOrigem(addressId: AddressId, index: number) {
+    if (!nfEditar) return
+    const item = nfEditar.items.find((it) => it.index === index)
+    if (!item || itemNoStage(item)) return
+    setVozErro(null)
+    if (editItemIndex !== index) {
+      handleSelectItemEditar(index)
+      setVozOrigemAddress(addressId)
+      return
+    }
+    setVozOrigemAddress((prev) => (prev === addressId ? null : addressId))
+  }
+
+  function handleVozDestino(transcript: string) {
+    if (!transcript.trim()) return
+    setVozErro(null)
+    if (!vozOrigemAddress || !nfEditar || editItemIndex == null || editMarcandoStage) return
+
+    const destId = parseEnderecoFalado(transcript)
+    if (!destId) {
+      setVozErro(
+        'Não entendi o endereço. Fale por exemplo: "câmara 6 rua 1 coluna 2 nível 3".',
+      )
       return
     }
 
-    if (item.allocatedAddresses.length === 0) return
-    const original = new Set(item.allocatedAddresses)
-    editOriginalAddressesRef.current = original
-    setEditItemIndex(index)
-    setEditPendingSelection(new Set())
-    setEditMoveOrigens(new Set())
-    setEditMoveDestinos(new Set())
-    setEditMarcandoStage(false)
-    setDetailAddress(null)
+    const item = nfEditar.items.find((it) => it.index === editItemIndex)
+    if (!item?.allocatedAddresses.includes(vozOrigemAddress)) {
+      setVozErro('Endereço de origem inválido para este item.')
+      return
+    }
+
+    const validationError = validarEnderecoDestinoVoz(
+      destId,
+      occupancy,
+      editMoveOrigens,
+      editMoveDestinos,
+      vozOrigemAddress,
+    )
+    if (validationError) {
+      setVozErro(validationError)
+      return
+    }
+
+    setEditMoveOrigens((prev) => {
+      const next = new Set(prev)
+      next.add(vozOrigemAddress)
+      return next
+    })
+    setEditMoveDestinos((prev) => {
+      const next = new Set(prev)
+      next.add(destId)
+      return next
+    })
+    setVozOrigemAddress(null)
   }
 
   function handleAdicionarEnderecoDestino(addressId: AddressId) {
@@ -1871,6 +1935,8 @@ export default function App() {
     setEditStagePending(new Set())
     setEditMoveOrigens(new Set())
     setEditMoveDestinos(new Set())
+    setVozOrigemAddress(null)
+    setVozErro(null)
     setEditMarcandoStage(false)
     editOriginalAddressesRef.current = new Set()
     setBuscaEditarErro(null)
@@ -2230,7 +2296,15 @@ export default function App() {
             setEditMoveOrigens(new Set())
             setEditMoveDestinos(new Set())
             setEditStagePending(new Set())
+            setVozOrigemAddress(null)
+            setVozErro(null)
           },
+          vozOrigemAddress,
+          vozErro,
+          onSelectVozOrigem: handleSelectVozOrigem,
+          onVozDestino: handleVozDestino,
+          onVozErro: setVozErro,
+          onLimparVozErro: () => setVozErro(null),
           enderecosOcupados: editEnderecosOcupados,
           enderecosSelecionados: editPendingSelection,
           onBuscar: handleBuscarEditar,

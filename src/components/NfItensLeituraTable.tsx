@@ -3,7 +3,7 @@ import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../lib/saidaParcial'
 import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
 import { labelLocalizacaoItem, suffixLocalizacaoEndereco } from '../lib/localizacaoLabels'
 import { itemNoStage, STAGE_LABEL } from '../layout/stage'
-import type { NfeItem, NotaFiscal } from '../types'
+import type { NfeItem, NotaFiscal, AddressId } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
   formatPesoBruto,
@@ -18,6 +18,8 @@ type Props = {
   onSelectItem?: (index: number) => void
   selectablePredicate?: (item: NfeItem) => boolean
   highlightAddresses?: Set<string>
+  vozOrigemAddress?: AddressId | null
+  onSelectVozOrigem?: (addressId: AddressId, itemIndex: number) => void
 }
 
 function formatDateShort(raw: string | undefined): string {
@@ -34,6 +36,8 @@ export function NfItensLeituraTable({
   onSelectItem,
   selectablePredicate,
   highlightAddresses,
+  vozOrigemAddress,
+  onSelectVozOrigem,
 }: Props) {
   return (
     <div className="nf-itens-table-wrap">
@@ -172,21 +176,47 @@ export function NfItensLeituraTable({
                   <tr className="nf-itens-row-addr">
                     <td colSpan={onSelectItem ? 9 : 8}>
                       <ul className="addr-mini nf-itens-addr-list">
-                        {item.allocatedAddresses.map((a) => (
+                        {item.allocatedAddresses.map((a) => {
+                          const vozSelecionavel =
+                            onSelectVozOrigem != null && isActive && !itemNoStage(item)
+                          return (
                           <li
                             key={a}
-                            className={
-                              isActive
-                                ? 'addr-edit-active'
-                                : highlightAddresses?.has(a)
-                                  ? 'addr-flagged'
-                                  : undefined
+                            className={[
+                              isActive ? 'addr-edit-active' : '',
+                              highlightAddresses?.has(a) ? 'addr-flagged' : '',
+                              vozOrigemAddress === a ? 'addr-voz-origem' : '',
+                              vozSelecionavel ? 'addr-voz-clickable' : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ') || undefined}
+                            onClick={
+                              vozSelecionavel
+                                ? (e) => {
+                                    e.stopPropagation()
+                                    onSelectVozOrigem!(a, item.index)
+                                  }
+                                : undefined
+                            }
+                            role={vozSelecionavel ? 'button' : undefined}
+                            tabIndex={vozSelecionavel ? 0 : undefined}
+                            onKeyDown={
+                              vozSelecionavel
+                                ? (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      onSelectVozOrigem!(a, item.index)
+                                    }
+                                  }
+                                : undefined
                             }
                           >
                             {formatAddressLabel(a)}
                             {suffixLocalizacaoEndereco(item)}
                           </li>
-                        ))}
+                          )
+                        })}
                       </ul>
                     </td>
                   </tr>

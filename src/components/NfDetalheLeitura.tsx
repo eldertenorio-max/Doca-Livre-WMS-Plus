@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { NfeItem, NotaFiscal } from '../types'
+import type { NfeItem, NotaFiscal, AddressId } from '../types'
 import { NfResumoGrid } from './NfResumoGrid'
 import { NfItensLeituraTable } from './NfItensLeituraTable'
 import { NfLocalizacaoBadge } from './NfLocalizacaoBadge'
@@ -12,6 +12,8 @@ type Props = {
   onSelectItem?: (index: number) => void
   selectablePredicate?: (item: NfeItem) => boolean
   highlightAddresses?: Set<string>
+  vozOrigemAddress?: AddressId | null
+  onSelectVozOrigem?: (addressId: AddressId, itemIndex: number) => void
   itensIntro?: string
   showItensTitle?: boolean
   showItensTable?: boolean
@@ -32,6 +34,8 @@ export function NfDetalheLeitura({
   onSelectItem,
   selectablePredicate,
   highlightAddresses,
+  vozOrigemAddress,
+  onSelectVozOrigem,
   itensIntro,
   showItensTitle = true,
   showItensTable = true,
@@ -79,6 +83,8 @@ export function NfDetalheLeitura({
           onSelectItem={onSelectItem}
           selectablePredicate={selectablePredicate}
           highlightAddresses={highlightAddresses}
+          vozOrigemAddress={vozOrigemAddress}
+          onSelectVozOrigem={onSelectVozOrigem}
         />
       )}
     </>

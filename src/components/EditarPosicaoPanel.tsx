@@ -6,6 +6,7 @@ import { itemNoStage } from '../layout/stage'
 import { nfTemEstoqueArmazem, nfTemEstoqueStage } from '../lib/stageEstoque'
 import { NfDetalheLeitura } from './NfDetalheLeitura'
 import { EnderecoDestinoForm } from './EnderecoDestinoForm'
+import { MovimentacaoVozControle } from './MovimentacaoVozControle'
 
 type Props = {
   nfBusca: NotaFiscal | null
@@ -14,8 +15,14 @@ type Props = {
   stagePendingCount: number
   moveOrigensCount: number
   moveDestinosCount: number
+  vozOrigemAddress: AddressId | null
+  vozErro: string | null
   marcandoStage: boolean
   onSetMarcandoStage: (value: boolean) => void
+  onSelectVozOrigem: (addressId: AddressId, itemIndex: number) => void
+  onVozDestino: (transcript: string) => void
+  onVozErro: (message: string) => void
+  onLimparVozErro: () => void
   enderecosOcupados: Set<AddressId>
   enderecosSelecionados: Set<AddressId>
   onBuscar: (numero: string) => void
@@ -38,8 +45,14 @@ export function EditarPosicaoPanel({
   stagePendingCount,
   moveOrigensCount,
   moveDestinosCount,
+  vozOrigemAddress,
+  vozErro,
   marcandoStage,
   onSetMarcandoStage,
+  onSelectVozOrigem,
+  onVozDestino,
+  onVozErro,
+  onLimparVozErro,
   enderecosOcupados,
   enderecosSelecionados,
   onBuscar,
@@ -101,8 +114,8 @@ export function EditarPosicaoPanel({
     <>
       <div className="sidebar-block">
         <p className="muted">
-          Busque a NF e movimente livremente entre o armazém físico e o stage — pelos campos de
-          endereço ou clicando no mapa 2D.
+          Busque a NF e movimente livremente entre o armazém físico e o stage — pelo mapa,
+          por voz ou pelos campos de endereço.
         </p>
         <div className="saida-busca">
           <input
@@ -128,6 +141,10 @@ export function EditarPosicaoPanel({
             activeItemIndex={itemIndex}
             onSelectItem={onSelectItem}
             selectablePredicate={itemMovimentavel}
+            vozOrigemAddress={!marcandoStage && !itemStage ? vozOrigemAddress : null}
+            onSelectVozOrigem={
+              !marcandoStage && itemIndex != null && !itemStage ? onSelectVozOrigem : undefined
+            }
             itensIntro="Selecione um item no armazém ou no stage para movimentar."
           />
 
@@ -223,6 +240,13 @@ export function EditarPosicaoPanel({
                           </>
                         )}
                       </div>
+                      <MovimentacaoVozControle
+                        origemSelecionada={vozOrigemAddress}
+                        onDestinoFalado={onVozDestino}
+                        onErro={onVozErro}
+                        erro={vozErro}
+                        onLimparErro={onLimparVozErro}
+                      />
                       <button
                         type="button"
                         className="btn success full"
