@@ -162,29 +162,35 @@ export function listAllAddresses(): { id: string; camara: number; rua: number; n
   return out
 }
 
-/** Margem interna da arte da porta em relação à célula (mostra as linhas do rack). */
-export function portaInsetPx(cellSize: number): number {
-  return Math.max(4, Math.round(cellSize * 0.14))
-}
-
-/** Área única da porta (imagem inteira centralizada, com margem para as linhas do rack). */
-export function portaOverlayStyle(
+/** Recorta um pedaço da imagem da porta para cada célula do grid (versão original). */
+export function portaCellBackgroundStyle(
+  col: number,
+  nivel: number,
   porta: NonNullable<RuaConfig['porta']>,
-  cellW: number,
-  gap: number,
-  cellH: number = cellW,
-): { left: number; top: number; width: number; height: number } {
+  imageUrl: string,
+): {
+  backgroundImage: string
+  backgroundSize: string
+  backgroundPosition: string
+  backgroundRepeat: 'no-repeat'
+} | null {
   const [c0, c1] = porta.cols
   const [n0, n1] = porta.niveis
+  if (col < c0 || col > c1 || nivel < n0 || nivel > n1) return null
+
   const colCount = c1 - c0 + 1
   const rowCount = n1 - n0 + 1
-  const topRow = NIVEIS.indexOf(n1 as (typeof NIVEIS)[number])
-  const inset = portaInsetPx(cellW)
-  const left = (c0 - 1) * (cellW + gap) + inset
-  const top = topRow * (cellH + gap) + inset
-  const width = colCount * cellW + (colCount - 1) * gap - inset * 2
-  const height = rowCount * cellH + (rowCount - 1) * gap - inset * 2
-  return { left, top, width: Math.max(0, width), height: Math.max(0, height) }
+  const colIdx = col - c0
+  const rowIdx = n1 - nivel
+  const xPct = colCount === 1 ? 50 : (colIdx / (colCount - 1)) * 100
+  const yPct = rowCount === 1 ? 50 : (rowIdx / (rowCount - 1)) * 100
+
+  return {
+    backgroundImage: `url("${imageUrl}")`,
+    backgroundSize: `${colCount * 100}% ${rowCount * 100}%`,
+    backgroundPosition: `${xPct}% ${yPct}%`,
+    backgroundRepeat: 'no-repeat',
+  }
 }
 
 /** Dimensões da malha de linhas do rack (verticais por cima das horizontais). */

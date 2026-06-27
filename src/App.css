@@ -1478,15 +1478,6 @@
     linear-gradient(to bottom, var(--rack-beam) var(--rack-beam-w), transparent var(--rack-beam-w));
 }
 
-.porta-overlay {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-}
-
 .cells-stack {
   position: relative;
   z-index: 1;
@@ -2788,15 +2779,6 @@ html.scroll-locked .sidebar.sidebar--wide {
   background-image:
     linear-gradient(to right, #1a56a8 0.45mm, transparent 0.45mm),
     linear-gradient(to bottom, #e87722 0.45mm, transparent 0.45mm);
-}
-
-.print-porta-overlay {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
 }
 
 .print-cells-stack {
