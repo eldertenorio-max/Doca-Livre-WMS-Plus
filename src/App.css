@@ -72,7 +72,6 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: var(--sidebar-tools-h);
   box-sizing: border-box;
 }
 
@@ -2451,26 +2450,25 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .sidebar-bottom-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 30;
+  flex-shrink: 0;
+  margin-top: auto;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  width: var(--sidebar-w-collapsed);
+  width: 100%;
   padding: 8px 10px 10px;
   box-sizing: border-box;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-right: 1px solid var(--border);
   pointer-events: auto;
 }
 
 .sidebar.sidebar--wide .sidebar-bottom-bar {
-  box-shadow: 4px 0 12px rgb(0 0 0 / 0.04);
+  align-items: flex-start;
+  padding: 8px 16px 10px;
+  padding-left: 20px;
 }
 
 .sidebar-bottom-bar .theme-toggle {

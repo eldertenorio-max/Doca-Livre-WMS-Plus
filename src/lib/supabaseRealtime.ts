@@ -7,6 +7,7 @@ const TABLES = [
   'ultrafrio_movimentos',
   'ultrafrio_notas_canceladas',
   'ultrafrio_cadastro_remetentes',
+  'ultrafrio_voz_cadastros',
 ] as const
 
 export function subscribeEnderecamentoChanges(onChange: () => void): () => void {

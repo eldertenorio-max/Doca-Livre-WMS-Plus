@@ -18,8 +18,10 @@ type Props = {
   supported: boolean
   assistantActive: boolean
   voiceFeedback: string | null
+  voiceSyncError?: string | null
   onPrefsChange: (patch: Partial<VoicePrefs>) => void
   onVoiceRegistryChange: (registry: VoiceRegistry) => void
+  onRefreshVoiceRegistry?: () => void | Promise<void>
   onTestWakePhrase: (spoken: string) => boolean
   sectionOpen?: boolean
 }
@@ -30,8 +32,10 @@ export function CadastroVozPanel({
   supported,
   assistantActive,
   voiceFeedback,
+  voiceSyncError = null,
   onPrefsChange,
   onVoiceRegistryChange,
+  onRefreshVoiceRegistry,
   onTestWakePhrase,
   sectionOpen = true,
 }: Props) {
@@ -55,8 +59,8 @@ export function CadastroVozPanel({
 
   useEffect(() => {
     if (!sectionOpen) return
-    onVoiceRegistryChange(getStoredVoiceRegistry())
-  }, [sectionOpen, onVoiceRegistryChange])
+    void onRefreshVoiceRegistry?.()
+  }, [sectionOpen, onRefreshVoiceRegistry])
 
   const wake = prefs.wakePhrase || DEFAULT_WAKE_PHRASE
   const pessoasCadastradas = voiceRegistry.profiles
@@ -191,6 +195,8 @@ export function CadastroVozPanel({
             Desativar voz
           </button>
         </div>
+
+        {voiceSyncError && <p className="error">{voiceSyncError}</p>}
 
         {assistantActive && (
           <p className="cadastro-voz-status cadastro-voz-status--on">

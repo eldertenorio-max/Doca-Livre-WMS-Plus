@@ -47,10 +47,9 @@ const ARMED_TIMEOUT_MS = 8000
 const AUDIO_BUFFER_MS = 9000
 const SILENCE_AFTER_SPEECH_MS = 1500
 
-function readResultSnapshot(ev: SpeechRecognitionResultEvent): {
+function readIncrementalTranscript(ev: SpeechRecognitionResultEvent): {
   interim: string
   final: string
-  snapshot: string
 } {
   let interim = ''
   let final = ''
@@ -60,18 +59,7 @@ function readResultSnapshot(ev: SpeechRecognitionResultEvent): {
     if (result?.isFinal) final += piece
     else interim += piece
   }
-
-  let allFinal = ''
-  let lastInterim = ''
-  for (let i = 0; i < ev.results.length; i++) {
-    const result = ev.results[i]
-    const piece = result?.[0]?.transcript ?? ''
-    if (result?.isFinal) allFinal += piece
-    else lastInterim = piece
-  }
-
-  const snapshot = `${allFinal}${lastInterim}`.trim()
-  return { interim: interim.trim(), final: final.trim(), snapshot }
+  return { interim: interim.trim(), final: final.trim() }
 }
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -81,6 +69,17 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
     webkitSpeechRecognition?: SpeechRecognitionCtor
   }
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
+
+function createRecognitionInstance(): SpeechRecognitionInstance | null {
+  const Ctor = getSpeechRecognitionCtor()
+  if (!Ctor) return null
+  const rec = new Ctor()
+  rec.lang = 'pt-BR'
+  rec.interimResults = true
+  rec.maxAlternatives = 1
+  rec.continuous = true
+  return rec
 }
 
 type Options = {
@@ -110,6 +109,7 @@ export function useVoiceAssistant({
   const armedRef = useRef(false)
   const armedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const armedBufferRef = useRef('')
   const armedInterimRef = useRef('')
   const listeningBufferRef = useRef('')
@@ -119,6 +119,9 @@ export function useVoiceAssistant({
   const wakePhraseRef = useRef(wakePhrase)
   const voiceProfilesRef = useRef(voiceProfiles)
   const requireVoiceMatchRef = useRef(requireVoiceMatch)
+  const stopRecognitionRef = useRef<() => void>(() => {})
+  const scheduleRecognitionRestartRef = useRef<() => void>(() => {})
+  const restartingRef = useRef(false)
 
   const audioStreamRef = useRef<MediaStream | null>(null)
   const audioRecorderRef = useRef<MediaRecorder | null>(null)
@@ -156,6 +159,21 @@ export function useVoiceAssistant({
       clearTimeout(silenceTimerRef.current)
       silenceTimerRef.current = null
     }
+  }, [])
+
+  const clearRestartTimer = useCallback(() => {
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current)
+      restartTimerRef.current = null
+    }
+  }, [])
+
+  const clearListeningBuffers = useCallback(() => {
+    armedBufferRef.current = ''
+    armedInterimRef.current = ''
+    listeningBufferRef.current = ''
+    sessionAccumRef.current = ''
+    setLiveText('')
   }, [])
 
   const stopAudioCapture = useCallback(() => {
@@ -233,50 +251,30 @@ export function useVoiceAssistant({
     }
   }, [getRecentAudioBlob])
 
-  const disarm = useCallback(() => {
-    armedRef.current = false
-    clearArmedTimer()
-    clearSilenceTimer()
-    armedBufferRef.current = ''
-    armedInterimRef.current = ''
-    listeningBufferRef.current = ''
-    sessionAccumRef.current = ''
-    setLiveText('')
-    setLastHint(null)
-    setPhase('ouvindo')
-  }, [clearArmedTimer, clearSilenceTimer])
-
-  const cancelArmed = useCallback(() => {
-    if (!armedRef.current) return
-    disarm()
-  }, [disarm])
-
-  const arm = useCallback(() => {
-    armedRef.current = true
-    armedBufferRef.current = ''
-    armedInterimRef.current = ''
-    clearArmedTimer()
-    setPhase('armado')
-    setLastHint('Ouvindo comando…')
-    armedTimerRef.current = setTimeout(() => {
-      disarm()
-    }, ARMED_TIMEOUT_MS)
-  }, [clearArmedTimer, disarm])
-
   const dispatchCommand = useCallback(
     (text: string) => {
       const trimmed = text.trim()
       if (!trimmed) return
       clearSilenceTimer()
-      armedBufferRef.current = ''
-      armedInterimRef.current = ''
-      listeningBufferRef.current = ''
-      sessionAccumRef.current = ''
+      clearListeningBuffers()
       onCommandTextRef.current(trimmed)
-      disarm()
     },
-    [clearSilenceTimer, disarm],
+    [clearListeningBuffers, clearSilenceTimer],
   )
+
+  const arm = useCallback(() => {
+    armedRef.current = true
+    armedBufferRef.current = ''
+    armedInterimRef.current = ''
+    sessionAccumRef.current = ''
+    listeningBufferRef.current = ''
+    clearArmedTimer()
+    setPhase('armado')
+    setLastHint('Ouvindo comando…')
+    armedTimerRef.current = setTimeout(() => {
+      scheduleRecognitionRestartRef.current()
+    }, ARMED_TIMEOUT_MS)
+  }, [clearArmedTimer])
 
   const processWake = useCallback(
     async (raw: string) => {
@@ -284,16 +282,22 @@ export function useVoiceAssistant({
       if (!wakePhraseMatches(raw, wake)) return false
 
       const ok = await verifyRegisteredVoice()
-      if (!ok) return true
+      if (!ok) {
+        sessionAccumRef.current = ''
+        listeningBufferRef.current = ''
+        return true
+      }
 
       const remainder = stripWakePhrase(raw, wake)
       if (remainder) {
         dispatchCommand(remainder)
+        scheduleRecognitionRestartRef.current()
         return true
       }
 
       arm()
       sessionAccumRef.current = ''
+      listeningBufferRef.current = ''
       return true
     },
     [arm, dispatchCommand, verifyRegisteredVoice],
@@ -304,7 +308,10 @@ export function useVoiceAssistant({
 
     if (armedRef.current) {
       const text = `${armedBufferRef.current} ${armedInterimRef.current}`.replace(/\s+/g, ' ').trim()
-      if (text) dispatchCommand(text)
+      if (text) {
+        dispatchCommand(text)
+        scheduleRecognitionRestartRef.current()
+      }
       return
     }
 
@@ -312,8 +319,8 @@ export function useVoiceAssistant({
     if (!full) return
     const handled = await processWake(full)
     if (handled) {
-      listeningBufferRef.current = ''
       sessionAccumRef.current = ''
+      listeningBufferRef.current = ''
     }
   }, [dispatchCommand, processWake])
 
@@ -324,32 +331,141 @@ export function useVoiceAssistant({
     }, SILENCE_AFTER_SPEECH_MS)
   }, [clearSilenceTimer, flushAfterSilence])
 
-  const processTranscript = useCallback(
-    async (raw: string, isFinal: boolean) => {
-      if (await processWake(raw)) return
+  const handlePassiveTranscript = useCallback(
+    async (final: string, interim: string) => {
+      if (final) {
+        sessionAccumRef.current = `${sessionAccumRef.current} ${final}`.replace(/\s+/g, ' ').trim()
+        if (await processWake(sessionAccumRef.current)) return
+      }
 
-      if (armedRef.current && isFinal) {
-        armedBufferRef.current = `${armedBufferRef.current} ${raw}`.replace(/\s+/g, ' ').trim()
+      const working = `${sessionAccumRef.current}${interim ? ` ${interim}` : ''}`.trim()
+      if (working) {
+        listeningBufferRef.current = working
+        scheduleSilenceFlush()
       }
     },
-    [processWake],
+    [processWake, scheduleSilenceFlush],
   )
+
+  const bindRecognitionHandlers = useCallback(
+    (rec: SpeechRecognitionInstance) => {
+      rec.onresult = (ev) => {
+        const { interim, final } = readIncrementalTranscript(ev)
+
+        if (armedRef.current) {
+          if (final) {
+            armedBufferRef.current = `${armedBufferRef.current} ${final}`.replace(/\s+/g, ' ').trim()
+          }
+          armedInterimRef.current = interim
+          const preview = `${armedBufferRef.current}${interim ? ` ${interim}` : ''}`.trim()
+          setLiveText(preview)
+          setPhase('armado')
+          if (preview) scheduleSilenceFlush()
+          return
+        }
+
+        void handlePassiveTranscript(final, interim)
+      }
+
+      rec.onerror = (ev) => {
+        if (ev.error === 'not-allowed') {
+          onErrorRef.current?.('Permita o uso do microfone no navegador.')
+          stopRecognitionRef.current()
+          return
+        }
+        if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
+          onErrorRef.current?.('Erro no microfone. Tentando reconectar…')
+        }
+      }
+
+      rec.onend = () => {
+        if (!runningRef.current || restartingRef.current) return
+        scheduleRecognitionRestartRef.current()
+      }
+    },
+    [handlePassiveTranscript, scheduleSilenceFlush],
+  )
+
+  const scheduleRecognitionRestart = useCallback(() => {
+    if (!runningRef.current) return
+    clearRestartTimer()
+    restartTimerRef.current = setTimeout(() => {
+      restartTimerRef.current = null
+      if (!runningRef.current) return
+
+      restartingRef.current = true
+      const oldRec = recRef.current
+      recRef.current = null
+      try {
+        oldRec?.abort()
+      } catch {
+        /* ignore */
+      }
+
+      clearListeningBuffers()
+      armedRef.current = false
+      clearArmedTimer()
+      clearSilenceTimer()
+      setLastHint(null)
+      setPhase('ouvindo')
+
+      const rec = createRecognitionInstance()
+      if (!rec) return
+      recRef.current = rec
+      bindRecognitionHandlers(rec)
+
+      try {
+        rec.start()
+      } catch {
+        /* onend tenta de novo */
+      } finally {
+        restartingRef.current = false
+      }
+    }, 0)
+  }, [
+    bindRecognitionHandlers,
+    clearArmedTimer,
+    clearListeningBuffers,
+    clearRestartTimer,
+    clearSilenceTimer,
+  ])
+
+  useEffect(() => {
+    scheduleRecognitionRestartRef.current = scheduleRecognitionRestart
+  }, [scheduleRecognitionRestart])
+
+  const disarm = useCallback(() => {
+    scheduleRecognitionRestart()
+  }, [scheduleRecognitionRestart])
+
+  const cancelArmed = useCallback(() => {
+    if (!armedRef.current) return
+    disarm()
+  }, [disarm])
 
   const stopRecognition = useCallback(() => {
     runningRef.current = false
+    clearRestartTimer()
     recRef.current?.abort()
     recRef.current = null
     stopAudioCapture()
     clearArmedTimer()
     clearSilenceTimer()
     armedRef.current = false
-    armedBufferRef.current = ''
-    armedInterimRef.current = ''
-    listeningBufferRef.current = ''
-    sessionAccumRef.current = ''
+    clearListeningBuffers()
     setPhase('off')
-    setLiveText('')
-  }, [clearArmedTimer, clearSilenceTimer, stopAudioCapture])
+    setLastHint(null)
+  }, [
+    clearArmedTimer,
+    clearListeningBuffers,
+    clearRestartTimer,
+    clearSilenceTimer,
+    stopAudioCapture,
+  ])
+
+  useEffect(() => {
+    stopRecognitionRef.current = stopRecognition
+  }, [stopRecognition])
 
   const startRecognition = useCallback(async () => {
     const Ctor = getSpeechRecognitionCtor()
@@ -366,67 +482,18 @@ export function useVoiceAssistant({
     await startAudioCapture()
 
     recRef.current?.abort()
-    const rec = new Ctor()
+    const rec = createRecognitionInstance()
+    if (!rec) return
     recRef.current = rec
-    rec.lang = 'pt-BR'
-    rec.interimResults = true
-    rec.maxAlternatives = 1
-    rec.continuous = true
-
-    rec.onresult = (ev) => {
-      const { interim, final, snapshot } = readResultSnapshot(ev)
-
-      if (armedRef.current) {
-        if (final) {
-          armedBufferRef.current = `${armedBufferRef.current} ${final}`.replace(/\s+/g, ' ').trim()
-        }
-        armedInterimRef.current = interim
-        const preview = `${armedBufferRef.current}${interim ? ` ${interim}` : ''}`.trim()
-        setLiveText(preview)
-        setPhase('armado')
-        if (preview) scheduleSilenceFlush()
-        return
-      }
-
-      if (final) {
-        sessionAccumRef.current = `${sessionAccumRef.current} ${final}`.replace(/\s+/g, ' ').trim()
-        void processTranscript(final, true)
-      }
-
-      const working = `${sessionAccumRef.current}${interim ? ` ${interim}` : ''}`.trim() || snapshot
-      if (working) {
-        listeningBufferRef.current = working
-        scheduleSilenceFlush()
-      }
-    }
-
-    rec.onerror = (ev) => {
-      if (ev.error === 'not-allowed') {
-        onErrorRef.current?.('Permita o uso do microfone no navegador.')
-        stopRecognition()
-        return
-      }
-      if (ev.error !== 'aborted' && ev.error !== 'no-speech') {
-        onErrorRef.current?.('Erro no microfone. Tentando reconectar…')
-      }
-    }
-
-    rec.onend = () => {
-      if (!runningRef.current) return
-      try {
-        rec.start()
-      } catch {
-        /* reinicia no próximo ciclo */
-      }
-    }
+    bindRecognitionHandlers(rec)
 
     runningRef.current = true
     armedRef.current = false
+    clearListeningBuffers()
     setPhase('ouvindo')
     setLastHint(null)
-    setLiveText('')
     rec.start()
-  }, [processTranscript, startAudioCapture, stopRecognition])
+  }, [bindRecognitionHandlers, clearListeningBuffers, startAudioCapture])
 
   useEffect(() => {
     setSupported(getSpeechRecognitionCtor() != null)

@@ -70,7 +70,8 @@ import {
   parseVoiceCommand,
 } from './lib/parseVoiceCommand'
 import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
-import { getStoredVoiceRegistry, hasRegisteredVoices, type VoiceRegistry } from './lib/voiceProfile'
+import { hasRegisteredVoices } from './lib/voiceProfile'
+import { useVoiceRegistry } from './hooks/useVoiceRegistry'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
@@ -157,7 +158,12 @@ export default function App() {
   const { sidebarMode, setSidebarMode } = useSidebarMode()
   const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
   const [voicePrefs, setVoicePrefs] = useState<VoicePrefs>(() => getStoredVoicePrefs())
-  const [voiceRegistry, setVoiceRegistry] = useState<VoiceRegistry>(() => getStoredVoiceRegistry())
+  const {
+    registry: voiceRegistry,
+    setRegistry: setVoiceRegistry,
+    syncError: voiceSyncError,
+    refresh: refreshVoiceRegistry,
+  } = useVoiceRegistry()
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null)
   const openSectionRef = useRef<SidebarSectionId | null>(null)
   const [introDone, setIntroDone] = useState(false)
@@ -218,6 +224,8 @@ export default function App() {
   } | null>(null)
   const entradaPendenteDismissedRef = useRef<string | null>(null)
   const editOriginalAddressesRef = useRef<Set<AddressId>>(new Set())
+  const editMoveOrigensRef = useRef<Set<AddressId>>(new Set())
+  const editMoveDestinosRef = useRef<Set<AddressId>>(new Set())
   const [manualNfModalOpen, setManualNfModalOpen] = useState(false)
   const [manualNfError, setManualNfError] = useState<string | null>(null)
   const [selectedEntradaIds, setSelectedEntradaIds] = useState<string[]>([])
@@ -243,6 +251,14 @@ export default function App() {
   useEffect(() => {
     openSectionRef.current = openSection
   }, [openSection])
+
+  useEffect(() => {
+    editMoveOrigensRef.current = editMoveOrigens
+  }, [editMoveOrigens])
+
+  useEffect(() => {
+    editMoveDestinosRef.current = editMoveDestinos
+  }, [editMoveDestinos])
 
   useEffect(() => {
     storeVoicePrefs(voicePrefs)
@@ -1894,20 +1910,17 @@ export default function App() {
         setEditPendingSelection(new Set())
         editOriginalAddressesRef.current = new Set(addresses)
         setState(nextState)
-        try {
-          await saveNow(nextState)
-          setEditItemIndex(null)
-        } finally {
-          setEditSalvando(false)
-        }
+        setEditItemIndex(null)
+        setEditSalvando(false)
+        void saveNow(nextState)
         return
       }
     }
 
-    if (editMoveOrigens.size === 0 || editMoveOrigens.size !== editMoveDestinos.size) return
+    if (editMoveOrigensRef.current.size === 0 || editMoveOrigensRef.current.size !== editMoveDestinosRef.current.size) return
 
-    const origens = [...editMoveOrigens]
-    const destinos = [...editMoveDestinos]
+    const origens = [...editMoveOrigensRef.current]
+    const destinos = [...editMoveDestinosRef.current]
     const origOcc = occupancy.get(origens[0])
     if (!origOcc || origOcc.nfId !== nfAtual.id) return
 
@@ -1962,15 +1975,14 @@ export default function App() {
     setEditSalvando(true)
     setEditMoveOrigens(new Set())
     setEditMoveDestinos(new Set())
+    editMoveOrigensRef.current = new Set()
+    editMoveDestinosRef.current = new Set()
     setVozOrigemAddress(null)
     setVozErro(null)
     editOriginalAddressesRef.current = new Set(addresses)
     setState(nextState)
-    try {
-      await saveNow(nextState)
-    } finally {
-      setEditSalvando(false)
-    }
+    setEditSalvando(false)
+    void saveNow(nextState)
   }
 
   function handleCancelarEditar() {
@@ -2237,7 +2249,7 @@ export default function App() {
   const handleVoicePrefsChange = useCallback((patch: Partial<VoicePrefs>) => {
     setVoicePrefs((prev) => {
       const next = { ...prev, ...patch }
-      if (patch.enabled === true && next.voiceLocked && !hasRegisteredVoices(getStoredVoiceRegistry())) {
+      if (patch.enabled === true && next.voiceLocked && !hasRegisteredVoices(voiceRegistry)) {
         setVoiceFeedback('Cadastre pelo menos uma voz individual antes de ativar.')
         return prev
       }
@@ -2246,7 +2258,7 @@ export default function App() {
       }
       return next
     })
-  }, [])
+  }, [voiceRegistry])
 
   const handleVoiceCommandText = useCallback(
     (text: string) => {
@@ -2520,8 +2532,10 @@ export default function App() {
           supported: voiceAssistant.supported,
           assistantActive: voicePrefs.enabled && voiceAssistant.phase !== 'off',
           voiceFeedback,
+          voiceSyncError,
           onPrefsChange: handleVoicePrefsChange,
           onVoiceRegistryChange: setVoiceRegistry,
+          onRefreshVoiceRegistry: refreshVoiceRegistry,
           onTestWakePhrase: voiceAssistant.testPhrase,
           sectionOpen: openSection === 'cadastroVoz',
         }}

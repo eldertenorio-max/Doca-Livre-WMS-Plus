@@ -85,7 +85,7 @@ export function useEnderecamentoStore() {
   const savingRef = useRef(false)
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingSaveRef = useRef<AppState | null>(null)
-  const persistQueueRef = useRef<AppState | null>(null)
+  const persistChainRef = useRef<Promise<void>>(Promise.resolve())
   const lastPersistedRef = useRef<PersistedData | null>(null)
   const stateRef = useRef(state)
 
@@ -104,12 +104,7 @@ export function useEnderecamentoStore() {
     return next
   }, [])
 
-  const persist = useCallback(async (next: AppState) => {
-    if (savingRef.current) {
-      persistQueueRef.current = next
-      return
-    }
-
+  const persistInner = useCallback(async (next: AppState) => {
     const repo = repoRef.current
     savingRef.current = true
     setSaving(true)
@@ -191,13 +186,19 @@ export function useEnderecamentoStore() {
     } finally {
       savingRef.current = false
       setSaving(false)
-      const queued = persistQueueRef.current
-      if (queued) {
-        persistQueueRef.current = null
-        void persist(queued)
-      }
     }
   }, [applyPersistedToState])
+
+  const persist = useCallback(
+    (next: AppState): Promise<void> => {
+      const job = persistChainRef.current
+        .catch(() => {})
+        .then(() => persistInner(next))
+      persistChainRef.current = job.catch(() => {})
+      return job
+    },
+    [persistInner],
+  )
 
   const saveNow = useCallback(
     async (next: AppState) => {
