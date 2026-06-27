@@ -236,11 +236,20 @@ export function useVoiceAssistant({
   const disarm = useCallback(() => {
     armedRef.current = false
     clearArmedTimer()
+    clearSilenceTimer()
     armedBufferRef.current = ''
     armedInterimRef.current = ''
+    listeningBufferRef.current = ''
+    sessionAccumRef.current = ''
+    setLiveText('')
+    setLastHint(null)
     setPhase('ouvindo')
-    setLastHint(`Diga "${wakePhraseRef.current}" com sua voz cadastrada`)
-  }, [clearArmedTimer])
+  }, [clearArmedTimer, clearSilenceTimer])
+
+  const cancelArmed = useCallback(() => {
+    if (!armedRef.current) return
+    disarm()
+  }, [disarm])
 
   const arm = useCallback(() => {
     armedRef.current = true
@@ -263,8 +272,6 @@ export function useVoiceAssistant({
       armedInterimRef.current = ''
       listeningBufferRef.current = ''
       sessionAccumRef.current = ''
-      setPhase('executando')
-      setLiveText(trimmed)
       onCommandTextRef.current(trimmed)
       disarm()
     },
@@ -389,7 +396,6 @@ export function useVoiceAssistant({
       const working = `${sessionAccumRef.current}${interim ? ` ${interim}` : ''}`.trim() || snapshot
       if (working) {
         listeningBufferRef.current = working
-        setLiveText(working)
         scheduleSilenceFlush()
       }
     }
@@ -417,11 +423,8 @@ export function useVoiceAssistant({
     runningRef.current = true
     armedRef.current = false
     setPhase('ouvindo')
-    setLastHint(
-      requireVoiceMatchRef.current
-        ? `Diga "${wakePhraseRef.current}" com sua voz cadastrada`
-        : `Diga "${wakePhraseRef.current}" e fale o comando`,
-    )
+    setLastHint(null)
+    setLiveText('')
     rec.start()
   }, [processTranscript, startAudioCapture, stopRecognition])
 
@@ -450,5 +453,6 @@ export function useVoiceAssistant({
     lastHint,
     testPhrase,
     stop: stopRecognition,
+    cancelArmed,
   }
 }

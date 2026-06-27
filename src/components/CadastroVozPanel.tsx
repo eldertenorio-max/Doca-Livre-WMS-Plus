@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useVoiceProfileEnrollment } from '../hooks/useVoiceProfileEnrollment'
 import { VOICE_COMMAND_EXAMPLES } from '../lib/parseVoiceCommand'
@@ -6,6 +6,8 @@ import type { VoicePrefs } from '../lib/voicePrefs'
 import { DEFAULT_WAKE_PHRASE } from '../lib/voicePrefs'
 import {
   MAX_VOICE_PROFILES,
+  VOICE_ENROLLMENT_SAMPLES,
+  getStoredVoiceRegistry,
   removeNamedVoiceProfile,
   type VoiceRegistry,
 } from '../lib/voiceProfile'
@@ -15,9 +17,11 @@ type Props = {
   voiceRegistry: VoiceRegistry
   supported: boolean
   assistantActive: boolean
+  voiceFeedback: string | null
   onPrefsChange: (patch: Partial<VoicePrefs>) => void
   onVoiceRegistryChange: (registry: VoiceRegistry) => void
   onTestWakePhrase: (spoken: string) => boolean
+  sectionOpen?: boolean
 }
 
 export function CadastroVozPanel({
@@ -25,9 +29,11 @@ export function CadastroVozPanel({
   voiceRegistry,
   supported,
   assistantActive,
+  voiceFeedback,
   onPrefsChange,
   onVoiceRegistryChange,
   onTestWakePhrase,
+  sectionOpen = true,
 }: Props) {
   const [calibrando, setCalibrando] = useState(false)
   const [calibMsg, setCalibMsg] = useState<string | null>(null)
@@ -40,11 +46,17 @@ export function CadastroVozPanel({
     registry: voiceRegistry,
     onRegistryChange: onVoiceRegistryChange,
     onProfileComplete: (profile) => {
+      onVoiceRegistryChange(getStoredVoiceRegistry())
       onPrefsChange({ calibrated: true })
       setEnrollMsg(`Voz de "${profile.name}" cadastrada com sucesso (3/3).`)
       setNomeVoz('')
     },
   })
+
+  useEffect(() => {
+    if (!sectionOpen) return
+    onVoiceRegistryChange(getStoredVoiceRegistry())
+  }, [sectionOpen, onVoiceRegistryChange])
 
   const wake = prefs.wakePhrase || DEFAULT_WAKE_PHRASE
   const pessoasCadastradas = voiceRegistry.profiles
@@ -158,7 +170,7 @@ export function CadastroVozPanel({
           className={`cadastro-voz-badge${assistantActive ? ' cadastro-voz-badge--on' : ' cadastro-voz-badge--off'}`}
           role="status"
         >
-          {assistantActive ? 'Voz ativa — escutando' : 'Voz desativada'}
+          {assistantActive ? `Aguardando "${wake}"…` : 'Voz desativada'}
         </div>
 
         <div className="cadastro-voz-controles">
@@ -182,8 +194,12 @@ export function CadastroVozPanel({
 
         {assistantActive && (
           <p className="cadastro-voz-status cadastro-voz-status--on">
-            Microfone ativo — diga &quot;{wake}&quot; com uma voz cadastrada e fale o comando.
+            Microfone aguardando &quot;{wake}&quot; — diga a frase para abrir o comando de voz.
           </p>
+        )}
+
+        {assistantActive && voiceFeedback && (
+          <p className="cadastro-voz-ok">{voiceFeedback}</p>
         )}
 
         {!assistantActive && supported && (
@@ -192,6 +208,17 @@ export function CadastroVozPanel({
               ? `Toque em Ativar voz e fale "${wake}" com uma das vozes cadastradas.`
               : 'Cadastre uma voz abaixo antes de ativar.'}
           </p>
+        )}
+
+        {temVozCadastrada && (
+          <div className="cadastro-voz-resumo" aria-label="Vozes cadastradas">
+            <span className="cadastro-voz-resumo-label">Vozes cadastradas:</span>
+            <ul className="cadastro-voz-resumo-lista">
+              {pessoasCadastradas.map((p) => (
+                <li key={p.id}>{p.name}</li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <label className="cadastro-voz-field">
@@ -222,23 +249,33 @@ export function CadastroVozPanel({
           {pessoasCadastradas.length}/{limitePessoas} pessoas cadastradas
         </div>
 
-        {pessoasCadastradas.length > 0 && (
-          <ul className="cadastro-voz-pessoas">
-            {pessoasCadastradas.map((p) => (
-              <li key={p.id}>
-                <span>{p.name}</span>
-                <button
-                  type="button"
-                  className="btn btn-sm danger-outline"
-                  disabled={assistantActive}
-                  onClick={() => handleRemoverPessoa(p.id)}
-                >
-                  Remover
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="cadastro-voz-lista-wrap">
+          <h5 className="cadastro-voz-lista-title">Vozes cadastradas</h5>
+          {pessoasCadastradas.length === 0 ? (
+            <p className="muted cadastro-voz-lista-vazia">Nenhuma voz cadastrada ainda.</p>
+          ) : (
+            <ul className="cadastro-voz-pessoas">
+              {pessoasCadastradas.map((p) => (
+                <li key={p.id}>
+                  <div className="cadastro-voz-pessoa-info">
+                    <span className="cadastro-voz-pessoa-nome">{p.name}</span>
+                    <span className="cadastro-voz-pessoa-meta">
+                      {p.sampleCount}/{VOICE_ENROLLMENT_SAMPLES} amostras
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm danger-outline"
+                    disabled={assistantActive}
+                    onClick={() => handleRemoverPessoa(p.id)}
+                  >
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <label className="cadastro-voz-field">
           <span>Nome de quem está gravando</span>

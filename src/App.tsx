@@ -2241,9 +2241,7 @@ export default function App() {
         setVoiceFeedback('Cadastre pelo menos uma voz individual antes de ativar.')
         return prev
       }
-      if (patch.enabled === true) {
-        setVoiceFeedback(`Voz ativada. Diga "${next.wakePhrase}" com sua voz cadastrada.`)
-      } else if (patch.enabled === false) {
+      if (patch.enabled === false) {
         setVoiceFeedback('Voz desativada.')
       }
       return next
@@ -2521,9 +2519,11 @@ export default function App() {
           voiceRegistry,
           supported: voiceAssistant.supported,
           assistantActive: voicePrefs.enabled && voiceAssistant.phase !== 'off',
+          voiceFeedback,
           onPrefsChange: handleVoicePrefsChange,
           onVoiceRegistryChange: setVoiceRegistry,
           onTestWakePhrase: voiceAssistant.testPhrase,
+          sectionOpen: openSection === 'cadastroVoz',
         }}
       />
 
@@ -2532,10 +2532,9 @@ export default function App() {
         liveText={voiceAssistant.liveText}
         lastHint={voiceAssistant.lastHint}
         feedback={voiceFeedback}
-        wakePhrase={voicePrefs.wakePhrase}
         onCancel={() => {
-          handleVoicePrefsChange({ enabled: false })
-          setVoiceFeedback('Escuta cancelada.')
+          voiceAssistant.cancelArmed()
+          setVoiceFeedback(null)
         }}
       />
 

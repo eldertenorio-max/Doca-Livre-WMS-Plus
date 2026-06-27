@@ -68,34 +68,42 @@ function normalizeRegistry(raw: unknown): VoiceRegistry {
   if (!Array.isArray(profiles)) return { profiles: [] }
   return {
     profiles: profiles
-      .filter(
-        (p): p is NamedVoiceProfile =>
-          !!p &&
-          typeof p.id === 'string' &&
-          typeof p.name === 'string' &&
-          Array.isArray(p.features) &&
-          p.features.length > 0,
-      )
+      .map((p) => {
+        if (!p || !Array.isArray(p.features) || p.features.length === 0) return null
+        return {
+          id: typeof p.id === 'string' && p.id ? p.id : createVoiceId(),
+          name: typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Sem nome',
+          features: p.features,
+          sampleCount:
+            typeof p.sampleCount === 'number' && p.sampleCount > 0
+              ? p.sampleCount
+              : VOICE_ENROLLMENT_SAMPLES,
+          createdAt: typeof p.createdAt === 'string' ? p.createdAt : new Date().toISOString(),
+        } satisfies NamedVoiceProfile
+      })
+      .filter((p): p is NamedVoiceProfile => p != null)
       .slice(0, MAX_VOICE_PROFILES),
   }
 }
 
 export function getStoredVoiceRegistry(): VoiceRegistry {
+  let registry: VoiceRegistry = { profiles: [] }
   try {
     const raw = localStorage.getItem(VOICE_REGISTRY_KEY)
-    if (raw) return normalizeRegistry(JSON.parse(raw))
+    if (raw) registry = normalizeRegistry(JSON.parse(raw))
   } catch {
     /* ignore */
   }
 
-  const legacy = migrateLegacySingleProfile()
-  if (legacy) {
-    const registry = { profiles: [legacy] }
-    storeVoiceRegistry(registry)
-    return registry
+  if (registry.profiles.length === 0) {
+    const legacy = migrateLegacySingleProfile()
+    if (legacy) {
+      registry = { profiles: [legacy] }
+      storeVoiceRegistry(registry)
+    }
   }
 
-  return { profiles: [] }
+  return registry
 }
 
 export function storeVoiceRegistry(registry: VoiceRegistry) {

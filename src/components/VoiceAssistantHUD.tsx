@@ -5,7 +5,6 @@ type Props = {
   liveText: string
   lastHint: string | null
   feedback: string | null
-  wakePhrase: string
   onCancel: () => void
 }
 
@@ -14,48 +13,42 @@ export function VoiceAssistantHUD({
   liveText,
   lastHint,
   feedback,
-  wakePhrase,
   onCancel,
 }: Props) {
-  if (phase === 'off') return null
-
-  const label =
-    phase === 'ouvindo'
-      ? `Escutando "${wakePhrase}"…`
-      : phase === 'armado'
-        ? 'Aguardando comando…'
-        : phase === 'executando'
-          ? 'Executando…'
-          : ''
+  // Só aparece após "ok estoque", enquanto aguarda o comando
+  if (phase !== 'armado') return null
 
   return (
     <div className="voice-assistant-hud" role="status" aria-live="polite">
       <div className="voice-assistant-hud-inner">
-        <span className={`voice-assistant-hud-dot voice-assistant-hud-dot--${phase}`} aria-hidden />
+        <span className="voice-assistant-hud-dot voice-assistant-hud-dot--armado" aria-hidden />
         <div className="voice-assistant-hud-body">
-          <strong className="voice-assistant-hud-title">{label}</strong>
+          <strong className="voice-assistant-hud-title">Fale o comando…</strong>
           {liveText && <p className="voice-assistant-hud-live">{liveText}</p>}
           {feedback && <p className="voice-assistant-hud-feedback">{feedback}</p>}
           {!liveText && !feedback && lastHint && (
             <p className="voice-assistant-hud-hint muted">{lastHint}</p>
           )}
+          {!liveText && !feedback && !lastHint && (
+            <p className="voice-assistant-hud-hint muted">
+              Após falar, aguarde — o comando será executado automaticamente.
+            </p>
+          )}
         </div>
-        {phase === 'armado' && (
-          <span className="voice-assistant-hud-waves" aria-hidden>
-            {[0, 1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className="voice-assistant-hud-wave"
-                style={{ animationDelay: `${i * 0.12}s` }}
-              />
-            ))}
-          </span>
-        )}
+        <span className="voice-assistant-hud-waves" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <span
+              key={i}
+              className="voice-assistant-hud-wave"
+              style={{ animationDelay: `${i * 0.12}s` }}
+            />
+          ))}
+        </span>
         <button
           type="button"
           className="voice-assistant-hud-cancel"
           onClick={onCancel}
-          aria-label="Cancelar escuta de voz"
+          aria-label="Cancelar comando de voz"
         >
           Cancelar
         </button>
