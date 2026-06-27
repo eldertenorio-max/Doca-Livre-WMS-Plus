@@ -3214,16 +3214,32 @@ html.scroll-locked .sidebar.sidebar--wide {
   background: #1a4d8c;
 }
 
-.print-cell-nf {
+.print-cell-labels {
   position: relative;
   z-index: 1;
-  font-weight: 700;
-  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3mm;
   line-height: 1.05;
   text-align: center;
-  word-break: break-all;
+  transform: translateY(-0.4mm);
   padding: 0.2mm;
+  max-width: 100%;
   pointer-events: none;
+}
+
+.print-cell-nf {
+  font-weight: 700;
+  color: #fff;
+  word-break: break-all;
+}
+
+.print-cell-codigo {
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.92);
+  word-break: break-all;
 }
 
 .print-cell--porta {

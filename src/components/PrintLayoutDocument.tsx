@@ -9,6 +9,7 @@ import {
   type RuaConfig,
 } from '../layout/camaras'
 import { portaCamaraUrl } from '../lib/portaCamaraAsset'
+import { codigoProdutoExibicao } from '../lib/codigoProduto'
 import type { AddressId, AddressOccupancy } from '../types'
 
 const CELL_GAP = 0
@@ -85,6 +86,22 @@ function printNfLabel(numero: string, cellW: number, cellH: number): string {
   if (ref >= 11) return numero
   if (ref >= 9) return numero.length > 6 ? numero.slice(-6) : numero
   return numero.length > 4 ? numero.slice(-4) : numero
+}
+
+function printCodigoFontSize(cellW: number, cellH: number): number {
+  const nf = printNfFontSize(cellW, cellH)
+  if (nf >= 11) return 9
+  if (nf >= 9) return 7.5
+  if (nf >= 7.5) return 6.5
+  return 5.5
+}
+
+function printCodigoLabel(codigo: string, cellW: number, cellH: number): string {
+  const ref = Math.min(cellW, cellH)
+  if (ref >= 14) return codigo.length > 12 ? `${codigo.slice(0, 11)}…` : codigo
+  if (ref >= 11) return codigo.length > 10 ? `${codigo.slice(0, 9)}…` : codigo
+  if (ref >= 9) return codigo.length > 8 ? `${codigo.slice(0, 7)}…` : codigo
+  return codigo.length > 6 ? `${codigo.slice(0, 5)}…` : codigo
 }
 
 type Props = {
@@ -172,6 +189,10 @@ function PrintRuaGrid({
                     if (edge) cellClass += ` ${edge.replace(/cell--/g, 'print-cell--')}`
                   }
                   const nfFont = printNfFontSize(cellW, cellH)
+                  const codigoFont = printCodigoFontSize(cellW, cellH)
+                  const codigo = occ
+                    ? codigoProdutoExibicao(occ.codigo, occ.descricao)
+                    : ''
                   return (
                     <div
                       key={addressId}
@@ -183,11 +204,21 @@ function PrintRuaGrid({
                       }}
                     >
                       {occ && kind === 'disponivel' && (
-                        <span
-                          className="print-cell-nf"
-                          style={{ fontSize: `${nfFont}pt` }}
-                        >
-                          {printNfLabel(occ.nfNumero, cellW, cellH)}
+                        <span className="print-cell-labels">
+                          <span
+                            className="print-cell-nf"
+                            style={{ fontSize: `${nfFont}pt` }}
+                          >
+                            {printNfLabel(occ.nfNumero, cellW, cellH)}
+                          </span>
+                          {codigo && (
+                            <span
+                              className="print-cell-codigo"
+                              style={{ fontSize: `${codigoFont}pt` }}
+                            >
+                              {printCodigoLabel(codigo, cellW, cellH)}
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>
@@ -245,7 +276,7 @@ function PrintPage({
         <div className="print-legend">
           {withOccupancy ? (
             <>
-              <span><i className="print-swatch print-swatch--ocup" /> Ocupado (NF)</span>
+              <span><i className="print-swatch print-swatch--ocup" /> Ocupado (NF + código)</span>
               <span><i className="print-swatch print-swatch--disp" /> Disponível</span>
             </>
           ) : (
