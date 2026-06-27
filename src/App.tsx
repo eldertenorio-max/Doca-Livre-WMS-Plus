@@ -70,6 +70,7 @@ import {
   parseVoiceCommand,
 } from './lib/parseVoiceCommand'
 import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
+import { getStoredVoiceProfile, type VoiceProfile } from './lib/voiceProfile'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
@@ -156,6 +157,7 @@ export default function App() {
   const { sidebarMode, setSidebarMode } = useSidebarMode()
   const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
   const [voicePrefs, setVoicePrefs] = useState<VoicePrefs>(() => getStoredVoicePrefs())
+  const [voiceProfile, setVoiceProfile] = useState<VoiceProfile | null>(() => getStoredVoiceProfile())
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null)
   const openSectionRef = useRef<SidebarSectionId | null>(null)
   const [introDone, setIntroDone] = useState(false)
@@ -2233,7 +2235,19 @@ export default function App() {
   )
 
   const handleVoicePrefsChange = useCallback((patch: Partial<VoicePrefs>) => {
-    setVoicePrefs((prev) => ({ ...prev, ...patch }))
+    setVoicePrefs((prev) => {
+      const next = { ...prev, ...patch }
+      if (patch.enabled === true && next.voiceLocked && !getStoredVoiceProfile()) {
+        setVoiceFeedback('Cadastre sua voz individual antes de ativar.')
+        return prev
+      }
+      if (patch.enabled === true) {
+        setVoiceFeedback(`Voz ativada. Diga "${next.wakePhrase}" com sua voz cadastrada.`)
+      } else if (patch.enabled === false) {
+        setVoiceFeedback('Voz desativada.')
+      }
+      return next
+    })
   }, [])
 
   const handleVoiceCommandText = useCallback(
@@ -2308,6 +2322,8 @@ export default function App() {
   const voiceAssistant = useVoiceAssistant({
     enabled: voicePrefs.enabled,
     wakePhrase: voicePrefs.wakePhrase,
+    voiceProfile,
+    requireVoiceMatch: voicePrefs.voiceLocked,
     onCommandText: handleVoiceCommandText,
     onError: (message) => setVoiceFeedback(message),
   })
@@ -2502,9 +2518,11 @@ export default function App() {
         }}
         cadastroVoz={{
           prefs: voicePrefs,
+          voiceProfile,
           supported: voiceAssistant.supported,
           assistantActive: voicePrefs.enabled && voiceAssistant.phase !== 'off',
           onPrefsChange: handleVoicePrefsChange,
+          onVoiceProfileChange: setVoiceProfile,
           onTestWakePhrase: voiceAssistant.testPhrase,
         }}
       />
@@ -2515,6 +2533,10 @@ export default function App() {
         lastHint={voiceAssistant.lastHint}
         feedback={voiceFeedback}
         wakePhrase={voicePrefs.wakePhrase}
+        onCancel={() => {
+          handleVoicePrefsChange({ enabled: false })
+          setVoiceFeedback('Escuta cancelada.')
+        }}
       />
 
       <main className="main-panel">

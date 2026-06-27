@@ -6,9 +6,17 @@ type Props = {
   lastHint: string | null
   feedback: string | null
   wakePhrase: string
+  onCancel: () => void
 }
 
-export function VoiceAssistantHUD({ phase, liveText, lastHint, feedback, wakePhrase }: Props) {
+export function VoiceAssistantHUD({
+  phase,
+  liveText,
+  lastHint,
+  feedback,
+  wakePhrase,
+  onCancel,
+}: Props) {
   if (phase === 'off') return null
 
   const label =
@@ -43,6 +51,14 @@ export function VoiceAssistantHUD({ phase, liveText, lastHint, feedback, wakePhr
             ))}
           </span>
         )}
+        <button
+          type="button"
+          className="voice-assistant-hud-cancel"
+          onClick={onCancel}
+          aria-label="Cancelar escuta de voz"
+        >
+          Cancelar
+        </button>
       </div>
     </div>
   )

@@ -2,6 +2,8 @@ export type VoicePrefs = {
   enabled: boolean
   wakePhrase: string
   calibrated: boolean
+  /** Só aceita a voz individual cadastrada junto com a frase de ativação. */
+  voiceLocked: boolean
 }
 
 export const VOICE_PREFS_KEY = 'ultrafrio-voice-prefs'
@@ -12,6 +14,7 @@ export function defaultVoicePrefs(): VoicePrefs {
     enabled: false,
     wakePhrase: DEFAULT_WAKE_PHRASE,
     calibrated: false,
+    voiceLocked: true,
   }
 }
 

@@ -1,31 +1,89 @@
 import { useState } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
+import { useVoiceProfileEnrollment } from '../hooks/useVoiceProfileEnrollment'
 import { VOICE_COMMAND_EXAMPLES } from '../lib/parseVoiceCommand'
 import type { VoicePrefs } from '../lib/voicePrefs'
 import { DEFAULT_WAKE_PHRASE } from '../lib/voicePrefs'
+import type { VoiceProfile } from '../lib/voiceProfile'
 
 type Props = {
   prefs: VoicePrefs
+  voiceProfile: VoiceProfile | null
   supported: boolean
   assistantActive: boolean
   onPrefsChange: (patch: Partial<VoicePrefs>) => void
+  onVoiceProfileChange: (profile: VoiceProfile | null) => void
   onTestWakePhrase: (spoken: string) => boolean
 }
 
 export function CadastroVozPanel({
   prefs,
+  voiceProfile,
   supported,
   assistantActive,
   onPrefsChange,
+  onVoiceProfileChange,
   onTestWakePhrase,
 }: Props) {
   const [calibrando, setCalibrando] = useState(false)
   const [calibMsg, setCalibMsg] = useState<string | null>(null)
   const [calibErro, setCalibErro] = useState<string | null>(null)
+  const [enrollMsg, setEnrollMsg] = useState<string | null>(null)
+  const [samplesRecorded, setSamplesRecorded] = useState(0)
   const { listening, start, stop } = useSpeechRecognition()
+  const enrollment = useVoiceProfileEnrollment({
+    onProfileComplete: (profile) => {
+      onVoiceProfileChange(profile)
+      onPrefsChange({ calibrated: true })
+      setEnrollMsg('Voz individual cadastrada com sucesso.')
+      setSamplesRecorded(0)
+    },
+  })
 
-  function handleToggleEnabled() {
-    onPrefsChange({ enabled: !prefs.enabled })
+  const wake = prefs.wakePhrase || DEFAULT_WAKE_PHRASE
+  const vozCadastrada = voiceProfile != null
+  const amostrasRestantes = enrollment.requiredSamples - samplesRecorded
+
+  function handleAtivarVoz() {
+    setCalibErro(null)
+    if (prefs.voiceLocked && !vozCadastrada) {
+      setCalibErro('Cadastre sua voz individual antes de ativar (3 amostras abaixo).')
+      return
+    }
+    onPrefsChange({ enabled: true })
+  }
+
+  function handleDesativarVoz() {
+    if (listening) {
+      stop()
+      setCalibrando(false)
+    }
+    setCalibMsg(null)
+    onPrefsChange({ enabled: false })
+  }
+
+  async function handleGravarAmostra() {
+    setEnrollMsg(null)
+    setCalibErro(null)
+    const features = await enrollment.recordSample()
+    if (!features) return
+
+    const next = samplesRecorded + 1
+    setSamplesRecorded(next)
+    if (next < enrollment.requiredSamples) {
+      setEnrollMsg(
+        `Amostra ${next}/${enrollment.requiredSamples} gravada. Fale "${wake}" na próxima.`,
+      )
+    }
+  }
+
+  function handleRemoverVoz() {
+    enrollment.clearProfile()
+    onVoiceProfileChange(null)
+    onPrefsChange({ enabled: false, calibrated: false })
+    setSamplesRecorded(0)
+    setEnrollMsg(null)
+    setCalibErro(null)
   }
 
   function handleCalibrar() {
@@ -42,10 +100,10 @@ export function CadastroVozPanel({
         setCalibrando(false)
         if (onTestWakePhrase(text)) {
           onPrefsChange({ calibrated: true })
-          setCalibMsg(`Reconhecido: "${text.trim()}" — cadastro confirmado.`)
+          setCalibMsg(`Reconhecido: "${text.trim()}" — frase confirmada.`)
         } else {
           setCalibErro(
-            `Não reconheceu "${prefs.wakePhrase}". Fale exatamente a frase de ativação e tente de novo.`,
+            `Não reconheceu "${wake}". Fale exatamente a frase de ativação e tente de novo.`,
           )
         }
       },
@@ -61,9 +119,8 @@ export function CadastroVozPanel({
       <div className="sidebar-block">
         <h3 className="cadastro-voz-title">Assistente de voz</h3>
         <p className="muted cadastro-voz-intro">
-          Ative o assistente, fale <strong>{prefs.wakePhrase || DEFAULT_WAKE_PHRASE}</strong> e em
-          seguida o que deseja ver ou fazer no sistema — abrir abas, consultar estoque, filtrar o
-          painel, buscar NF e mais.
+          Cadastre <strong>sua voz</strong>, depois fale <strong>{wake}</strong> e o comando. O
+          sistema só responde à voz cadastrada com a frase de ativação.
         </p>
 
         {!supported && (
@@ -72,19 +129,43 @@ export function CadastroVozPanel({
           </p>
         )}
 
-        <label className="cadastro-voz-toggle">
-          <input
-            type="checkbox"
-            checked={prefs.enabled}
-            disabled={!supported}
-            onChange={handleToggleEnabled}
-          />
-          <span>Assistente ativo (escuta contínua)</span>
-        </label>
+        <div
+          className={`cadastro-voz-badge${assistantActive ? ' cadastro-voz-badge--on' : ' cadastro-voz-badge--off'}`}
+          role="status"
+        >
+          {assistantActive ? 'Voz ativa — escutando' : 'Voz desativada'}
+        </div>
+
+        <div className="cadastro-voz-controles">
+          <button
+            type="button"
+            className="btn success"
+            disabled={!supported || prefs.enabled || calibrando || enrollment.recording}
+            onClick={handleAtivarVoz}
+          >
+            Ativar voz
+          </button>
+          <button
+            type="button"
+            className="btn danger-outline"
+            disabled={!supported || !prefs.enabled}
+            onClick={handleDesativarVoz}
+          >
+            Desativar voz
+          </button>
+        </div>
 
         {assistantActive && (
           <p className="cadastro-voz-status cadastro-voz-status--on">
-            Microfone ativo — diga &quot;{prefs.wakePhrase}&quot; e fale o comando.
+            Microfone ativo — diga &quot;{wake}&quot; com sua voz e fale o comando.
+          </p>
+        )}
+
+        {!assistantActive && supported && (
+          <p className="muted cadastro-voz-status-hint">
+            {vozCadastrada
+              ? `Toque em Ativar voz e fale "${wake}" com a voz cadastrada.`
+              : `Cadastre sua voz abaixo antes de ativar.`}
           </p>
         )}
 
@@ -94,26 +175,78 @@ export function CadastroVozPanel({
             type="text"
             className="input-nf"
             value={prefs.wakePhrase}
-            disabled={!supported}
+            disabled={!supported || assistantActive}
             onChange={(e) =>
               onPrefsChange({ wakePhrase: e.target.value, calibrated: false })
             }
             placeholder={DEFAULT_WAKE_PHRASE}
           />
         </label>
+      </div>
+
+      <div className="sidebar-block cadastro-voz-individual">
+        <h4 className="cadastro-voz-subtitle">Cadastro de voz individual</h4>
+        <p className="muted cadastro-voz-intro">
+          Grave <strong>{enrollment.requiredSamples} amostras</strong> falando &quot;{wake}&quot; em
+          voz normal. Só essa voz poderá ativar o painel.
+        </p>
+
+        <div
+          className={`cadastro-voz-badge${vozCadastrada ? ' cadastro-voz-badge--on' : ' cadastro-voz-badge--off'}`}
+        >
+          {vozCadastrada
+            ? `Voz cadastrada (${voiceProfile?.sampleCount ?? 3} amostras)`
+            : samplesRecorded > 0
+              ? `Gravando… ${samplesRecorded}/${enrollment.requiredSamples}`
+              : 'Nenhuma voz cadastrada'}
+        </div>
+
+        {!vozCadastrada && samplesRecorded > 0 && samplesRecorded < enrollment.requiredSamples && (
+          <p className="muted cadastro-voz-enroll-progress">
+            Faltam {amostrasRestantes} amostra(s). Fale &quot;{wake}&quot; a cada gravação.
+          </p>
+        )}
 
         <button
           type="button"
-          className={`btn full ${calibrando ? 'danger-outline' : 'primary'}`}
-          disabled={!supported || !prefs.wakePhrase.trim()}
-          onClick={handleCalibrar}
+          className={`btn full ${enrollment.recording ? 'danger-outline' : 'primary'}`}
+          disabled={!supported || assistantActive || vozCadastrada}
+          onClick={handleGravarAmostra}
         >
-          {calibrando ? 'Gravando… toque para cancelar' : 'Cadastrar / testar frase de ativação'}
+          {enrollment.recording
+            ? 'Gravando… fale agora'
+            : vozCadastrada
+              ? 'Voz já cadastrada'
+              : samplesRecorded === 0
+                ? `Gravar amostra 1/${enrollment.requiredSamples}`
+                : `Gravar amostra ${samplesRecorded + 1}/${enrollment.requiredSamples}`}
         </button>
 
-        {prefs.calibrated && !calibErro && (
-          <p className="cadastro-voz-ok">Frase de ativação cadastrada.</p>
+        {vozCadastrada && (
+          <button type="button" className="btn danger-outline full cadastro-voz-remove" onClick={handleRemoverVoz}>
+            Remover voz cadastrada
+          </button>
         )}
+
+        {assistantActive && (
+          <p className="muted cadastro-voz-calib-hint">
+            Desative a voz antes de cadastrar ou alterar a voz individual.
+          </p>
+        )}
+
+        {enrollMsg && <p className="cadastro-voz-ok">{enrollMsg}</p>}
+        {enrollment.error && <p className="error">{enrollment.error}</p>}
+      </div>
+
+      <div className="sidebar-block">
+        <button
+          type="button"
+          className={`btn full btn-sm ${calibrando ? 'danger-outline' : ''}`}
+          disabled={!supported || !prefs.wakePhrase.trim() || assistantActive}
+          onClick={handleCalibrar}
+        >
+          {calibrando ? 'Testando frase… toque para cancelar' : 'Testar frase de ativação (texto)'}
+        </button>
         {calibMsg && <p className="cadastro-voz-ok">{calibMsg}</p>}
         {calibErro && <p className="error">{calibErro}</p>}
       </div>
@@ -121,8 +254,7 @@ export function CadastroVozPanel({
       <div className="sidebar-block">
         <h4 className="cadastro-voz-subtitle">Comandos disponíveis</h4>
         <p className="muted cadastro-voz-comandos-hint">
-          Sempre comece com <strong>{prefs.wakePhrase || DEFAULT_WAKE_PHRASE}</strong> ou fale tudo
-          numa frase só.
+          Com a voz cadastrada, fale <strong>{wake}</strong> e em seguida o comando.
         </p>
         <ul className="cadastro-voz-comandos">
           {VOICE_COMMAND_EXAMPLES.map((ex) => (

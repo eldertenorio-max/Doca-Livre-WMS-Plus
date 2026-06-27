@@ -62,6 +62,7 @@
   flex: 1;
   min-height: 0;
   height: 100%;
+  position: relative;
 }
 
 .sidebar-body {
@@ -2441,25 +2442,23 @@ html.scroll-locked .sidebar.sidebar--wide {
 .sidebar-bottom-bar {
   position: absolute;
   left: 0;
-  right: 0;
   bottom: 0;
-  z-index: 3;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  width: 100%;
+  width: var(--sidebar-w-collapsed);
   padding: 8px 10px 10px;
   box-sizing: border-box;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   pointer-events: auto;
 }
 
 .sidebar.sidebar--wide .sidebar-bottom-bar {
-  padding-left: 16px;
-  padding-right: 16px;
-  padding-bottom: 10px;
+  box-shadow: 4px 0 12px rgb(0 0 0 / 0.04);
 }
 
 .sidebar-bottom-bar .theme-toggle {
@@ -2481,20 +2480,63 @@ html.scroll-locked .sidebar.sidebar--wide {
   line-height: 1.45;
 }
 
-.cadastro-voz-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 12px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
+.cadastro-voz-badge {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: center;
 }
 
-.cadastro-voz-toggle input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
+.cadastro-voz-badge--on {
+  background: color-mix(in srgb, var(--success) 14%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
+  color: var(--success);
+}
+
+.cadastro-voz-badge--off {
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+}
+
+.cadastro-voz-controles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.cadastro-voz-controles .btn {
+  min-height: 42px;
+  font-weight: 700;
+}
+
+.cadastro-voz-status-hint {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.cadastro-voz-calib-hint {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.cadastro-voz-individual {
+  border-top: 1px dashed var(--border);
+  padding-top: 14px;
+}
+
+.cadastro-voz-enroll-progress {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+}
+
+.cadastro-voz-remove {
+  margin-top: 8px;
 }
 
 .cadastro-voz-status {
@@ -2580,7 +2622,6 @@ html.scroll-locked .sidebar.sidebar--wide {
   bottom: 16px;
   z-index: 120;
   max-width: min(360px, calc(100vw - 32px));
-  pointer-events: none;
 }
 
 .voice-assistant-hud-inner {
@@ -2593,6 +2634,27 @@ html.scroll-locked .sidebar.sidebar--wide {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sidebar);
   backdrop-filter: blur(8px);
+}
+
+.voice-assistant-hud-cancel {
+  flex-shrink: 0;
+  align-self: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.voice-assistant-hud-cancel:hover {
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  color: var(--danger);
 }
 
 .voice-assistant-hud-dot {

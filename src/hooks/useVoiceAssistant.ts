@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  extractVoiceFeatures,
+  verifyVoiceMatch,
+} from '../lib/voiceFeatures'
+import {
   normalizeVoiceText,
   stripWakePhrase,
   wakePhraseMatches,
 } from '../lib/voiceNormalize'
+import {
+  VOICE_MATCH_THRESHOLD,
+  type VoiceProfile,
+} from '../lib/voiceProfile'
 
 type SpeechRecognitionCtor = new () => SpeechRecognitionInstance
 
@@ -21,8 +29,13 @@ type SpeechRecognitionInstance = {
 }
 
 type SpeechRecognitionResultEvent = {
+  resultIndex: number
   results: {
-    [index: number]: { [index: number]: { transcript: string }; isFinal?: boolean }
+    [index: number]: {
+      [index: number]: { transcript: string }
+      isFinal?: boolean
+      length: number
+    }
     length: number
   }
 }
@@ -34,6 +47,7 @@ type SpeechRecognitionErrorEvent = {
 export type VoiceAssistantPhase = 'off' | 'ouvindo' | 'armado' | 'executando'
 
 const ARMED_TIMEOUT_MS = 8000
+const AUDIO_BUFFER_MS = 9000
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   if (typeof window === 'undefined') return null
@@ -47,11 +61,20 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
 type Options = {
   enabled: boolean
   wakePhrase: string
+  voiceProfile: VoiceProfile | null
+  requireVoiceMatch: boolean
   onCommandText: (text: string) => void
   onError?: (message: string) => void
 }
 
-export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError }: Options) {
+export function useVoiceAssistant({
+  enabled,
+  wakePhrase,
+  voiceProfile,
+  requireVoiceMatch,
+  onCommandText,
+  onError,
+}: Options) {
   const [supported, setSupported] = useState(false)
   const [phase, setPhase] = useState<VoiceAssistantPhase>('off')
   const [liveText, setLiveText] = useState('')
@@ -64,6 +87,12 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
   const onCommandTextRef = useRef(onCommandText)
   const onErrorRef = useRef(onError)
   const wakePhraseRef = useRef(wakePhrase)
+  const voiceProfileRef = useRef(voiceProfile)
+  const requireVoiceMatchRef = useRef(requireVoiceMatch)
+
+  const audioStreamRef = useRef<MediaStream | null>(null)
+  const audioRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<{ data: Blob; ts: number }[]>([])
 
   useEffect(() => {
     onCommandTextRef.current = onCommandText
@@ -77,6 +106,14 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
     wakePhraseRef.current = wakePhrase
   }, [wakePhrase])
 
+  useEffect(() => {
+    voiceProfileRef.current = voiceProfile
+  }, [voiceProfile])
+
+  useEffect(() => {
+    requireVoiceMatchRef.current = requireVoiceMatch
+  }, [requireVoiceMatch])
+
   const clearArmedTimer = useCallback(() => {
     if (armedTimerRef.current) {
       clearTimeout(armedTimerRef.current)
@@ -84,11 +121,83 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
     }
   }, [])
 
+  const stopAudioCapture = useCallback(() => {
+    audioRecorderRef.current?.stop()
+    audioRecorderRef.current = null
+    audioStreamRef.current?.getTracks().forEach((t) => t.stop())
+    audioStreamRef.current = null
+    audioChunksRef.current = []
+  }, [])
+
+  const startAudioCapture = useCallback(async () => {
+    stopAudioCapture()
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      })
+      audioStreamRef.current = stream
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      recorder.ondataavailable = (e) => {
+        if (e.data.size === 0) return
+        const ts = Date.now()
+        audioChunksRef.current.push({ data: e.data, ts })
+        const cutoff = ts - AUDIO_BUFFER_MS
+        audioChunksRef.current = audioChunksRef.current.filter((c) => c.ts >= cutoff)
+      }
+      recorder.start(400)
+      audioRecorderRef.current = recorder
+    } catch {
+      onErrorRef.current?.('Não foi possível acessar o microfone para verificação de voz.')
+    }
+  }, [stopAudioCapture])
+
+  const getRecentAudioBlob = useCallback((): Blob | null => {
+    const chunks = audioChunksRef.current
+    if (chunks.length === 0) return null
+    return new Blob(
+      chunks.map((c) => c.data),
+      { type: chunks[0]?.data.type || 'audio/webm' },
+    )
+  }, [])
+
+  const verifyRegisteredVoice = useCallback(async (): Promise<boolean> => {
+    const profile = voiceProfileRef.current
+    if (!requireVoiceMatchRef.current || !profile) return true
+
+    const blob = getRecentAudioBlob()
+    if (!blob || blob.size === 0) {
+      onErrorRef.current?.('Não foi possível verificar sua voz. Tente falar de novo.')
+      return false
+    }
+
+    try {
+      const features = await extractVoiceFeatures(blob)
+      const { match, score } = verifyVoiceMatch(
+        profile.features,
+        features,
+        VOICE_MATCH_THRESHOLD,
+      )
+      if (!match) {
+        onErrorRef.current?.(
+          `Voz não reconhecida (${Math.round(score * 100)}%). Só responde à voz cadastrada com "${wakePhraseRef.current}".`,
+        )
+        return false
+      }
+      return true
+    } catch {
+      onErrorRef.current?.('Erro ao verificar voz cadastrada.')
+      return false
+    }
+  }, [getRecentAudioBlob])
+
   const disarm = useCallback(() => {
     armedRef.current = false
     clearArmedTimer()
     setPhase('ouvindo')
-    setLastHint('Diga "ok estoque" para comandar')
+    setLastHint(`Diga "${wakePhraseRef.current}" com sua voz cadastrada`)
   }, [clearArmedTimer])
 
   const arm = useCallback(() => {
@@ -113,41 +222,57 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
     [disarm],
   )
 
-  const processTranscript = useCallback(
-    (raw: string, isFinal: boolean) => {
+  const processWake = useCallback(
+    async (raw: string) => {
       const wake = wakePhraseRef.current
-      if (wakePhraseMatches(raw, wake)) {
-        const remainder = stripWakePhrase(raw, wake)
-        arm()
-        if (remainder) {
-          dispatchCommand(remainder)
-        }
-        return
-      }
+      if (!wakePhraseMatches(raw, wake)) return false
+
+      const ok = await verifyRegisteredVoice()
+      if (!ok) return true
+
+      const remainder = stripWakePhrase(raw, wake)
+      arm()
+      if (remainder) dispatchCommand(remainder)
+      return true
+    },
+    [arm, dispatchCommand, verifyRegisteredVoice],
+  )
+
+  const processTranscript = useCallback(
+    async (raw: string, isFinal: boolean) => {
+      if (await processWake(raw)) return
 
       if (armedRef.current && isFinal) {
         dispatchCommand(normalizeVoiceText(raw))
       }
     },
-    [arm, dispatchCommand],
+    [processWake, dispatchCommand],
   )
 
   const stopRecognition = useCallback(() => {
     runningRef.current = false
     recRef.current?.abort()
     recRef.current = null
+    stopAudioCapture()
     clearArmedTimer()
     armedRef.current = false
     setPhase('off')
     setLiveText('')
-  }, [clearArmedTimer])
+  }, [clearArmedTimer, stopAudioCapture])
 
-  const startRecognition = useCallback(() => {
+  const startRecognition = useCallback(async () => {
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor) {
       onErrorRef.current?.('Reconhecimento de voz não disponível neste navegador.')
       return
     }
+
+    if (requireVoiceMatchRef.current && !voiceProfileRef.current) {
+      onErrorRef.current?.('Cadastre sua voz individual antes de ativar o assistente.')
+      return
+    }
+
+    await startAudioCapture()
 
     recRef.current?.abort()
     const rec = new Ctor()
@@ -160,7 +285,7 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
     rec.onresult = (ev) => {
       let interim = ''
       let final = ''
-      for (let i = 0; i < ev.results.length; i++) {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const result = ev.results[i]
         const piece = result?.[0]?.transcript ?? ''
         if (result?.isFinal) final += piece
@@ -169,7 +294,7 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
       const preview = (interim || final).trim()
       setLiveText(preview)
       if (final.trim()) {
-        processTranscript(final, true)
+        void processTranscript(final, true)
       } else if (interim.trim() && armedRef.current) {
         setPhase('armado')
       }
@@ -177,7 +302,7 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
 
     rec.onerror = (ev) => {
       if (ev.error === 'not-allowed') {
-        onErrorRef.current?.('Permita o microfone para usar o assistente de voz.')
+        onErrorRef.current?.('Permita o uso do microfone no navegador.')
         stopRecognition()
         return
       }
@@ -198,9 +323,13 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
     runningRef.current = true
     armedRef.current = false
     setPhase('ouvindo')
-    setLastHint(`Diga "${wakePhraseRef.current}" e fale o comando`)
+    setLastHint(
+      requireVoiceMatchRef.current
+        ? `Diga "${wakePhraseRef.current}" com sua voz cadastrada`
+        : `Diga "${wakePhraseRef.current}" e fale o comando`,
+    )
     rec.start()
-  }, [processTranscript, stopRecognition])
+  }, [processTranscript, startAudioCapture, stopRecognition])
 
   useEffect(() => {
     setSupported(getSpeechRecognitionCtor() != null)
@@ -208,7 +337,7 @@ export function useVoiceAssistant({ enabled, wakePhrase, onCommandText, onError 
 
   useEffect(() => {
     if (enabled && supported) {
-      startRecognition()
+      void startRecognition()
     } else {
       stopRecognition()
     }
