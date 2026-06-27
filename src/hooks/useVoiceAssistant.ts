@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  extractVoiceFeatures,
-  verifyVoiceMatch,
-} from '../lib/voiceFeatures'
+import { extractVoiceFeatures } from '../lib/voiceFeatures'
 import {
   normalizeVoiceText,
   stripWakePhrase,
   wakePhraseMatches,
 } from '../lib/voiceNormalize'
 import {
+  findBestVoiceMatch,
   VOICE_MATCH_THRESHOLD,
-  type VoiceProfile,
+  type NamedVoiceProfile,
 } from '../lib/voiceProfile'
 
 type SpeechRecognitionCtor = new () => SpeechRecognitionInstance
@@ -61,7 +59,7 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
 type Options = {
   enabled: boolean
   wakePhrase: string
-  voiceProfile: VoiceProfile | null
+  voiceProfiles: NamedVoiceProfile[]
   requireVoiceMatch: boolean
   onCommandText: (text: string) => void
   onError?: (message: string) => void
@@ -70,7 +68,7 @@ type Options = {
 export function useVoiceAssistant({
   enabled,
   wakePhrase,
-  voiceProfile,
+  voiceProfiles,
   requireVoiceMatch,
   onCommandText,
   onError,
@@ -87,7 +85,7 @@ export function useVoiceAssistant({
   const onCommandTextRef = useRef(onCommandText)
   const onErrorRef = useRef(onError)
   const wakePhraseRef = useRef(wakePhrase)
-  const voiceProfileRef = useRef(voiceProfile)
+  const voiceProfilesRef = useRef(voiceProfiles)
   const requireVoiceMatchRef = useRef(requireVoiceMatch)
 
   const audioStreamRef = useRef<MediaStream | null>(null)
@@ -107,8 +105,8 @@ export function useVoiceAssistant({
   }, [wakePhrase])
 
   useEffect(() => {
-    voiceProfileRef.current = voiceProfile
-  }, [voiceProfile])
+    voiceProfilesRef.current = voiceProfiles
+  }, [voiceProfiles])
 
   useEffect(() => {
     requireVoiceMatchRef.current = requireVoiceMatch
@@ -164,8 +162,8 @@ export function useVoiceAssistant({
   }, [])
 
   const verifyRegisteredVoice = useCallback(async (): Promise<boolean> => {
-    const profile = voiceProfileRef.current
-    if (!requireVoiceMatchRef.current || !profile) return true
+    const profiles = voiceProfilesRef.current
+    if (!requireVoiceMatchRef.current || profiles.length === 0) return true
 
     const blob = getRecentAudioBlob()
     if (!blob || blob.size === 0) {
@@ -175,16 +173,19 @@ export function useVoiceAssistant({
 
     try {
       const features = await extractVoiceFeatures(blob)
-      const { match, score } = verifyVoiceMatch(
-        profile.features,
+      const { match, score, profile } = findBestVoiceMatch(
+        profiles,
         features,
         VOICE_MATCH_THRESHOLD,
       )
       if (!match) {
         onErrorRef.current?.(
-          `Voz não reconhecida (${Math.round(score * 100)}%). Só responde à voz cadastrada com "${wakePhraseRef.current}".`,
+          `Voz não reconhecida (${Math.round(score * 100)}%). Só responde às vozes cadastradas com "${wakePhraseRef.current}".`,
         )
         return false
+      }
+      if (profile) {
+        setLastHint(`Voz de ${profile.name} reconhecida`)
       }
       return true
     } catch {
@@ -267,8 +268,8 @@ export function useVoiceAssistant({
       return
     }
 
-    if (requireVoiceMatchRef.current && !voiceProfileRef.current) {
-      onErrorRef.current?.('Cadastre sua voz individual antes de ativar o assistente.')
+    if (requireVoiceMatchRef.current && voiceProfilesRef.current.length === 0) {
+      onErrorRef.current?.('Cadastre pelo menos uma voz individual antes de ativar o assistente.')
       return
     }
 

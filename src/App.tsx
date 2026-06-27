@@ -70,7 +70,7 @@ import {
   parseVoiceCommand,
 } from './lib/parseVoiceCommand'
 import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
-import { getStoredVoiceProfile, type VoiceProfile } from './lib/voiceProfile'
+import { getStoredVoiceRegistry, hasRegisteredVoices, type VoiceRegistry } from './lib/voiceProfile'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
@@ -157,7 +157,7 @@ export default function App() {
   const { sidebarMode, setSidebarMode } = useSidebarMode()
   const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
   const [voicePrefs, setVoicePrefs] = useState<VoicePrefs>(() => getStoredVoicePrefs())
-  const [voiceProfile, setVoiceProfile] = useState<VoiceProfile | null>(() => getStoredVoiceProfile())
+  const [voiceRegistry, setVoiceRegistry] = useState<VoiceRegistry>(() => getStoredVoiceRegistry())
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null)
   const openSectionRef = useRef<SidebarSectionId | null>(null)
   const [introDone, setIntroDone] = useState(false)
@@ -2237,8 +2237,8 @@ export default function App() {
   const handleVoicePrefsChange = useCallback((patch: Partial<VoicePrefs>) => {
     setVoicePrefs((prev) => {
       const next = { ...prev, ...patch }
-      if (patch.enabled === true && next.voiceLocked && !getStoredVoiceProfile()) {
-        setVoiceFeedback('Cadastre sua voz individual antes de ativar.')
+      if (patch.enabled === true && next.voiceLocked && !hasRegisteredVoices(getStoredVoiceRegistry())) {
+        setVoiceFeedback('Cadastre pelo menos uma voz individual antes de ativar.')
         return prev
       }
       if (patch.enabled === true) {
@@ -2322,7 +2322,7 @@ export default function App() {
   const voiceAssistant = useVoiceAssistant({
     enabled: voicePrefs.enabled,
     wakePhrase: voicePrefs.wakePhrase,
-    voiceProfile,
+    voiceProfiles: voiceRegistry.profiles,
     requireVoiceMatch: voicePrefs.voiceLocked,
     onCommandText: handleVoiceCommandText,
     onError: (message) => setVoiceFeedback(message),
@@ -2518,11 +2518,11 @@ export default function App() {
         }}
         cadastroVoz={{
           prefs: voicePrefs,
-          voiceProfile,
+          voiceRegistry,
           supported: voiceAssistant.supported,
           assistantActive: voicePrefs.enabled && voiceAssistant.phase !== 'off',
           onPrefsChange: handleVoicePrefsChange,
-          onVoiceProfileChange: setVoiceProfile,
+          onVoiceRegistryChange: setVoiceRegistry,
           onTestWakePhrase: voiceAssistant.testPhrase,
         }}
       />

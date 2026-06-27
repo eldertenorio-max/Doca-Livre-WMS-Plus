@@ -138,7 +138,12 @@ export async function recordVoiceSample(durationMs = 3200): Promise<Blob> {
     }
     recorder.onstop = () => {
       stream.getTracks().forEach((t) => t.stop())
-      resolve(new Blob(chunks, { type: mimeType }))
+      const blob = new Blob(chunks, { type: mimeType })
+      if (blob.size < 64) {
+        reject(new Error('Nenhum áudio capturado. Verifique o microfone.'))
+        return
+      }
+      resolve(blob)
     }
     recorder.start(200)
     setTimeout(() => {

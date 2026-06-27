@@ -2539,6 +2539,39 @@ html.scroll-locked .sidebar.sidebar--wide {
   margin-top: 8px;
 }
 
+.cadastro-voz-pessoas {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cadastro-voz-pessoas li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  font-size: 0.84rem;
+}
+
+.cadastro-voz-pessoas li span {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cadastro-voz-reiniciar {
+  margin-top: 8px;
+}
+
 .cadastro-voz-status {
   margin: 0 0 12px;
   padding: 8px 10px;
