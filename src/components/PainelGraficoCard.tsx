@@ -1,5 +1,6 @@
 import {
   dadosGrafico,
+  graficoEstoqueAtual,
   tituloGrafico,
   tipoVisualGrafico,
   type PainelFiltros,
@@ -19,8 +20,10 @@ type Props = {
 export function PainelGraficoCard({ id, filtros, movimentos, notas, onRemover }: Props) {
   const series = dadosGrafico(id, movimentos, notas, filtros)
   const tipo = tipoVisualGrafico(id)
+  const estoqueAtual = graficoEstoqueAtual(id)
   const total = series.reduce((s, x) => s + x.value, 0)
-  const vazio = total === 0
+  const vazio = !estoqueAtual && total === 0
+  const barMax = id === 'estoque-ocupacao' ? 100 : undefined
 
   return (
     <article className="painel-grafico-card">
@@ -32,8 +35,13 @@ export function PainelGraficoCard({ id, filtros, movimentos, notas, onRemover }:
           </button>
         )}
       </header>
+      {estoqueAtual && (
+        <p className="muted painel-grafico-snapshot">Situação atual do armazém (não depende do período).</p>
+      )}
       {vazio ? (
-        <p className="muted painel-grafico-vazio">Sem dados no período selecionado.</p>
+        <p className="muted painel-grafico-vazio">
+          {estoqueAtual ? 'Sem estoque registrado.' : 'Sem dados no período selecionado.'}
+        </p>
       ) : tipo === 'donut' ? (
         <DonutChart series={series} />
       ) : tipo === 'line' ? (
@@ -41,14 +49,22 @@ export function PainelGraficoCard({ id, filtros, movimentos, notas, onRemover }:
       ) : tipo === 'grouped-bar' ? (
         <GroupedBarChart series={series} />
       ) : (
-        <BarChart series={series} horizontal />
+        <BarChart series={series} horizontal maxScale={barMax} />
       )}
     </article>
   )
 }
 
-function BarChart({ series, horizontal = false }: { series: PainelSerie[]; horizontal?: boolean }) {
-  const max = Math.max(...series.map((s) => s.value), 1)
+function BarChart({
+  series,
+  horizontal = false,
+  maxScale,
+}: {
+  series: PainelSerie[]
+  horizontal?: boolean
+  maxScale?: number
+}) {
+  const max = maxScale ?? Math.max(...series.map((s) => s.value), 1)
   return (
     <ul className={`painel-bar-chart${horizontal ? ' painel-bar-chart--horizontal' : ''}`}>
       {series.map((s) => (
@@ -65,7 +81,7 @@ function BarChart({ series, horizontal = false }: { series: PainelSerie[]; horiz
               }}
             />
           </div>
-          <span className="painel-bar-val">{s.value}</span>
+          <span className="painel-bar-val">{s.displayValue ?? s.value}</span>
         </li>
       ))}
     </ul>

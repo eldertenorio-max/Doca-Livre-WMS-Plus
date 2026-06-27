@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import type { SidebarMode } from '../lib/sidebarMode'
 
-/** Tempo antes de recolher ao sair com o mouse (modo livre). */
+/** Tempo antes de recolher ao sair com o mouse (modo recolhido). */
 const CLOSE_DELAY_MS = 1600
 
-export function useSidebarExpand(sidebarFixed: boolean) {
+export function useSidebarExpand(sidebarMode: SidebarMode) {
   const [hoverExpanded, setHoverExpanded] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const expanded = sidebarFixed || hoverExpanded
+  const pinnedOpen = sidebarMode === 'open' || sidebarMode === 'fullscreen'
+  const expanded = pinnedOpen || hoverExpanded
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimer.current) {
@@ -28,16 +30,16 @@ export function useSidebarExpand(sidebarFixed: boolean) {
   }, [clearCloseTimer])
 
   useEffect(() => {
-    if (sidebarFixed) {
+    if (pinnedOpen) {
       clearCloseTimer()
       setHoverExpanded(false)
     }
-  }, [sidebarFixed, clearCloseTimer])
+  }, [pinnedOpen, clearCloseTimer])
 
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer])
 
   useEffect(() => {
-    if (!hoverExpanded || sidebarFixed) return
+    if (!hoverExpanded || pinnedOpen) return
 
     function handlePointerDown(e: PointerEvent) {
       const el = sidebarRef.current
@@ -47,15 +49,16 @@ export function useSidebarExpand(sidebarFixed: boolean) {
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [hoverExpanded, sidebarFixed, collapse])
+  }, [hoverExpanded, pinnedOpen, collapse])
 
   const onSidebarPointerDown = useCallback(
     (e: ReactPointerEvent) => {
-      if (sidebarFixed || hoverExpanded) return
+      if (pinnedOpen || hoverExpanded) return
       if (e.button !== 0) return
+      if ((e.target as HTMLElement).closest('.sidebar-layout-control')) return
       expand()
     },
-    [sidebarFixed, hoverExpanded, expand],
+    [pinnedOpen, hoverExpanded, expand],
   )
 
   const onMouseEnter = useCallback(() => {
@@ -64,7 +67,7 @@ export function useSidebarExpand(sidebarFixed: boolean) {
 
   const onMouseLeave = useCallback(
     (e: React.MouseEvent) => {
-      if (sidebarFixed || !hoverExpanded) return
+      if (pinnedOpen || !hoverExpanded) return
       const related = e.relatedTarget as Node | null
       if (related && sidebarRef.current?.contains(related)) return
 
@@ -74,7 +77,7 @@ export function useSidebarExpand(sidebarFixed: boolean) {
         closeTimer.current = null
       }, CLOSE_DELAY_MS)
     },
-    [sidebarFixed, hoverExpanded, clearCloseTimer, collapse],
+    [pinnedOpen, hoverExpanded, clearCloseTimer, collapse],
   )
 
   return { expanded, sidebarRef, onSidebarPointerDown, onMouseEnter, onMouseLeave }

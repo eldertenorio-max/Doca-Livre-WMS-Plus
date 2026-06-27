@@ -143,7 +143,7 @@ export default function App() {
     clearError,
   } = useEnderecamentoStore()
   const { theme, toggleTheme } = useTheme()
-  const { sidebarFixed, toggleSidebarMode } = useSidebarMode()
+  const { sidebarMode, setSidebarMode } = useSidebarMode()
   const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -1995,14 +1995,14 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}>
       <AppSidebar
         saving={saving}
         persistError={error}
         theme={theme}
         onToggleTheme={toggleTheme}
-        sidebarFixed={sidebarFixed}
-        onToggleSidebarMode={toggleSidebarMode}
+        sidebarMode={sidebarMode}
+        onSidebarModeChange={setSidebarMode}
         onBeforeLeaveEntrada={trySairEntradaIncompleta}
         entrada={{
           notas: state.notas,

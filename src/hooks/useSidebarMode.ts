@@ -2,19 +2,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { getStoredSidebarMode, storeSidebarMode, type SidebarMode } from '../lib/sidebarMode'
 
 export function useSidebarMode() {
-  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => getStoredSidebarMode())
+  const [sidebarMode, setSidebarModeState] = useState<SidebarMode>(() => getStoredSidebarMode())
 
   useEffect(() => {
     storeSidebarMode(sidebarMode)
   }, [sidebarMode])
 
-  const toggleSidebarMode = useCallback(() => {
-    setSidebarMode((prev) => (prev === 'fixed' ? 'free' : 'fixed'))
+  const setSidebarMode = useCallback((mode: SidebarMode) => {
+    setSidebarModeState(mode)
   }, [])
 
   return {
     sidebarMode,
-    sidebarFixed: sidebarMode === 'fixed',
-    toggleSidebarMode,
+    setSidebarMode,
   }
 }

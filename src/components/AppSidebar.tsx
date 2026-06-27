@@ -8,8 +8,9 @@ import { ImprimirPanel } from './ImprimirPanel'
 import { PainelPanel } from './PainelPanel'
 import { SaidaPanel } from './SaidaPanel'
 import { ThemeToggle } from './ThemeToggle'
-import { SidebarModeToggle } from './SidebarModeToggle'
+import { SidebarLayoutControl } from './SidebarLayoutControl'
 import { useSidebarExpand } from '../hooks/useSidebarExpand'
+import type { SidebarMode } from '../lib/sidebarMode'
 import type { Theme } from '../lib/theme'
 import { useState, type ComponentProps } from 'react'
 
@@ -18,8 +19,8 @@ type Props = {
   persistError: string | null
   theme: Theme
   onToggleTheme: () => void
-  sidebarFixed: boolean
-  onToggleSidebarMode: () => void
+  sidebarMode: SidebarMode
+  onSidebarModeChange: (mode: SidebarMode) => void
   entrada: ComponentProps<typeof EntradaPanel>
   saida: ComponentProps<typeof SaidaPanel>
   editar: ComponentProps<typeof EditarPosicaoPanel>
@@ -36,8 +37,8 @@ export function AppSidebar({
   persistError,
   theme,
   onToggleTheme,
-  sidebarFixed,
-  onToggleSidebarMode,
+  sidebarMode,
+  onSidebarModeChange,
   entrada,
   saida,
   editar,
@@ -71,33 +72,48 @@ export function AppSidebar({
   }
 
   const { expanded, sidebarRef, onSidebarPointerDown, onMouseEnter, onMouseLeave } =
-    useSidebarExpand(sidebarFixed)
+    useSidebarExpand(sidebarMode)
+
+  const wide = expanded
+  const pinnedOpen = sidebarMode === 'open' || sidebarMode === 'fullscreen'
 
   return (
     <aside
       ref={sidebarRef}
-      className={`sidebar${sidebarFixed ? ' sidebar--fixed' : ''}${expanded ? ' sidebar--expanded' : ''}`}
-      title={!sidebarFixed && !expanded ? 'Clique para abrir o menu' : undefined}
+      className={[
+        'sidebar',
+        `sidebar--mode-${sidebarMode}`,
+        wide ? 'sidebar--wide' : '',
+        expanded && sidebarMode === 'collapsed' ? 'sidebar--expanded' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      title={!pinnedOpen && !expanded ? 'Clique para abrir o menu' : undefined}
       onPointerDown={onSidebarPointerDown}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
       <div className="sidebar-block sidebar-header">
-        <img
-          src="/logo-ultrafrio-vertical-azul.svg"
-          alt=""
-          aria-hidden
-          className="sidebar-logo sidebar-logo--compact"
-        />
-        <img
-          src="/logo-ultrafrio-horizontal-azul.svg"
-          alt="Ultrafrio"
-          className="sidebar-logo sidebar-logo--full"
-        />
-        <h1 className="app-brand-title">
-          <span className="app-brand-title__main">Stock System</span>
-          <span className="app-brand-title__light">Light</span>
-        </h1>
+        <div className="sidebar-header-row">
+          <SidebarLayoutControl mode={sidebarMode} onChange={onSidebarModeChange} />
+          <div className="sidebar-header-brand">
+            <img
+              src="/logo-ultrafrio-vertical-azul.svg"
+              alt=""
+              aria-hidden
+              className="sidebar-logo sidebar-logo--compact"
+            />
+            <img
+              src="/logo-ultrafrio-horizontal-azul.svg"
+              alt="Ultrafrio"
+              className="sidebar-logo sidebar-logo--full"
+            />
+            <h1 className="app-brand-title">
+              <span className="app-brand-title__main">Stock System</span>
+              <span className="app-brand-title__light">Light</span>
+            </h1>
+          </div>
+        </div>
         <p className="muted">Ultrafrio · entrada e saída por NF-e</p>
         {saving && <p className="saving-hint">Salvando…</p>}
         {persistError && <p className="error">{persistError}</p>}
@@ -184,7 +200,6 @@ export function AppSidebar({
       </CollapsibleSidebarSection>
 
       <div className="sidebar-footer">
-        <SidebarModeToggle fixed={sidebarFixed} onToggle={onToggleSidebarMode} />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
     </aside>

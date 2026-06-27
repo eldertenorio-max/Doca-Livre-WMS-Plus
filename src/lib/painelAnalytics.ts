@@ -1,8 +1,15 @@
 import { labelJustificativaSaida } from './justificativaSaida'
+import { formatValorNfe } from './formatNfeItem'
+import { calcularResumoEstoqueArmazem } from './painelEstoqueArmazem'
 import { itemNoStage } from '../layout/stage'
 import type { MovimentoRegistro, NotaFiscal, MovimentoTipo } from '../types'
 
 export type PainelGraficoId =
+  | 'estoque-valor-total'
+  | 'estoque-valor-paletes'
+  | 'estoque-pos-ocupadas'
+  | 'estoque-pos-livres'
+  | 'estoque-ocupacao'
   | 'entradas-saidas-dia'
   | 'movimentos-tipo'
   | 'movimentos-linha'
@@ -30,9 +37,16 @@ export type PainelSerie = {
   label: string
   value: number
   cor?: string
+  /** Rótulo formatado na barra (ex.: moeda, %). */
+  displayValue?: string
 }
 
 export const PAINEL_GRAFICOS_FIXOS: PainelGraficoId[] = [
+  'estoque-valor-total',
+  'estoque-valor-paletes',
+  'estoque-pos-ocupadas',
+  'estoque-pos-livres',
+  'estoque-ocupacao',
   'entradas-saidas-dia',
   'movimentos-tipo',
   'movimentos-linha',
@@ -44,6 +58,36 @@ export const PAINEL_GRAFICOS_FIXOS: PainelGraficoId[] = [
 ]
 
 export const PAINEL_GRAFICOS_SUGESTOES: PainelGraficoSugestao[] = [
+  {
+    id: 'estoque-valor-total',
+    titulo: 'Valor total armazenado',
+    descricao: 'Soma do valor dos itens em estoque (armazém e stage), total e por câmara.',
+    categoria: 'estoque',
+  },
+  {
+    id: 'estoque-valor-paletes',
+    titulo: 'Valor em paletes (armazém)',
+    descricao: 'Valor proporcional alocado aos endereços físicos ocupados.',
+    categoria: 'estoque',
+  },
+  {
+    id: 'estoque-pos-ocupadas',
+    titulo: 'Posições ocupadas',
+    descricao: 'Endereços físicos com palete, total e por câmara.',
+    categoria: 'estoque',
+  },
+  {
+    id: 'estoque-pos-livres',
+    titulo: 'Posições livres',
+    descricao: 'Endereços disponíveis no armazém, total e por câmara.',
+    categoria: 'estoque',
+  },
+  {
+    id: 'estoque-ocupacao',
+    titulo: 'Ocupação do armazém',
+    descricao: 'Percentual de posições ocupadas, total e por câmara.',
+    categoria: 'estoque',
+  },
   {
     id: 'entradas-saidas-dia',
     titulo: 'Entradas vs saídas por dia',
@@ -173,6 +217,44 @@ function contarPaletesMovimento(m: MovimentoRegistro): number {
   return m.itens.reduce((s, it) => s + (it.paletes ?? it.addressIds.length), 0)
 }
 
+const COR_CAMARA = '#3b82f6'
+const COR_TOTAL = '#6366f1'
+const COR_STAGE = '#a855f7'
+
+function seriesEstoqueCamara(
+  resumo: ReturnType<typeof calcularResumoEstoqueArmazem>,
+  pick: (c: (typeof resumo.camaras)[0]) => number,
+  pickTotal: number,
+  format?: (v: number) => string,
+): PainelSerie[] {
+  const fmt = format ?? ((v: number) => String(Math.round(v)))
+  const series: PainelSerie[] = [
+    {
+      label: 'Total',
+      value: pickTotal,
+      cor: COR_TOTAL,
+      displayValue: fmt(pickTotal),
+    },
+    ...resumo.camaras.map((c) => ({
+      label: c.label,
+      value: pick(c),
+      cor: COR_CAMARA,
+      displayValue: fmt(pick(c)),
+    })),
+  ]
+  return series
+}
+
+export function graficoEstoqueAtual(id: PainelGraficoId): boolean {
+  return (
+    id === 'estoque-valor-total' ||
+    id === 'estoque-valor-paletes' ||
+    id === 'estoque-pos-ocupadas' ||
+    id === 'estoque-pos-livres' ||
+    id === 'estoque-ocupacao'
+  )
+}
+
 export function dadosGrafico(
   id: PainelGraficoId,
   movimentos: MovimentoRegistro[],
@@ -182,6 +264,65 @@ export function dadosGrafico(
   const filtrados = filtrarMovimentos(movimentos, filtros)
 
   switch (id) {
+    case 'estoque-valor-total': {
+      const r = calcularResumoEstoqueArmazem(notas)
+      const series = seriesEstoqueCamara(
+        r,
+        (c) => c.valorArmazenado,
+        r.total.valorTotalArmazenado,
+        (v) => formatValorNfe(v),
+      )
+      if (r.total.valorStage > 0) {
+        series.push({
+          label: 'Stage',
+          value: r.total.valorStage,
+          cor: COR_STAGE,
+          displayValue: formatValorNfe(r.total.valorStage),
+        })
+      }
+      return series
+    }
+
+    case 'estoque-valor-paletes': {
+      const r = calcularResumoEstoqueArmazem(notas)
+      return seriesEstoqueCamara(
+        r,
+        (c) => c.valorPaletes,
+        r.total.valorPaletesArmazenado,
+        (v) => formatValorNfe(v),
+      )
+    }
+
+    case 'estoque-pos-ocupadas': {
+      const r = calcularResumoEstoqueArmazem(notas)
+      return seriesEstoqueCamara(
+        r,
+        (c) => c.posicoesOcupadas,
+        r.total.posicoesOcupadas,
+        (v) => String(v),
+      )
+    }
+
+    case 'estoque-pos-livres': {
+      const r = calcularResumoEstoqueArmazem(notas)
+      return seriesEstoqueCamara(
+        r,
+        (c) => c.posicoesLivres,
+        r.total.posicoesLivres,
+        (v) => String(v),
+      )
+    }
+
+    case 'estoque-ocupacao': {
+      const r = calcularResumoEstoqueArmazem(notas)
+      return seriesEstoqueCamara(
+        r,
+        (c) => c.ocupacaoPct,
+        r.total.ocupacaoPct,
+        (v) => `${v.toFixed(1)}%`,
+      )
+    }
+
     case 'entradas-saidas-dia': {
       const dias = diasNoIntervalo(filtros)
       const entradas = new Map<string, number>()
@@ -299,6 +440,7 @@ export function tituloGrafico(id: PainelGraficoId): string {
 }
 
 export function tipoVisualGrafico(id: PainelGraficoId): 'bar' | 'line' | 'donut' | 'grouped-bar' {
+  if (graficoEstoqueAtual(id)) return 'bar'
   if (id === 'movimentos-tipo' || id === 'stage-armazem' || id === 'saidas-motivo') return 'donut'
   if (id === 'movimentos-linha' || id === 'paletes-dia' || id === 'nfs-dia') return 'line'
   if (id === 'entradas-saidas-dia') return 'grouped-bar'
