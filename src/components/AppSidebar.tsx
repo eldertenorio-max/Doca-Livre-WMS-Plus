@@ -1,4 +1,5 @@
 import { CollapsibleSidebarSection, type SidebarSectionId } from './CollapsibleSidebarSection'
+import { CadastroVozPanel } from './CadastroVozPanel'
 import { ConsultaEstoquePanel } from './ConsultaEstoquePanel'
 import { CanceladasPanel } from './CanceladasPanel'
 import { EditarPosicaoPanel } from './EditarPosicaoPanel'
@@ -12,7 +13,7 @@ import { SidebarLayoutControl } from './SidebarLayoutControl'
 import { useSidebarExpand } from '../hooks/useSidebarExpand'
 import type { SidebarMode } from '../lib/sidebarMode'
 import type { Theme } from '../lib/theme'
-import { useState, type ComponentProps } from 'react'
+import { type ComponentProps } from 'react'
 
 type Props = {
   saving: boolean
@@ -21,6 +22,8 @@ type Props = {
   onToggleTheme: () => void
   sidebarMode: SidebarMode
   onSidebarModeChange: (mode: SidebarMode) => void
+  openSection: SidebarSectionId | null
+  onOpenSectionChange: (id: SidebarSectionId | null) => void
   entrada: ComponentProps<typeof EntradaPanel>
   saida: ComponentProps<typeof SaidaPanel>
   editar: ComponentProps<typeof EditarPosicaoPanel>
@@ -29,6 +32,7 @@ type Props = {
   painel: ComponentProps<typeof PainelPanel>
   canceladas: ComponentProps<typeof CanceladasPanel>
   imprimir: ComponentProps<typeof ImprimirPanel>
+  cadastroVoz: ComponentProps<typeof CadastroVozPanel>
   onBeforeLeaveEntrada?: (proceed: () => void) => void
 }
 
@@ -39,6 +43,8 @@ export function AppSidebar({
   onToggleTheme,
   sidebarMode,
   onSidebarModeChange,
+  openSection,
+  onOpenSectionChange,
   entrada,
   saida,
   editar,
@@ -47,15 +53,14 @@ export function AppSidebar({
   painel,
   canceladas,
   imprimir,
+  cadastroVoz,
   onBeforeLeaveEntrada,
 }: Props) {
-  const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
-
   function sectionOpenChange(id: SidebarSectionId, open: boolean) {
     if (open && id === 'painel') {
       onSidebarModeChange('fullscreen')
     }
-    setOpenSection(open ? id : null)
+    onOpenSectionChange(open ? id : null)
   }
 
   const guardOtherSection = (nextOpen: boolean, proceed: () => void) => {
@@ -120,6 +125,16 @@ export function AppSidebar({
         {saving && <p className="saving-hint">Salvando…</p>}
         {persistError && <p className="error">{persistError}</p>}
       </div>
+
+      <CollapsibleSidebarSection
+        id="cadastroVoz"
+        title="Cadastro de voz"
+        open={openSection === 'cadastroVoz'}
+        onOpenChange={(open) => sectionOpenChange('cadastroVoz', open)}
+        onBeforeToggle={guardOtherSection}
+      >
+        <CadastroVozPanel {...cadastroVoz} />
+      </CollapsibleSidebarSection>
 
       <CollapsibleSidebarSection
         id="consulta"

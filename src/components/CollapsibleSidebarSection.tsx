@@ -9,6 +9,7 @@ export type SidebarSectionId =
   | 'painel'
   | 'canceladas'
   | 'imprimir'
+  | 'cadastroVoz'
 
 type Props = {
   id: SidebarSectionId
@@ -224,6 +225,38 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
+
+  if (id === 'cadastroVoz') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+        <rect
+          className="icon-voz-chip"
+          x="4"
+          y="8"
+          width="8"
+          height="10"
+          rx="4"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <path
+          className="icon-voz-wave"
+          d="M14 10c1.5 1 2.5 2.5 2.5 4s-1 3-2.5 4M17 8.5c2.2 1.8 3.5 4.2 3.5 6.5s-1.3 4.7-3.5 6.5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <path
+          className="icon-voz-wave-2"
+          d="M19.5 6c3 2.5 4.5 5.8 4.5 9s-1.5 6.5-4.5 9"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          opacity="0.45"
         />
       </svg>
     )

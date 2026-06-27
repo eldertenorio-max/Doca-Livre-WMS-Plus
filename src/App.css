@@ -2469,6 +2469,201 @@ html.scroll-locked .sidebar.sidebar--wide {
   padding: 8px;
 }
 
+/* Cadastro de voz */
+.cadastro-voz-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.cadastro-voz-intro {
+  margin: 0 0 12px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.cadastro-voz-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cadastro-voz-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.cadastro-voz-status {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.cadastro-voz-status--on {
+  background: color-mix(in srgb, var(--success) 12%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--success) 35%, var(--border));
+  color: var(--success);
+}
+
+.cadastro-voz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+}
+
+.cadastro-voz-field span {
+  color: var(--text-muted);
+}
+
+.cadastro-voz-ok {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.cadastro-voz-subtitle {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+}
+
+.cadastro-voz-comandos-hint {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+}
+
+.cadastro-voz-comandos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cadastro-voz-comandos li {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.cadastro-voz-comandos li strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+
+.cadastro-voz-comandos li span {
+  color: var(--text-muted);
+}
+
+.sidebar-section--cadastroVoz .sidebar-section-icon {
+  color: var(--accent);
+}
+
+/* HUD assistente global */
+.voice-assistant-hud {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 120;
+  max-width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.voice-assistant-hud-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sidebar);
+  backdrop-filter: blur(8px);
+}
+
+.voice-assistant-hud-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.voice-assistant-hud-dot--ouvindo {
+  background: var(--accent);
+  animation: movimentacao-voz-blink 1.2s ease-in-out infinite;
+}
+
+.voice-assistant-hud-dot--armado {
+  background: var(--danger);
+  animation: movimentacao-voz-blink 0.7s ease-in-out infinite;
+}
+
+.voice-assistant-hud-dot--executando {
+  background: var(--success);
+}
+
+.voice-assistant-hud-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-assistant-hud-title {
+  display: block;
+  font-size: 0.84rem;
+  margin-bottom: 2px;
+}
+
+.voice-assistant-hud-live,
+.voice-assistant-hud-feedback,
+.voice-assistant-hud-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.voice-assistant-hud-live {
+  color: var(--danger);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.voice-assistant-hud-feedback {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.voice-assistant-hud-waves {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.voice-assistant-hud-wave {
+  width: 3px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--danger);
+  animation: movimentacao-voz-wave 0.85s ease-in-out infinite;
+}
+
 .sidebar-header .muted,
 .sidebar-header .saving-hint,
 .sidebar-header .error {
