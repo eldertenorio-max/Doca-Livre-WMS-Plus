@@ -1078,6 +1078,105 @@
   color: var(--text);
 }
 
+.nf-detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nf-localizacao-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.nf-localizacao-badge--fisico {
+  background: color-mix(in srgb, #22c55e 20%, transparent);
+  color: #15803d;
+}
+
+.nf-localizacao-badge--stage {
+  background: color-mix(in srgb, #f59e0b 22%, transparent);
+  color: #b45309;
+}
+
+.nf-localizacao-badge--misto {
+  background: color-mix(in srgb, #6366f1 20%, transparent);
+  color: #4338ca;
+}
+
+.endereco-destino-form {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.endereco-destino-title {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.endereco-destino-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.endereco-destino-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.endereco-destino-campo span {
+  color: var(--muted);
+}
+
+.endereco-destino-preview {
+  margin: 8px 0;
+  font-size: 0.85rem;
+}
+
+.endereco-destino-form .btn {
+  margin-top: 8px;
+}
+
+.movimentacao-stage-hint {
+  color: #b45309;
+}
+
+.stage-section--drop-target {
+  outline: 2px solid #f59e0b;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.stage-section--drop-target .stage-area-cell {
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 14%, var(--bg-panel));
+}
+
+.cell--stage-pending {
+  outline: 2px solid #f59e0b;
+  outline-offset: -1px;
+  background: color-mix(in srgb, #f59e0b 28%, var(--bg-panel)) !important;
+}
+
+.cell--ocupado.cell--stage-pending {
+  background: color-mix(in srgb, #f59e0b 38%, #3b82f6) !important;
+}
+
 .nf-itens-campo--destino select {
   min-width: 110px;
 }
@@ -3800,12 +3899,14 @@ html.scroll-locked .sidebar.sidebar--fixed {
   font-size: 0.82rem;
 }
 
-.painel-ativo-head {
+.painel-sidebar-graficos {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.painel-sidebar-graficos .painel-grafico-card {
+  margin: 0;
 }
 
 .painel-ativo-list {

@@ -32,6 +32,17 @@ export type PainelSerie = {
   cor?: string
 }
 
+export const PAINEL_GRAFICOS_FIXOS: PainelGraficoId[] = [
+  'entradas-saidas-dia',
+  'movimentos-tipo',
+  'movimentos-linha',
+  'top-emitentes',
+  'saidas-motivo',
+  'paletes-dia',
+  'nfs-dia',
+  'stage-armazem',
+]
+
 export const PAINEL_GRAFICOS_SUGESTOES: PainelGraficoSugestao[] = [
   {
     id: 'entradas-saidas-dia',

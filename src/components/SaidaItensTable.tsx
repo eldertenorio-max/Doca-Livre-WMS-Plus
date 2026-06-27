@@ -8,6 +8,7 @@ import {
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
 import { unidadeEstoqueItem } from '../lib/nfeUnidades'
+import { labelLocalizacaoItem } from '../lib/localizacaoLabels'
 import type { AddressId, NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -163,7 +164,7 @@ export function SaidaItensTable({
                                       : ''
                               }
                             >
-                              {formatAddressLabel(a)}
+                              {formatAddressLabel(a)} · {labelLocalizacaoItem(item)}
                             </li>
                           ))}
                         </ul>

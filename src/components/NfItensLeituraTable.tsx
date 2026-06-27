@@ -1,6 +1,8 @@
 import { Fragment } from 'react'
 import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../lib/saidaParcial'
 import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
+import { labelLocalizacaoItem, suffixLocalizacaoEndereco } from '../lib/localizacaoLabels'
+import { itemNoStage, STAGE_LABEL } from '../layout/stage'
 import type { NfeItem, NotaFiscal } from '../types'
 import { formatAddressLabel } from '../layout/camaras'
 import {
@@ -155,6 +157,17 @@ export function NfItensLeituraTable({
                     </td>
                   </tr>
                 )}
+                {itemNoStage(item) && (
+                  <tr className="nf-itens-row-addr">
+                    <td colSpan={onSelectItem ? 9 : 8}>
+                      <ul className="addr-mini nf-itens-addr-list">
+                        <li className={isActive ? 'addr-edit-active' : undefined}>
+                          {STAGE_LABEL} · {labelLocalizacaoItem(item)}
+                        </li>
+                      </ul>
+                    </td>
+                  </tr>
+                )}
                 {item.allocatedAddresses.length > 0 && (
                   <tr className="nf-itens-row-addr">
                     <td colSpan={onSelectItem ? 9 : 8}>
@@ -171,6 +184,7 @@ export function NfItensLeituraTable({
                             }
                           >
                             {formatAddressLabel(a)}
+                            {suffixLocalizacaoEndereco(item)}
                           </li>
                         ))}
                       </ul>

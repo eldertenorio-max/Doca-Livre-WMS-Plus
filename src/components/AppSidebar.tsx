@@ -29,7 +29,6 @@ type Props = {
   canceladas: ComponentProps<typeof CanceladasPanel>
   imprimir: ComponentProps<typeof ImprimirPanel>
   onBeforeLeaveEntrada?: (proceed: () => void) => void
-  onOpenSectionChange?: (id: SidebarSectionId | null) => void
 }
 
 export function AppSidebar({
@@ -48,14 +47,11 @@ export function AppSidebar({
   canceladas,
   imprimir,
   onBeforeLeaveEntrada,
-  onOpenSectionChange,
 }: Props) {
   const [openSection, setOpenSection] = useState<SidebarSectionId | null>(null)
 
   function sectionOpenChange(id: SidebarSectionId, open: boolean) {
-    const next = open ? id : null
-    setOpenSection(next)
-    onOpenSectionChange?.(next)
+    setOpenSection(open ? id : null)
   }
 
   const guardOtherSection = (nextOpen: boolean, proceed: () => void) => {

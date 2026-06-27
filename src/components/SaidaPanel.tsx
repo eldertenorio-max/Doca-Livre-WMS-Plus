@@ -9,6 +9,7 @@ import { formatQuantidadeNfe } from '../lib/formatNfeItem'
 import type { SaidaItemDraft } from '../lib/saidaParcial'
 import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
 import { NfResumoGrid } from './NfResumoGrid'
+import { NfLocalizacaoBadge } from './NfLocalizacaoBadge'
 import { SaidaItensTable } from './SaidaItensTable'
 import { SaidaResumoTotal } from './SaidaResumoTotal'
 
@@ -278,7 +279,7 @@ export function SaidaPanel({
           )}
           <div className="nf-detail-head">
             <div>
-              <h3>
+              <h3 className="nf-detail-title-row">
                 {saidaXml ? (
                   <>
                     Saída NF {saidaXml.numero}
@@ -286,9 +287,13 @@ export function SaidaPanel({
                       {' '}
                       · origem NF {nfBusca.numero}
                     </span>
+                    <NfLocalizacaoBadge nf={nfBusca} />
                   </>
                 ) : (
-                  <>NF {nfBusca.numero}</>
+                  <>
+                    NF {nfBusca.numero}
+                    <NfLocalizacaoBadge nf={nfBusca} />
+                  </>
                 )}
               </h3>
             </div>
@@ -501,7 +506,10 @@ export function SaidaPanel({
       {nfBusca && (!nfTemEstoqueSaida || itensComEstoque.length === 0) && (
         <div className="sidebar-block nf-detail">
           <div className="nf-detail-head">
-            <h3>NF {nfBusca.numero}</h3>
+            <h3 className="nf-detail-title-row">
+              NF {nfBusca.numero}
+              <NfLocalizacaoBadge nf={nfBusca} />
+            </h3>
             <button
               type="button"
               className="btn btn-ghost btn-sm"

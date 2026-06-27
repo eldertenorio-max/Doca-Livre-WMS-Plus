@@ -42,6 +42,9 @@ type Props = {
   notas?: NotaFiscal[]
   stageHighlighted?: boolean
   onStageOpen?: () => void
+  editStagePending?: Set<AddressId>
+  stageDropEnabled?: boolean
+  onStageDrop?: () => void
 }
 
 function rowLabelWidth(cellSize: number, mobile: boolean): number {
@@ -96,22 +99,25 @@ function useCellPaint(
     mode: null,
   })
   const paintedRef = useRef(new Set<AddressId>())
+  const moveCleanupRef = useRef<(() => void) | null>(null)
+
+  const stopPaint = useCallback(() => {
+    paintDragRef.current = { active: false, mode: null }
+    paintedRef.current.clear()
+    moveCleanupRef.current?.()
+    moveCleanupRef.current = null
+  }, [])
 
   useEffect(() => {
     if (!paintMode) return
-
-    function stopPaint() {
-      paintDragRef.current = { active: false, mode: null }
-      paintedRef.current.clear()
-    }
-
     window.addEventListener('pointerup', stopPaint)
     window.addEventListener('pointercancel', stopPaint)
     return () => {
       window.removeEventListener('pointerup', stopPaint)
       window.removeEventListener('pointercancel', stopPaint)
+      stopPaint()
     }
-  }, [paintMode])
+  }, [paintMode, stopPaint])
 
   const applyPaint = useCallback(
     (addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) => {
@@ -120,6 +126,18 @@ function useCellPaint(
       onCellPaint(addressId, mode, canInteract)
     },
     [onCellPaint],
+  )
+
+  const paintCellUnderPointer = useCallback(
+    (clientX: number, clientY: number, mode: 'add' | 'remove') => {
+      const el = document.elementFromPoint(clientX, clientY)?.closest('[data-address-id]')
+      if (!(el instanceof HTMLElement)) return
+      const id = el.dataset.addressId as AddressId | undefined
+      if (!id) return
+      const canInteract = el.dataset.canInteract === 'true'
+      applyPaint(id, mode, canInteract)
+    },
+    [applyPaint],
   )
 
   const handlePointerDown = useCallback(
@@ -136,14 +154,34 @@ function useCellPaint(
       if (!canInteract) return
 
       e.preventDefault()
-      e.currentTarget.setPointerCapture(e.pointerId)
 
       const mode: 'add' | 'remove' = pending ? 'remove' : 'add'
       paintDragRef.current = { active: true, mode }
       paintedRef.current.clear()
       applyPaint(addressId, mode, canInteract)
+
+      function onMove(ev: PointerEvent) {
+        if (!paintDragRef.current.active || !paintDragRef.current.mode) return
+        paintCellUnderPointer(ev.clientX, ev.clientY, paintDragRef.current.mode)
+      }
+
+      function onUp() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        stopPaint()
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+      moveCleanupRef.current = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+      }
     },
-    [applyPaint, onCellClick, paintMode],
+    [applyPaint, onCellClick, paintCellUnderPointer, paintMode, stopPaint],
   )
 
   const handlePointerEnter = useCallback(
@@ -174,6 +212,7 @@ function RuaGrid({
   activeNfId,
   paintMode,
   paint,
+  editStagePending,
 }: {
   camaraId: number
   config: RuaConfig
@@ -245,6 +284,7 @@ function RuaGrid({
                     const addressId = makeAddressId(camaraId, config.rua, nivel, col)
                     const occ = occupancy.get(addressId)
                     const pending = pendingSelection.has(addressId)
+                    const stagePending = editStagePending?.has(addressId) ?? false
                     const clickable = isClickable(kind)
 
                     let className = `cell cell--${kind}`
@@ -256,7 +296,8 @@ function RuaGrid({
                       !!activeNfId &&
                       occ.nfId === activeNfId
                     if (occ) className += ' cell--ocupado'
-                    if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
+                    if (stagePending) className += ' cell--stage-pending'
+                    else if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
                     if (editAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
                     else if (consultaAddresses?.has(addressId) && !pending) className += ' cell--destaque-verde'
@@ -267,8 +308,12 @@ function RuaGrid({
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
                     if (paintMode && (clickable || pending)) className += ' cell--pintavel'
 
-                    const title = cellTooltip(addressId, kind, allocateMode, occ, pending)
-                    const canInteract = !!occ || pending || (allocateMode && clickable)
+                    const title = cellTooltip(addressId, kind, allocateMode, editMode, occ, pending)
+                    const canInteract =
+                      !!occ ||
+                      pending ||
+                      ((allocateMode || !!editMode) && clickable)
+                    if (editMode && (clickable || pending)) className += ' cell--alocavel'
 
                     return (
                       <button
@@ -277,6 +322,9 @@ function RuaGrid({
                         className={className}
                         style={{ width: cellSize, height: cellSize }}
                         disabled={!canInteract}
+                        data-address-id={addressId}
+                        data-can-interact={canInteract ? 'true' : 'false'}
+                        data-pending={pending ? 'true' : 'false'}
                         title={title}
                         aria-label={title}
                         onPointerDown={(e) => paint.handlePointerDown(addressId, canInteract, pending, e)}
@@ -383,16 +431,18 @@ function cellTooltip(
   addressId: AddressId,
   kind: CellKind,
   allocateMode: boolean,
+  editMode?: boolean,
   occ?: AddressOccupancy,
   pending?: boolean,
 ): string {
   const label = formatAddressLabel(addressId)
-  if (pending) return `${label} — Selecionando (clique para remover)`
+  if (pending) return `${label} — Selecionando (clique ou arraste para remover)`
   if (occ) return `${label} — NF ${occ.nfNumero} (confirmado)`
   if (kind === 'porta') return `${label} — Porta`
   if (kind === 'bloqueado') return `${label} — Indisponível`
   if (kind === 'sem-nivel5') return `${label} — Nível 5 inexistente`
-  if (allocateMode) return `${label} — Disponível (clique para selecionar)`
+  if (editMode) return `${label} — Disponível (clique ou arraste para selecionar)`
+  if (allocateMode) return `${label} — Disponível (clique ou arraste para selecionar)`
   return `${label} — Disponível`
 }
 
@@ -473,15 +523,19 @@ export function LayoutPanel(props: Props) {
         {props.notas && props.onStageOpen && (
           <StageSection
             notas={props.notas}
-            highlighted={props.stageHighlighted}
+            highlighted={props.stageHighlighted || props.stageDropEnabled}
+            dropEnabled={props.stageDropEnabled}
             onOpen={props.onStageOpen}
+            onDrop={props.onStageDrop}
           />
         )}
       </div>
 
       {props.editMode && props.activeNfNumero && (
         <p className="layout-hint">
-          Edição: clique ou arraste no painel para marcar ou desmarcar posições — depois salve na barra lateral.
+          {props.stageDropEnabled
+            ? 'Clique na área STAGE abaixo para confirmar a movimentação dos paletes marcados.'
+            : 'Físico → stage: clique nos endereços do item. Stage → físico: use os campos ou clique/arraste no mapa.'}
         </p>
       )}
       {props.editAddresses && props.editAddresses.size > 0 && !props.editMode && (

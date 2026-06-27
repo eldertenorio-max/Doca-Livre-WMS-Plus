@@ -1,43 +1,29 @@
 import { useMemo } from 'react'
 import {
-  PAINEL_GRAFICOS_SUGESTOES,
+  PAINEL_GRAFICOS_FIXOS,
   filtrarMovimentos,
   resumoPeriodo,
   type PainelFiltros,
-  type PainelGraficoId,
 } from '../lib/painelAnalytics'
-import type { MovimentoRegistro } from '../types'
+import type { MovimentoRegistro, NotaFiscal } from '../types'
+import { PainelGraficoCard } from './PainelGraficoCard'
 
 type Props = {
   filtros: PainelFiltros
-  graficosAtivos: PainelGraficoId[]
   movimentos: MovimentoRegistro[]
+  notas: NotaFiscal[]
   onFiltrosChange: (patch: Partial<PainelFiltros>) => void
-  onAdicionarGrafico: (id: PainelGraficoId) => void
-  onRemoverGrafico: (id: PainelGraficoId) => void
-  onLimparGraficos: () => void
 }
 
-export function PainelPanel({
-  filtros,
-  graficosAtivos,
-  movimentos,
-  onFiltrosChange,
-  onAdicionarGrafico,
-  onRemoverGrafico,
-  onLimparGraficos,
-}: Props) {
+export function PainelPanel({ filtros, movimentos, notas, onFiltrosChange }: Props) {
   const filtrados = useMemo(() => filtrarMovimentos(movimentos, filtros), [movimentos, filtros])
   const resumo = resumoPeriodo(filtros, filtrados.length)
-
-  const sugestoesDisponiveis = PAINEL_GRAFICOS_SUGESTOES.filter((g) => !graficosAtivos.includes(g.id))
 
   return (
     <>
       <div className="sidebar-block">
         <p className="muted painel-intro">
-          Defina o período e adicione gráficos ao painel principal. Os dados vêm do histórico de
-          movimentos.
+          Indicadores do histórico de movimentos. Ajuste o período abaixo para refinar os gráficos.
         </p>
 
         <fieldset className="painel-filtros">
@@ -84,66 +70,17 @@ export function PainelPanel({
         <p className="muted painel-resumo">{resumo}</p>
       </div>
 
-      {graficosAtivos.length > 0 && (
-        <div className="sidebar-block">
-          <div className="painel-ativo-head">
-            <h3 className="nf-section-title nf-section-title--sm">No painel ({graficosAtivos.length})</h3>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onLimparGraficos}>
-              Limpar
-            </button>
-          </div>
-          <ul className="painel-ativo-list">
-            {graficosAtivos.map((id) => {
-              const meta = PAINEL_GRAFICOS_SUGESTOES.find((g) => g.id === id)
-              return (
-                <li key={id} className="painel-ativo-item">
-                  <span>{meta?.titulo ?? id}</span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => onRemoverGrafico(id)}
-                    aria-label={`Remover ${meta?.titulo}`}
-                  >
-                    ×
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
-
-      <div className="sidebar-block">
-        <h3 className="nf-section-title nf-section-title--sm">Sugestões de gráficos</h3>
-        {sugestoesDisponiveis.length === 0 ? (
-          <p className="muted">Todos os gráficos sugeridos já estão no painel.</p>
-        ) : (
-          <ul className="painel-sugestoes">
-            {sugestoesDisponiveis.map((g) => (
-              <li key={g.id} className="painel-sugestao-card">
-                <div className="painel-sugestao-body">
-                  <strong>{g.titulo}</strong>
-                  <p className="muted">{g.descricao}</p>
-                  <span className="painel-sugestao-tag">{labelCategoria(g.categoria)}</span>
-                </div>
-                <button
-                  type="button"
-                  className="btn primary btn-sm painel-sugestao-add"
-                  onClick={() => onAdicionarGrafico(g.id)}
-                >
-                  Adicionar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="sidebar-block painel-sidebar-graficos">
+        {PAINEL_GRAFICOS_FIXOS.map((id) => (
+          <PainelGraficoCard
+            key={id}
+            id={id}
+            filtros={filtros}
+            movimentos={movimentos}
+            notas={notas}
+          />
+        ))}
       </div>
     </>
   )
-}
-
-function labelCategoria(c: 'movimentacao' | 'estoque' | 'operacao'): string {
-  if (c === 'movimentacao') return 'Movimentação'
-  if (c === 'estoque') return 'Estoque'
-  return 'Operação'
 }

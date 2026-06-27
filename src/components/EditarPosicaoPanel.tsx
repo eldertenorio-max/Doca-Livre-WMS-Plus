@@ -1,33 +1,42 @@
 import { useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { MOTIVOS_REMOCAO_ESTOQUE } from '../lib/motivoRemocaoEstoque'
-import type { MotivoRemocaoEstoqueId, NotaFiscal } from '../types'
-import { nfTemEnderecos } from '../lib/movimentos'
+import type { AddressId, MotivoRemocaoEstoqueId, NotaFiscal } from '../types'
 import { itemNoStage } from '../layout/stage'
+import { nfTemEstoqueArmazem, nfTemEstoqueStage } from '../lib/stageEstoque'
 import { NfDetalheLeitura } from './NfDetalheLeitura'
-
-export type MovimentacaoModo = 'armazem' | 'stage_armazem'
+import { EnderecoDestinoForm } from './EnderecoDestinoForm'
 
 type Props = {
   nfBusca: NotaFiscal | null
   itemIndex: number | null
   pendingCount: number
-  modoMovimentacao: MovimentacaoModo
+  stagePendingCount: number
+  enderecosOcupados: Set<AddressId>
+  enderecosSelecionados: Set<AddressId>
   onBuscar: (numero: string) => void
   onSelectItem: (index: number) => void
+  onAdicionarEnderecoDestino: (addressId: AddressId) => void
   onSalvar: () => void
   onRemoverDoEstoque: (nfId: string, motivo: MotivoRemocaoEstoqueId) => void
   onCancelarEditar: () => void
   buscaErro: string | null
 }
 
+function itemMovimentavel(item: { localizacao?: string; allocatedAddresses: string[] }): boolean {
+  return itemNoStage(item as Parameters<typeof itemNoStage>[0]) || item.allocatedAddresses.length > 0
+}
+
 export function EditarPosicaoPanel({
   nfBusca,
   itemIndex,
   pendingCount,
-  modoMovimentacao,
+  stagePendingCount,
+  enderecosOcupados,
+  enderecosSelecionados,
   onBuscar,
   onSelectItem,
+  onAdicionarEnderecoDestino,
   onSalvar,
   onRemoverDoEstoque,
   onCancelarEditar,
@@ -69,18 +78,20 @@ export function EditarPosicaoPanel({
   ) : null
 
   const nfTemConteudo =
-    nfBusca &&
-    (modoMovimentacao === 'stage_armazem'
-      ? nfBusca.items.some(itemNoStage)
-      : nfTemEnderecos(nfBusca))
+    nfBusca && (nfTemEstoqueArmazem(nfBusca) || nfTemEstoqueStage(nfBusca))
+
+  const itemAtivo =
+    nfBusca && itemIndex != null
+      ? nfBusca.items.find((it) => it.index === itemIndex) ?? null
+      : null
+  const itemStage = itemAtivo != null && itemNoStage(itemAtivo)
 
   return (
     <>
       <div className="sidebar-block">
         <p className="muted">
-          {modoMovimentacao === 'stage_armazem'
-            ? 'Busque a NF e escolha um item do stage para endereçar no armazém.'
-            : 'Busque a NF e escolha o item para alterar as posições no painel.'}
+          Busque a NF e movimente livremente entre o armazém físico e o stage — pelos campos de
+          endereço ou clicando no mapa 2D.
         </p>
         <div className="saida-busca">
           <input
@@ -100,46 +111,69 @@ export function EditarPosicaoPanel({
 
       {nfBusca && nfTemConteudo && (
         <div className="sidebar-block nf-detail">
-          {modoMovimentacao === 'stage_armazem' && (
-            <p className="stage-modo-badge">Stage → Armazém</p>
-          )}
           <NfDetalheLeitura
             nf={nfBusca}
             actions={nfActions}
             activeItemIndex={itemIndex}
             onSelectItem={onSelectItem}
-            selectablePredicate={(item) =>
-              modoMovimentacao === 'stage_armazem'
-                ? itemNoStage(item)
-                : item.allocatedAddresses.length > 0
-            }
-            itensIntro={
-              modoMovimentacao === 'stage_armazem'
-                ? 'Selecione um item no stage para endereçar no armazém físico.'
-                : 'Selecione um item com endereço para alterar as posições no painel.'
-            }
+            selectablePredicate={itemMovimentavel}
+            itensIntro="Selecione um item no armazém ou no stage para movimentar."
           />
+
+          {itemAtivo && itemStage && (
+            <EnderecoDestinoForm
+              ocupados={enderecosOcupados}
+              selecionados={enderecosSelecionados}
+              onConfirmar={onAdicionarEnderecoDestino}
+            />
+          )}
 
           {itemIndex != null && (
             <div className="item-actions">
-              <p className="muted">
-                {modoMovimentacao === 'stage_armazem'
-                  ? `${pendingCount} endereço(s) selecionado(s) — marque posições no painel para mover do stage.`
-                  : `${pendingCount} endereço(s) selecionado(s) — clique em uma célula vazia no painel para transferir o palete (a origem é liberada automaticamente).`}
-              </p>
-              <button
-                type="button"
-                className="btn success full"
-                onClick={() => {
-                  onSalvar()
-                  setNumero('')
-                }}
-                disabled={pendingCount === 0}
-              >
-                {modoMovimentacao === 'stage_armazem'
-                  ? 'Mover para o armazém'
-                  : 'Salvar novas posições'}
-              </button>
+              {itemStage ? (
+                <>
+                  <p className="muted">
+                    {pendingCount} endereço(s) selecionado(s) — use os campos acima ou clique/arraste
+                    no painel para marcar posições no armazém físico.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn success full"
+                    onClick={() => {
+                      onSalvar()
+                      setNumero('')
+                    }}
+                    disabled={pendingCount === 0}
+                  >
+                    Mover para o armazém
+                  </button>
+                </>
+              ) : (
+                <>
+                  {stagePendingCount > 0 ? (
+                    <p className="muted movimentacao-stage-hint">
+                      {stagePendingCount} palete(s) marcado(s) para o stage — clique na área{' '}
+                      <strong>STAGE</strong> no mapa para confirmar.
+                    </p>
+                  ) : (
+                    <p className="muted">
+                      Clique nos endereços do item no mapa para enviar ao stage, ou arraste para
+                      reposicionar no armazém. {pendingCount} endereço(s) selecionado(s).
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="btn success full"
+                    onClick={() => {
+                      onSalvar()
+                      setNumero('')
+                    }}
+                    disabled={pendingCount === 0 || stagePendingCount > 0}
+                  >
+                    Salvar novas posições
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -148,7 +182,7 @@ export function EditarPosicaoPanel({
       {nfBusca && !nfTemConteudo && (
         <div className="sidebar-block nf-detail">
           <NfDetalheLeitura nf={nfBusca} actions={nfActions} />
-          <p className="muted sidebar-block">Esta NF não possui endereços alocados.</p>
+          <p className="muted sidebar-block">Esta NF não possui estoque no armazém nem no stage.</p>
         </div>
       )}
 
@@ -212,7 +246,7 @@ export function EditarPosicaoPanel({
               NF <strong>{nfBusca.numero}</strong>
             </p>
             <p className="confirm-warn">
-              {pendingCount > 0
+              {pendingCount > 0 || stagePendingCount > 0
                 ? 'As alterações não salvas serão descartadas. As posições já salvas no estoque não mudam.'
                 : 'A busca e a seleção de item serão descartadas.'}
             </p>

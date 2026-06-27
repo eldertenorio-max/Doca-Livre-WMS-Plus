@@ -289,7 +289,9 @@ export function ConsultaEstoquePanel({
                         <ul className="consulta-enderecos">
                           {item.enderecos.map((addr) => (
                             <li key={addr} className={enderecosGrupo.has(addr) ? 'addr-flagged' : ''}>
-                              {item.isStage ? STAGE_LABEL : formatAddressLabel(addr)}
+                              {item.isStage
+                                ? `${STAGE_LABEL} · Stage`
+                                : `${formatAddressLabel(addr)} · Físico`}
                             </li>
                           ))}
                         </ul>

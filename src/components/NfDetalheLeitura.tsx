@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { NfeItem, NotaFiscal } from '../types'
 import { NfResumoGrid } from './NfResumoGrid'
 import { NfItensLeituraTable } from './NfItensLeituraTable'
+import { NfLocalizacaoBadge } from './NfLocalizacaoBadge'
 
 type Props = {
   nf: NotaFiscal
@@ -40,7 +41,10 @@ export function NfDetalheLeitura({
   return (
     <>
       <div className="nf-detail-head">
-        <h3>NF {nf.numero}</h3>
+        <h3 className="nf-detail-title-row">
+          NF {nf.numero}
+          <NfLocalizacaoBadge nf={nf} />
+        </h3>
         {actions}
       </div>
 

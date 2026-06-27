@@ -7,10 +7,9 @@ import { LayoutPanel } from './components/LayoutPanel'
 import { StageModal } from './components/StageModal'
 import { EntradaDestinoModal } from './components/EntradaDestinoModal'
 import { EscolhaEstoqueModal } from './components/EscolhaEstoqueModal'
-import { PainelDashboard } from './components/PainelDashboard'
 import { PrintLayoutDocument } from './components/PrintLayoutDocument'
 import { CAMARAS } from './layout/camaras'
-import { listarItensStage } from './layout/stage'
+import { listarItensStage, itemNoStage } from './layout/stage'
 import { EntradaPendenteAlert } from './components/EntradaPendenteAlert'
 import { OcupadoAlert } from './components/OcupadoAlert'
 import { PaletesLimiteAlert } from './components/PaletesLimiteAlert'
@@ -75,6 +74,7 @@ import {
   aplicarLocalizacaoItem,
   aplicarLocalizacaoNf,
   aplicarSaidaStage,
+  moverEnderecosParaStage,
   moverItemStageParaArmazem,
   nfTemEstoqueArmazem,
   nfTemEstoqueStage,
@@ -87,10 +87,7 @@ import type { AddressId, AddressOccupancy, JustificativaSaidaId, LocalizacaoEsto
 import {
   defaultPainelFiltros,
   type PainelFiltros,
-  type PainelGraficoId,
 } from './lib/painelAnalytics'
-import type { MovimentacaoModo } from './components/EditarPosicaoPanel'
-import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import type { SaidaModoBusca, SaidaOrigemEstoque } from './components/SaidaPanel'
 import './App.css'
 
@@ -115,7 +112,6 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
 }
 
 const PAINEL_FILTROS_KEY = 'ultrafrio-painel-filtros'
-const PAINEL_GRAFICOS_KEY = 'ultrafrio-painel-graficos'
 
 function loadPainelFiltros(): PainelFiltros {
   try {
@@ -130,24 +126,6 @@ function loadPainelFiltros(): PainelFiltros {
 function savePainelFiltros(filtros: PainelFiltros) {
   try {
     localStorage.setItem(PAINEL_FILTROS_KEY, JSON.stringify(filtros))
-  } catch {
-    /* ignore */
-  }
-}
-
-function loadPainelGraficos(): PainelGraficoId[] {
-  try {
-    const raw = localStorage.getItem(PAINEL_GRAFICOS_KEY)
-    if (raw) return JSON.parse(raw) as PainelGraficoId[]
-  } catch {
-    /* ignore */
-  }
-  return []
-}
-
-function savePainelGraficos(ids: PainelGraficoId[]) {
-  try {
-    localStorage.setItem(PAINEL_GRAFICOS_KEY, JSON.stringify(ids))
   } catch {
     /* ignore */
   }
@@ -226,16 +204,13 @@ export default function App() {
     imported: NotaFiscal[]
     movimentos: MovimentoRegistro[]
   } | null>(null)
-  const [editModoMovimentacao, setEditModoMovimentacao] = useState<MovimentacaoModo>('armazem')
-  const [movimentacaoModoPendente, setMovimentacaoModoPendente] = useState<NotaFiscal | null>(null)
+  const [editStagePending, setEditStagePending] = useState<Set<AddressId>>(new Set())
   const [saidaOrigemEstoque, setSaidaOrigemEstoque] = useState<SaidaOrigemEstoque>('armazem')
   const [saidaDestinoPendente, setSaidaDestinoPendente] = useState<NotaFiscal | null>(null)
   const [saidaStageItemIndex, setSaidaStageItemIndex] = useState<number | null>(null)
   const [saidaStageQtdInput, setSaidaStageQtdInput] = useState('')
   const [saidaStageConfirmados, setSaidaStageConfirmados] = useState<SaidaItemDraft[]>([])
-  const [sidebarSectionAberta, setSidebarSectionAberta] = useState<SidebarSectionId | null>(null)
   const [painelFiltros, setPainelFiltros] = useState<PainelFiltros>(() => loadPainelFiltros())
-  const [painelGraficos, setPainelGraficos] = useState<PainelGraficoId[]>(() => loadPainelGraficos())
 
   useEffect(() => {
     stateRef.current = state
@@ -306,12 +281,14 @@ export default function App() {
   const allocateMode =
     activeEntradaItem != null && activeEntradaItem.localizacao !== 'stage'
 
-  const editMode = nfEditar != null && editItemIndex != null
+  const nfEmEdicao = nfEditar != null
+  const editMode = nfEmEdicao && editItemIndex != null
 
   const displayOccupancy = useMemo(() => {
     const map = new Map(occupancy)
     if (editMode) {
       for (const addr of editPendingSelection) map.delete(addr)
+      for (const addr of editStagePending) map.delete(addr)
       return map
     }
     if (allocateMode && activeNf && state.activeItemIndex != null) {
@@ -322,6 +299,7 @@ export default function App() {
     occupancy,
     editMode,
     editPendingSelection,
+    editStagePending,
     allocateMode,
     activeNf,
     state.activeItemIndex,
@@ -378,8 +356,9 @@ export default function App() {
   const panelAllocateMode =
     allocateMode ||
     editMode ||
+    nfEmEdicao ||
     (saidaModoPalete && (saidaQtdPaletesAlvo != null || saidaSelecaoConcluida))
-  const panelActiveNfNumero = editMode ? nfEditar?.numero ?? null : activeNf?.numero ?? null
+  const panelActiveNfNumero = nfEmEdicao ? nfEditar?.numero ?? null : activeNf?.numero ?? null
 
   const activeAllocateItem = allocateMode ? activeEntradaItem : null
 
@@ -392,7 +371,11 @@ export default function App() {
 
   const panelPaletesTotal = paletesTotal
 
-  const painelAberto = sidebarSectionAberta === 'painel'
+  const editEnderecosOcupados = useMemo(() => {
+    const ocupados = new Set(occupancy.keys())
+    for (const addr of editPendingSelection) ocupados.delete(addr)
+    return ocupados
+  }, [occupancy, editPendingSelection])
 
   const movimentosHistorico = useMemo(
     () => [...state.movimentos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -650,11 +633,12 @@ export default function App() {
       saidaModoPalete &&
       (saidaPaletesSelecionados.has(addressId) ||
         (saidaSelecaoConcluida && saidaPaleteAtivo === addressId))
+    const stagePending = editStagePending.has(addressId)
     const editPending = editPendingSelection.has(addressId)
     const entradaPending = pendingSelection.has(addressId)
     handleCellPaint(
       addressId,
-      saidaPending || editPending || entradaPending ? 'remove' : 'add',
+      saidaPending || editPending || stagePending || entradaPending ? 'remove' : 'add',
       canInteract,
     )
   }
@@ -664,24 +648,81 @@ export default function App() {
 
     const occ = occupancy.get(addressId)
 
+    if (nfEditar && editItemIndex == null) {
+      if (occ?.nfId === nfEditar.id) {
+        handleSelectItemEditar(occ.itemIndex)
+      }
+      return
+    }
+
     if (editMode && nfEditar && editItemIndex != null) {
+      const item = nfEditar.items.find((it) => it.index === editItemIndex)
+      if (!item) return
+
+      if (itemNoStage(item)) {
+        if (occ) {
+          const mesmoItem = occ.nfId === nfEditar.id && occ.itemIndex === editItemIndex
+          if (!mesmoItem) {
+            setOcupadoAlert({ addressId, occ })
+            return
+          }
+        }
+
+        setEditPendingSelection((prev) => {
+          const next = new Set(prev)
+          if (mode === 'add') {
+            if (next.has(addressId)) return prev
+            next.add(addressId)
+          } else {
+            next.delete(addressId)
+          }
+          return next
+        })
+        return
+      }
+
       if (occ) {
         const mesmoItem = occ.nfId === nfEditar.id && occ.itemIndex === editItemIndex
         if (!mesmoItem) {
           setOcupadoAlert({ addressId, occ })
           return
         }
+
+        if (mode === 'add') {
+          setEditStagePending((prev) => {
+            if (prev.has(addressId)) return prev
+            const next = new Set(prev)
+            next.add(addressId)
+            return next
+          })
+          setEditPendingSelection((prev) => {
+            const next = new Set(prev)
+            next.delete(addressId)
+            return next
+          })
+        } else {
+          setEditStagePending((prev) => {
+            const next = new Set(prev)
+            next.delete(addressId)
+            return next
+          })
+          setEditPendingSelection((prev) => {
+            const next = new Set(prev)
+            if (editOriginalAddressesRef.current.has(addressId)) {
+              next.add(addressId)
+            }
+            return next
+          })
+        }
+        return
       }
 
       setEditPendingSelection((prev) => {
         const next = new Set(prev)
         if (mode === 'add') {
           if (next.has(addressId)) return prev
-          // Movimentação: marcar célula vazia transfere um palete da origem
-          if (!occ) {
-            const origem = [...editOriginalAddressesRef.current].find((a) => next.has(a))
-            if (origem) next.delete(origem)
-          }
+          const origem = [...editOriginalAddressesRef.current].find((a) => next.has(a))
+          if (origem) next.delete(origem)
           next.add(addressId)
         } else {
           next.delete(addressId)
@@ -1541,11 +1582,11 @@ export default function App() {
     setBuscaErro(null)
   }
 
-  function iniciarEdicaoNf(nf: NotaFiscal, modo: MovimentacaoModo) {
-    setEditModoMovimentacao(modo)
+  function iniciarEdicaoNf(nf: NotaFiscal) {
     setNfEditarId(nf.id)
     setEditItemIndex(null)
     setEditPendingSelection(new Set())
+    setEditStagePending(new Set())
     editOriginalAddressesRef.current = new Set()
   }
 
@@ -1557,28 +1598,22 @@ export default function App() {
       setNfEditarId(null)
       setEditItemIndex(null)
       setEditPendingSelection(new Set())
+      setEditStagePending(new Set())
       editOriginalAddressesRef.current = new Set()
       return
     }
     const temArmazem = nfTemEstoqueArmazem(nf)
     const temStage = nfTemEstoqueStage(nf)
-    if (temArmazem && temStage) {
-      setMovimentacaoModoPendente(nf)
+    if (!temArmazem && !temStage) {
+      setBuscaEditarErro('NF sem itens no armazém nem no stage.')
+      setNfEditarId(null)
+      setEditItemIndex(null)
+      setEditPendingSelection(new Set())
+      setEditStagePending(new Set())
+      editOriginalAddressesRef.current = new Set()
       return
     }
-    if (temStage && !temArmazem) {
-      iniciarEdicaoNf(nf, 'stage_armazem')
-      return
-    }
-    if (temArmazem) {
-      iniciarEdicaoNf(nf, 'armazem')
-      return
-    }
-    setBuscaEditarErro('NF sem itens no armazém nem no stage.')
-    setNfEditarId(null)
-    setEditItemIndex(null)
-    setEditPendingSelection(new Set())
-    editOriginalAddressesRef.current = new Set()
+    iniciarEdicaoNf(nf)
   }
 
   function handleSelectItemEditar(index: number) {
@@ -1586,8 +1621,9 @@ export default function App() {
     const item = nfEditar.items.find((it) => it.index === index)
     if (!item) return
 
-    if (editModoMovimentacao === 'stage_armazem') {
-      if (item.localizacao !== 'stage') return
+    setEditStagePending(new Set())
+
+    if (itemNoStage(item)) {
       editOriginalAddressesRef.current = new Set()
       setEditItemIndex(index)
       setEditPendingSelection(new Set())
@@ -1603,6 +1639,50 @@ export default function App() {
     setDetailAddress(null)
   }
 
+  function handleAdicionarEnderecoDestino(addressId: AddressId) {
+    if (!nfEditar || editItemIndex == null) return
+    setEditPendingSelection((prev) => {
+      const next = new Set(prev)
+      next.add(addressId)
+      return next
+    })
+  }
+
+  async function handleAplicarStageDrop() {
+    if (!nfEditar || editItemIndex == null || editStagePending.size === 0) return
+    const currentItemIndex = editItemIndex
+    const addresses = [...editStagePending]
+    const notas = state.notas.map((nf) =>
+      nf.id === nfEditar.id ? moverEnderecosParaStage(nf, currentItemIndex, addresses) : nf,
+    )
+    const updatedNf = notas.find((n) => n.id === nfEditar.id)!
+    const nextState = {
+      ...state,
+      notas,
+      movimentos: [
+        criarMovimentoMovimentacao(updatedNf, currentItemIndex, addresses),
+        ...state.movimentos,
+      ],
+    }
+    setState(nextState)
+    await saveNow(nextState)
+    setEditStagePending(new Set())
+
+    const updatedItem = updatedNf.items.find((it) => it.index === currentItemIndex)
+    if (
+      updatedItem &&
+      !itemNoStage(updatedItem) &&
+      updatedItem.allocatedAddresses.length > 0
+    ) {
+      editOriginalAddressesRef.current = new Set(updatedItem.allocatedAddresses)
+      setEditPendingSelection(new Set(updatedItem.allocatedAddresses))
+    } else {
+      setEditItemIndex(null)
+      setEditPendingSelection(new Set())
+      editOriginalAddressesRef.current = new Set()
+    }
+  }
+
   async function handleSalvarEditar() {
     if (!nfEditar || editItemIndex == null || editPendingSelection.size === 0) return
     const addresses = [...editPendingSelection]
@@ -1610,7 +1690,7 @@ export default function App() {
     const item = nfEditar.items.find((it) => it.index === currentItemIndex)
     if (!item) return
 
-    if (editModoMovimentacao === 'stage_armazem' && item.localizacao === 'stage') {
+    if (itemNoStage(item)) {
       const notas = state.notas.map((nf) =>
         nf.id === nfEditar.id
           ? moverItemStageParaArmazem(nf, currentItemIndex, addresses)
@@ -1672,8 +1752,8 @@ export default function App() {
     setNfEditarId(null)
     setEditItemIndex(null)
     setEditPendingSelection(new Set())
+    setEditStagePending(new Set())
     editOriginalAddressesRef.current = new Set()
-    setEditModoMovimentacao('armazem')
     setBuscaEditarErro(null)
   }
 
@@ -1905,28 +1985,6 @@ export default function App() {
     })
   }
 
-  function handleAdicionarGraficoPainel(id: PainelGraficoId) {
-    setPainelGraficos((prev) => {
-      if (prev.includes(id)) return prev
-      const next = [...prev, id]
-      savePainelGraficos(next)
-      return next
-    })
-  }
-
-  function handleRemoverGraficoPainel(id: PainelGraficoId) {
-    setPainelGraficos((prev) => {
-      const next = prev.filter((g) => g !== id)
-      savePainelGraficos(next)
-      return next
-    })
-  }
-
-  function handleLimparGraficosPainel() {
-    setPainelGraficos([])
-    savePainelGraficos([])
-  }
-
   const stageItens = useMemo(() => listarItensStage(state.notas), [state.notas])
 
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
@@ -1946,7 +2004,6 @@ export default function App() {
         sidebarFixed={sidebarFixed}
         onToggleSidebarMode={toggleSidebarMode}
         onBeforeLeaveEntrada={trySairEntradaIncompleta}
-        onOpenSectionChange={setSidebarSectionAberta}
         entrada={{
           notas: state.notas,
           activeNfId: state.activeNfId,
@@ -2026,12 +2083,9 @@ export default function App() {
         }}
         painel={{
           filtros: painelFiltros,
-          graficosAtivos: painelGraficos,
           movimentos: movimentosHistorico,
+          notas: state.notas,
           onFiltrosChange: handlePainelFiltrosChange,
-          onAdicionarGrafico: handleAdicionarGraficoPainel,
-          onRemoverGrafico: handleRemoverGraficoPainel,
-          onLimparGraficos: handleLimparGraficosPainel,
         }}
         canceladas={{
           canceladas: canceladasAtivas,
@@ -2048,9 +2102,12 @@ export default function App() {
           nfBusca: nfEditar,
           itemIndex: editItemIndex,
           pendingCount: editPendingSelection.size,
-          modoMovimentacao: editModoMovimentacao,
+          stagePendingCount: editStagePending.size,
+          enderecosOcupados: editEnderecosOcupados,
+          enderecosSelecionados: editPendingSelection,
           onBuscar: handleBuscarEditar,
           onSelectItem: handleSelectItemEditar,
+          onAdicionarEnderecoDestino: handleAdicionarEnderecoDestino,
           onSalvar: handleSalvarEditar,
           onRemoverDoEstoque: handleRemoverDoEstoque,
           onCancelarEditar: handleCancelarEditar,
@@ -2092,14 +2149,6 @@ export default function App() {
       />
 
       <main className="main-panel">
-        {painelAberto ? (
-          <PainelDashboard
-            filtros={painelFiltros}
-            graficosAtivos={painelGraficos}
-            movimentos={movimentosHistorico}
-            notas={state.notas}
-          />
-        ) : (
         <LayoutPanel
           occupancy={displayOccupancy}
           pendingSelection={panelPendingSelection}
@@ -2123,6 +2172,7 @@ export default function App() {
           saidaFlaggedAddresses={editMode ? undefined : saidaFlaggedAddresses}
           paintMode={
             editMode ||
+            nfEmEdicao ||
             allocateMode ||
             (saidaModoPalete && (saidaQtdPaletesAlvo != null || saidaSelecaoConcluida))
           }
@@ -2131,8 +2181,10 @@ export default function App() {
           paletesRestantes={paletesRestantesCount}
           paletesTotal={panelPaletesTotal}
           saidaMode={saidaModoPalete}
+          editStagePending={editStagePending}
+          stageDropEnabled={editStagePending.size > 0}
+          onStageDrop={() => void handleAplicarStageDrop()}
         />
-        )}
       </main>
 
       <PrintLayoutDocument camaraIds={printCamaras} />
@@ -2187,31 +2239,6 @@ export default function App() {
           nfNumeros={entradaDestinoPendente.imported.map((nf) => nf.numero)}
           onConfirm={(destino) => void handleEntradaDestinoConfirm(destino)}
           onCancel={handleEntradaDestinoCancel}
-        />
-      )}
-
-      {movimentacaoModoPendente && (
-        <EscolhaEstoqueModal
-          title="Modo de movimentação"
-          pergunta={`A NF ${movimentacaoModoPendente.numero} possui itens no armazém e no stage. O que deseja movimentar?`}
-          opcoes={[
-            {
-              id: 'armazem',
-              label: 'Apenas armazém físico',
-              descricao: 'Reposicionar itens já endereçados',
-            },
-            {
-              id: 'stage',
-              label: 'Stage → armazém',
-              descricao: 'Endereçar itens que estão no stage',
-            },
-          ]}
-          onConfirm={(opcao) => {
-            const nf = movimentacaoModoPendente
-            setMovimentacaoModoPendente(null)
-            iniciarEdicaoNf(nf, opcao === 'stage' ? 'stage_armazem' : 'armazem')
-          }}
-          onCancel={() => setMovimentacaoModoPendente(null)}
         />
       )}
 

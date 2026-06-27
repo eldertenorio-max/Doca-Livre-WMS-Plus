@@ -35,6 +35,69 @@ export function todosItensEntradaProntos(nf: NotaFiscal): boolean {
   return nf.items.every((it) => itemEnderecamentoCompleto(it))
 }
 
+export function moverEnderecosParaStage(
+  nf: NotaFiscal,
+  itemIndex: number,
+  addressIds: string[],
+): NotaFiscal {
+  const item = nf.items.find((it) => it.index === itemIndex)
+  if (!item || itemNoStage(item) || addressIds.length === 0) return nf
+
+  const removeSet = new Set(addressIds)
+  const remaining = item.allocatedAddresses.filter((a) => !removeSet.has(a))
+  const movedCount = addressIds.length
+  const totalPaletes = item.paletes ?? item.allocatedAddresses.length
+
+  if (remaining.length === 0) {
+    return {
+      ...nf,
+      items: nf.items.map((it) =>
+        it.index === itemIndex
+          ? {
+              ...it,
+              localizacao: 'stage' as const,
+              allocatedAddresses: [],
+              paletes: undefined,
+            }
+          : it,
+      ),
+    }
+  }
+
+  const ratio = totalPaletes > 0 ? movedCount / totalPaletes : 1
+  const qtdItem = quantidadeEstoqueItem(item)
+  const qtdMoved = qtdItem * ratio
+  const qtdRemaining = qtdItem - qtdMoved
+
+  const maxIndex = nf.items.reduce((max, it) => Math.max(max, it.index), -1)
+  const stageItem: NfeItem = patchNfeItemQuantidade(
+    {
+      ...item,
+      index: maxIndex + 1,
+      localizacao: 'stage' as const,
+      allocatedAddresses: [],
+      paletes: undefined,
+    },
+    qtdMoved,
+  )
+
+  const updatedItem: NfeItem = patchNfeItemQuantidade(
+    {
+      ...item,
+      allocatedAddresses: remaining,
+      paletes: remaining.length,
+    },
+    qtdRemaining,
+  )
+
+  return {
+    ...nf,
+    items: nf.items
+      .map((it) => (it.index === itemIndex ? updatedItem : it))
+      .concat(stageItem),
+  }
+}
+
 export function moverItemStageParaArmazem(
   nf: NotaFiscal,
   itemIndex: number,
