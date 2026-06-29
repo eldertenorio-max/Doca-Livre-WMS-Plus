@@ -4,10 +4,13 @@ import { MOTIVOS_REMOCAO_ESTOQUE } from '../lib/motivoRemocaoEstoque'
 import { parsePaletesInput } from '../lib/paletes'
 import type { AddressId, MotivoRemocaoEstoqueId, NotaFiscal } from '../types'
 import { itemNoStage } from '../layout/stage'
-import { nfTemEstoqueArmazem, nfTemEstoqueStage } from '../lib/stageEstoque'
+import { nfTemEstoqueArmazem, nfTemEstoqueStage, itensStageDaNf } from '../lib/stageEstoque'
 import { NfDetalheLeitura } from './NfDetalheLeitura'
 import { EnderecoDestinoForm } from './EnderecoDestinoForm'
 import { MovimentacaoVozControle } from './MovimentacaoVozControle'
+import { formatQuantidadeNfe } from '../lib/formatNfeItem'
+
+export type ModoMovimentacao = 'reposicionar' | 'enviar-stage' | 'tirar-stage'
 
 type Props = {
   nfBusca: NotaFiscal | null
@@ -20,7 +23,8 @@ type Props = {
   vozOrigemAddress: AddressId | null
   vozErro: string | null
   marcandoStage: boolean
-  onSetMarcandoStage: (value: boolean) => void
+  modoMovimentacao: ModoMovimentacao
+  onModoMovimentacaoChange: (modo: ModoMovimentacao) => void
   onSelectVozOrigem: (addressId: AddressId, itemIndex: number) => void
   onVozDestino: (transcript: string) => boolean
   onVozErro: (message: string) => void
@@ -58,7 +62,8 @@ export function EditarPosicaoPanel({
   vozOrigemAddress,
   vozErro,
   marcandoStage,
-  onSetMarcandoStage,
+  modoMovimentacao,
+  onModoMovimentacaoChange,
   onSelectVozOrigem,
   onVozDestino,
   onVozErro,
@@ -172,6 +177,9 @@ export function EditarPosicaoPanel({
       ? nfBusca.items.find((it) => it.index === itemIndex) ?? null
       : null
   const itemStage = itemAtivo != null && itemNoStage(itemAtivo)
+  const itensStage = nfBusca ? itensStageDaNf(nfBusca) : []
+  const temItensStage = itensStage.length > 0
+  const tirandoDoStage = modoMovimentacao === 'tirar-stage'
   const restantesDistribuir = Math.max(0, moveOrigensCount - moveDestinosCount)
   const distribuicaoCompleta =
     moveOrigensCount > 0 && moveOrigensCount === moveDestinosCount
@@ -215,11 +223,14 @@ export function EditarPosicaoPanel({
           />
 
           {itemAtivo && itemStage && (
-            <EnderecoDestinoForm
-              ocupados={enderecosOcupados}
-              selecionados={enderecosSelecionados}
-              onConfirmar={onAdicionarEnderecoDestino}
-            />
+            <>
+              <p className="stage-modo-badge">Tirar do STAGE → estoque físico</p>
+              <EnderecoDestinoForm
+                ocupados={enderecosOcupados}
+                selecionados={enderecosSelecionados}
+                onConfirmar={onAdicionarEnderecoDestino}
+              />
+            </>
           )}
 
           {itemIndex != null && (
@@ -266,28 +277,58 @@ export function EditarPosicaoPanel({
                     }}
                     disabled={pendingCount === 0 || salvando}
                   >
-                    {salvando ? 'Salvando…' : 'Mover para o armazém'}
+                    {salvando ? 'Salvando…' : 'Mover para estoque físico'}
                   </button>
                 </>
               ) : (
                 <>
-                  <div className="movimentacao-modo-toggle">
+                  <div className="movimentacao-modo-toggle movimentacao-modo-toggle--3">
                     <button
                       type="button"
-                      className={`btn btn-sm ${!marcandoStage ? 'primary' : ''}`}
-                      onClick={() => onSetMarcandoStage(false)}
+                      className={`btn btn-sm ${modoMovimentacao === 'reposicionar' ? 'primary' : ''}`}
+                      onClick={() => onModoMovimentacaoChange('reposicionar')}
                     >
                       Reposicionar
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm ${marcandoStage ? 'primary' : ''}`}
-                      onClick={() => onSetMarcandoStage(true)}
+                      className={`btn btn-sm ${modoMovimentacao === 'enviar-stage' ? 'primary' : ''}`}
+                      onClick={() => onModoMovimentacaoChange('enviar-stage')}
                     >
                       Enviar ao STAGE
                     </button>
+                    {temItensStage && (
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${modoMovimentacao === 'tirar-stage' ? 'primary' : ''}`}
+                        onClick={() => onModoMovimentacaoChange('tirar-stage')}
+                      >
+                        Tirar do STAGE
+                      </button>
+                    )}
                   </div>
-                  {marcandoStage ? (
+                  {tirandoDoStage ? (
+                    <>
+                      <p className="muted movimentacao-stage-hint">
+                        Selecione um item no <strong>stage</strong> na tabela acima ou abaixo:
+                      </p>
+                      <ul className="movimentacao-stage-picker">
+                        {itensStage.map((it) => (
+                          <li key={it.index}>
+                            <button
+                              type="button"
+                              className={`btn btn-sm full${itemIndex === it.index ? ' primary' : ''}`}
+                              onClick={() => onSelectItem(it.index)}
+                            >
+                              {it.codigo} — {it.descricao.slice(0, 48)}
+                              {it.descricao.length > 48 ? '…' : ''} (
+                              {formatQuantidadeNfe(it.quantidade)} {it.unidade})
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : marcandoStage ? (
                     stagePendingCount > 0 ? (
                       <p className="muted movimentacao-stage-hint">
                         {stagePendingCount} palete(s) marcado(s) — clique na área{' '}

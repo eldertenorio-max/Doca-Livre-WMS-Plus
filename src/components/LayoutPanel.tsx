@@ -47,6 +47,7 @@ type Props = {
   editMoveOrigens?: Set<AddressId>
   editMoveDestinos?: Set<AddressId>
   editMarcandoStage?: boolean
+  editItemNoStage?: boolean
   /** Modo de marcar posições novas no armazém (adicionar paletes ao item). */
   editAdicionandoPosicoes?: boolean
   saidaAddresses?: Set<AddressId>
@@ -691,9 +692,11 @@ export function LayoutPanel(props: Props) {
         )}
       </div>
 
-      {props.editItemAtivo && props.activeNfNumero && (
+          {props.editItemAtivo && props.activeNfNumero && (
         <p className="layout-hint">
-          {props.editAdicionandoPosicoes
+          {props.editItemNoStage
+            ? 'Marque posições vazias no mapa ou use R/C/N/P para mover do stage ao estoque físico.'
+            : props.editAdicionandoPosicoes
             ? 'Clique ou arraste nos quadrados brancos para marcar as novas posições do item.'
             : props.stageDropEnabled
               ? 'Clique na área STAGE abaixo para confirmar a movimentação dos paletes marcados.'

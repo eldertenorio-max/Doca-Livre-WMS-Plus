@@ -118,12 +118,14 @@ import {
   aplicarLocalizacaoNf,
   aplicarSaidaStage,
   adicionarPosicoesItemArmazem,
+  itensStageDaNf,
   moverEnderecosParaStage,
   moverItemStageParaArmazem,
   nfTemEstoqueArmazem,
   nfTemEstoqueStage,
   snapshotSaidaStage,
 } from './lib/stageEstoque'
+import type { ModoMovimentacao } from './components/EditarPosicaoPanel'
 import type { EntradaItemCampos } from './lib/entradaCampos'
 import { quantidadeEstoqueItem } from './lib/nfeUnidades'
 import type { SaidaItemDraft } from './lib/saidaParcial'
@@ -261,7 +263,9 @@ export default function App() {
   const [editMoveOrigens, setEditMoveOrigens] = useState<Set<AddressId>>(new Set())
   const [editMoveDestinos, setEditMoveDestinos] = useState<Set<AddressId>>(new Set())
   const [editSalvando, setEditSalvando] = useState(false)
-  const [editMarcandoStage, setEditMarcandoStage] = useState(false)
+  const [editModoMovimentacao, setEditModoMovimentacao] = useState<ModoMovimentacao>('reposicionar')
+  const editMarcandoStage = editModoMovimentacao === 'enviar-stage'
+  const editTirandoDoStage = editModoMovimentacao === 'tirar-stage'
   const [vozOrigemAddress, setVozOrigemAddress] = useState<AddressId | null>(null)
   const [vozErro, setVozErro] = useState<string | null>(null)
   const [buscaEditarErro, setBuscaEditarErro] = useState<string | null>(null)
@@ -500,6 +504,7 @@ export default function App() {
     editMode ||
     (nfEmEdicao &&
       (editMarcandoStage ||
+        editTirandoDoStage ||
         editMoveOrigens.size > 0 ||
         editMoveDestinos.size > 0 ||
         editStagePending.size > 0))
@@ -1946,10 +1951,37 @@ export default function App() {
     editMoveDestinosRef.current = new Set()
     setEditAdicionarPosicoesAlvo(null)
     setEditNovasPosicoes(new Set())
-    setEditMarcandoStage(false)
+    setEditModoMovimentacao('reposicionar')
     setVozOrigemAddress(null)
     setVozErro(null)
     editOriginalAddressesRef.current = new Set()
+  }
+
+  function handleEditModoMovimentacao(modo: ModoMovimentacao) {
+    setEditModoMovimentacao(modo)
+    setEditAdicionarPosicoesAlvo(null)
+    setEditNovasPosicoes(new Set())
+    setEditMoveOrigens(new Set())
+    setEditMoveDestinos(new Set())
+    setEditStagePending(new Set())
+    setVozOrigemAddress(null)
+    setVozErro(null)
+
+    if (modo !== 'tirar-stage' || !nfEditar) return
+
+    const stageItems = itensStageDaNf(nfEditar)
+    if (stageItems.length === 1) {
+      handleSelectItemEditar(stageItems[0].index)
+      return
+    }
+
+    const atual =
+      editItemIndex != null ? nfEditar.items.find((it) => it.index === editItemIndex) : null
+    if (atual && !itemNoStage(atual)) {
+      setEditItemIndex(null)
+      setEditPendingSelection(new Set())
+      editOriginalAddressesRef.current = new Set()
+    }
   }
 
   function iniciarEdicaoNf(nf: NotaFiscal) {
@@ -1991,15 +2023,15 @@ export default function App() {
       editOriginalAddressesRef.current = new Set()
       setEditItemIndex(index)
       setEditPendingSelection(new Set())
-    setEditMoveOrigens(new Set())
-    setEditMoveDestinos(new Set())
-    setVozOrigemAddress(null)
-    setVozErro(null)
-    setEditMarcandoStage(false)
-    setDetailAddress(null)
-    focarMapaDestaque({ type: 'stage' })
-    return
-  }
+      setEditMoveOrigens(new Set())
+      setEditMoveDestinos(new Set())
+      setVozOrigemAddress(null)
+      setVozErro(null)
+      setEditModoMovimentacao('tirar-stage')
+      setDetailAddress(null)
+      focarMapaDestaque({ type: 'stage' })
+      return
+    }
 
   if (item.allocatedAddresses.length === 0) return
   const original = new Set(item.allocatedAddresses)
@@ -2010,9 +2042,11 @@ export default function App() {
   setEditMoveDestinos(new Set())
   setVozOrigemAddress(null)
   setVozErro(null)
-    setEditMarcandoStage(false)
-    setDetailAddress(null)
-    focarMapaDestaque(primeiroEnderecoIds(item.allocatedAddresses))
+  if (editModoMovimentacao !== 'enviar-stage') {
+    setEditModoMovimentacao('reposicionar')
+  }
+  setDetailAddress(null)
+  focarMapaDestaque(primeiroEnderecoIds(item.allocatedAddresses))
   }
 
   function handleSelectVozOrigem(addressId: AddressId, index: number) {
@@ -2124,7 +2158,7 @@ export default function App() {
     setState(nextState)
     await saveNow(nextState)
     setEditStagePending(new Set())
-    setEditMarcandoStage(false)
+    setEditModoMovimentacao('reposicionar')
 
     const updatedItem = updatedNf.items.find((it) => it.index === currentItemIndex)
     if (
@@ -2255,7 +2289,7 @@ export default function App() {
     if (!item || itemNoStage(item) || item.allocatedAddresses.length === 0) return
 
     setEditItemIndex(itemIndex)
-    setEditMarcandoStage(false)
+    setEditModoMovimentacao('reposicionar')
     setEditMoveOrigens(new Set())
     setEditMoveDestinos(new Set())
     setEditPendingSelection(new Set())
@@ -2939,16 +2973,8 @@ export default function App() {
           moveDestinosCount: editMoveDestinos.size,
           salvando: editSalvando,
           marcandoStage: editMarcandoStage,
-          onSetMarcandoStage: (value) => {
-            setEditMarcandoStage(value)
-            setEditAdicionarPosicoesAlvo(null)
-            setEditNovasPosicoes(new Set())
-            setEditMoveOrigens(new Set())
-            setEditMoveDestinos(new Set())
-            setEditStagePending(new Set())
-            setVozOrigemAddress(null)
-            setVozErro(null)
-          },
+          modoMovimentacao: editModoMovimentacao,
+          onModoMovimentacaoChange: handleEditModoMovimentacao,
           vozOrigemAddress,
           vozErro,
           onSelectVozOrigem: handleSelectVozOrigem,
@@ -3036,6 +3062,11 @@ export default function App() {
           editMoveOrigens={nfEditar ? editMoveOrigens : undefined}
           editMoveDestinos={nfEditar ? editMoveDestinos : undefined}
           editMarcandoStage={nfEditar ? editMarcandoStage : false}
+          editItemNoStage={(() => {
+            if (nfEditar == null || editItemIndex == null) return false
+            const it = nfEditar.items.find((i) => i.index === editItemIndex)
+            return it != null && itemNoStage(it)
+          })()}
           editAdicionandoPosicoes={editAdicionarPosicoesAlvo != null}
           editAddresses={editMapAddresses}
           consultaAddresses={consultaAddresses.size > 0 ? consultaAddresses : undefined}
