@@ -21,7 +21,7 @@ type Props = {
   contaUsuarios: ContaUsuario[]
   contaUsuarioAtivoId: string
   onSelectContaUsuario: (id: string) => void
-  onOpenContaSection: (section: SidebarSectionId) => void
+  onOpenContaSection: (section: SidebarSectionId, focus?: 'conta' | 'comandos') => void
 }
 
 function formatClock(now: Date): { time: string; date: string } {
@@ -84,12 +84,12 @@ export function AppTopBar({
 
   function handleConfigConta() {
     closeAccountMenu()
-    onOpenContaSection('cadastroVoz')
+    onOpenContaSection('cadastroVoz', 'conta')
   }
 
   function handleComandoVoz() {
     closeAccountMenu()
-    onOpenContaSection('cadastroVoz')
+    onOpenContaSection('cadastroVoz', 'comandos')
   }
 
   function handleSelectUsuario(id: string) {

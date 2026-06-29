@@ -41,6 +41,7 @@ export function CollapsibleSidebarSection({
 
   return (
     <section
+      id={id}
       className={`sidebar-section ${open ? 'sidebar-section--open' : ''} sidebar-section--${id}`}
     >
       <button

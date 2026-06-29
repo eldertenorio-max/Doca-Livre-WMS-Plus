@@ -2877,13 +2877,18 @@ export default function App() {
   }, [])
 
   const handleOpenContaSection = useCallback(
-    (section: SidebarSectionId) => {
+    (section: SidebarSectionId, focus?: 'conta' | 'comandos') => {
+      setSidebarMode('open')
       handleOpenSection(section)
-      if (sidebarMode === 'fullscreen') {
-        setSidebarMode('open')
-      }
+      window.setTimeout(() => {
+        const selector =
+          focus === 'conta'
+            ? '.sidebar-section--cadastroVoz .cadastro-voz-individual'
+            : '.sidebar-section--cadastroVoz'
+        document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 280)
     },
-    [handleOpenSection, sidebarMode, setSidebarMode],
+    [handleOpenSection, setSidebarMode],
   )
 
   useEffect(() => {
