@@ -1,7 +1,7 @@
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 type Props = {
-  kind: 'sem_paletes' | 'maximo' | 'incompleto'
+  kind: 'sem_paletes' | 'maximo' | 'incompleto' | 'posicoes_adicionar'
   onClose: () => void
 }
 
@@ -13,13 +13,17 @@ export function PaletesLimiteAlert({ kind, onClose }: Props) {
       ? 'Informe os paletes'
       : kind === 'incompleto'
         ? 'Endereços incompletos'
-        : 'Limite de endereços'
+        : kind === 'posicoes_adicionar'
+          ? 'Posições completas'
+          : 'Limite de endereços'
   const message =
     kind === 'sem_paletes'
       ? 'Informe a quantidade de paletes do item antes de selecionar endereços no painel.'
       : kind === 'incompleto'
         ? 'Selecione todos os endereços correspondentes aos paletes do item antes de confirmar.'
-        : 'Você atingiu o limite máximo de endereços para este item.'
+        : kind === 'posicoes_adicionar'
+          ? 'Você já marcou todas as posições solicitadas. Confirme na barra lateral ou clique em uma posição marcada para desmarcar.'
+          : 'Você atingiu o limite máximo de endereços para este item.'
 
   return (
     <div className="alert-backdrop" onClick={onClose} role="presentation">

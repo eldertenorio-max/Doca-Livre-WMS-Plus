@@ -4,6 +4,7 @@ import type { SidebarMode } from '../lib/sidebarMode'
 type Props = {
   mode: SidebarMode
   onChange: (mode: SidebarMode) => void
+  orientation?: 'vertical' | 'horizontal'
 }
 
 const OPTIONS: { id: SidebarMode; label: string; title: string }[] = [
@@ -12,14 +13,14 @@ const OPTIONS: { id: SidebarMode; label: string; title: string }[] = [
   { id: 'fullscreen', label: 'Tela cheia', title: 'Menu em tela cheia' },
 ]
 
-export function SidebarLayoutControl({ mode, onChange }: Props) {
+export function SidebarLayoutControl({ mode, onChange, orientation = 'vertical' }: Props) {
   function stopSidebar(e: MouseEvent | PointerEvent) {
     e.stopPropagation()
   }
 
   return (
     <div
-      className="sidebar-layout-control"
+      className={`sidebar-layout-control${orientation === 'horizontal' ? ' sidebar-layout-control--horizontal' : ''}`}
       role="group"
       aria-label="Layout do menu lateral"
       onPointerDown={stopSidebar}

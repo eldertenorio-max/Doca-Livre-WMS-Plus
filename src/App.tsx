@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { AppSidebar } from './components/AppSidebar'
+import { AppTopBar } from './components/AppTopBar'
 import { VoiceAssistantHUD } from './components/VoiceAssistantHUD'
 import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
@@ -115,6 +116,7 @@ import {
 } from './lib/painelAnalytics'
 import type { SaidaModoBusca, SaidaOrigemEstoque } from './components/SaidaPanel'
 import './App.css'
+import './doca-theme.css'
 
 function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy> {
   const map = new Map<AddressId, AddressOccupancy>()
@@ -241,7 +243,7 @@ export default function App() {
     occ: AddressOccupancy
   } | null>(null)
   const [paletesLimiteAlert, setPaletesLimiteAlert] = useState<
-    'sem_paletes' | 'maximo' | 'incompleto' | null
+    'sem_paletes' | 'maximo' | 'incompleto' | 'posicoes_adicionar' | null
   >(null)
   const [entradaPendenteAlert, setEntradaPendenteAlert] = useState<{
     nfNumero: string
@@ -867,7 +869,10 @@ export default function App() {
           const next = new Set(prev)
           if (mode === 'add') {
             if (next.has(addressId)) return prev
-            if (next.size >= editAdicionarPosicoesAlvo) return prev
+            if (next.size >= editAdicionarPosicoesAlvo) {
+              setPaletesLimiteAlert('posicoes_adicionar')
+              return prev
+            }
             next.add(addressId)
           } else {
             next.delete(addressId)
@@ -2628,11 +2633,16 @@ export default function App() {
 
   return (
     <div className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}>
-      <AppSidebar
-        saving={saving}
-        persistError={error}
+      <AppTopBar
+        sidebarMode={sidebarMode}
+        onSidebarModeChange={setSidebarMode}
         theme={theme}
         onToggleTheme={toggleTheme}
+        saving={saving}
+        persistError={error}
+      />
+      <div className="app-workspace">
+      <AppSidebar
         sidebarMode={sidebarMode}
         onSidebarModeChange={setSidebarMode}
         openSection={openSection}
@@ -2823,17 +2833,6 @@ export default function App() {
         }}
       />
 
-      <VoiceAssistantHUD
-        phase={voiceAssistant.phase}
-        liveText={voiceAssistant.liveText}
-        lastHint={voiceAssistant.lastHint}
-        feedback={voiceFeedback}
-        onCancel={() => {
-          voiceAssistant.cancelArmed()
-          setVoiceFeedback(null)
-        }}
-      />
-
       <main className="main-panel">
         {buscaEncontrada && (
           <BuscaEncontradaToast aviso={buscaEncontrada} onClose={() => setBuscaEncontrada(null)} />
@@ -2886,6 +2885,18 @@ export default function App() {
           pulseAddressId={mapPulseAddressId}
         />
       </main>
+      </div>
+
+      <VoiceAssistantHUD
+        phase={voiceAssistant.phase}
+        liveText={voiceAssistant.liveText}
+        lastHint={voiceAssistant.lastHint}
+        feedback={voiceFeedback}
+        onCancel={() => {
+          voiceAssistant.cancelArmed()
+          setVoiceFeedback(null)
+        }}
+      />
 
       <PrintLayoutDocument
         camaraIds={printCamaras}

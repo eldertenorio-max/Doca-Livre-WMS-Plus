@@ -8,18 +8,11 @@ import { HistoricoPanel } from './HistoricoPanel'
 import { ImprimirPanel } from './ImprimirPanel'
 import { PainelPanel } from './PainelPanel'
 import { SaidaPanel } from './SaidaPanel'
-import { ThemeToggle } from './ThemeToggle'
-import { SidebarLayoutControl } from './SidebarLayoutControl'
 import { useSidebarExpand } from '../hooks/useSidebarExpand'
 import type { SidebarMode } from '../lib/sidebarMode'
-import type { Theme } from '../lib/theme'
 import { type ComponentProps } from 'react'
 
 type Props = {
-  saving: boolean
-  persistError: string | null
-  theme: Theme
-  onToggleTheme: () => void
   sidebarMode: SidebarMode
   onSidebarModeChange: (mode: SidebarMode) => void
   openSection: SidebarSectionId | null
@@ -37,10 +30,6 @@ type Props = {
 }
 
 export function AppSidebar({
-  saving,
-  persistError,
-  theme,
-  onToggleTheme,
   sidebarMode,
   onSidebarModeChange,
   openSection,
@@ -103,29 +92,6 @@ export function AppSidebar({
     >
       <div className="sidebar-layout">
       <div className="sidebar-body">
-      <div className="sidebar-block sidebar-header">
-        <div className="sidebar-header-brand">
-          <img
-            src="/logo-ultrafrio-vertical-azul.svg"
-            alt=""
-            aria-hidden
-            className="sidebar-logo sidebar-logo--compact"
-          />
-          <img
-            src="/logo-ultrafrio-horizontal-azul.svg"
-            alt="Ultrafrio"
-            className="sidebar-logo sidebar-logo--full"
-          />
-          <h1 className="app-brand-title">
-            <span className="app-brand-title__main">Stock System</span>
-            <span className="app-brand-title__light">Light</span>
-          </h1>
-        </div>
-        <p className="muted">Ultrafrio · entrada e saída por NF-e</p>
-        {saving && <p className="saving-hint">Salvando…</p>}
-        {persistError && <p className="error">{persistError}</p>}
-      </div>
-
       <CollapsibleSidebarSection
         id="consulta"
         title="Consulta estoque"
@@ -215,15 +181,6 @@ export function AppSidebar({
       >
         <ImprimirPanel {...imprimir} />
       </CollapsibleSidebarSection>
-      </div>
-
-      <div
-        className="sidebar-bottom-bar"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <SidebarLayoutControl mode={sidebarMode} onChange={onSidebarModeChange} />
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
       </div>
     </aside>

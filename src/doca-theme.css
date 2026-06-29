@@ -1,0 +1,346 @@
+/* Identidade visual Ultrafrio — preto #000000 + amarelo #F9DB00 (modelo Doca Livre) */
+
+/* —— Barra superior —— */
+.app-topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+[data-theme='dark'] .app-topbar {
+  background: #111111;
+  border-bottom-color: #2a2a2a;
+}
+
+.app-topbar-menu {
+  color: #000000;
+}
+
+[data-theme='dark'] .app-topbar-menu {
+  color: #ffffff;
+}
+
+.app-topbar-mark {
+  background: var(--brand-yellow);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.app-topbar-mark svg {
+  display: block;
+}
+
+.app-topbar-brand-main {
+  color: #000000;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.app-topbar-brand-sub {
+  color: #000000;
+  letter-spacing: 0.28em;
+  opacity: 0.72;
+}
+
+[data-theme='dark'] .app-topbar-brand-main,
+[data-theme='dark'] .app-topbar-brand-sub {
+  color: #ffffff;
+}
+
+.app-topbar-meta {
+  border-right-color: #e5e7eb;
+}
+
+.app-topbar-meta-time {
+  color: #000000;
+}
+
+[data-theme='dark'] .app-topbar-meta-time {
+  color: #ffffff;
+}
+
+.app-topbar-avatar {
+  border-color: var(--brand-yellow);
+  background: #fff;
+}
+
+/* —— Menu lateral preto —— */
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  color: var(--sidebar-text);
+}
+
+.sidebar h3,
+.sidebar h4 {
+  color: var(--sidebar-text);
+}
+
+.sidebar-section {
+  border-top-color: var(--sidebar-border);
+}
+
+.sidebar-section-trigger {
+  color: var(--sidebar-text);
+  border-radius: 0;
+  border-left: 3px solid transparent;
+}
+
+.sidebar.sidebar--wide .sidebar-section-trigger {
+  padding-left: 12px;
+}
+
+.sidebar-section-trigger:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.sidebar-section--open .sidebar-section-trigger {
+  background: var(--brand-yellow-soft);
+  border-left-color: var(--brand-yellow);
+}
+
+.sidebar-section-icon {
+  background: transparent;
+  border: none;
+  color: var(--sidebar-text-muted);
+}
+
+.sidebar-section--open .sidebar-section-icon,
+.sidebar-section-trigger:hover .sidebar-section-icon {
+  color: var(--brand-yellow);
+}
+
+.sidebar-section-title {
+  color: var(--sidebar-text);
+  font-weight: 600;
+}
+
+.sidebar-section-chevron {
+  color: var(--sidebar-text-muted);
+}
+
+.sidebar-section-chevron--open {
+  color: var(--brand-yellow);
+}
+
+.sidebar:not(.sidebar--wide) .sidebar-section--open .sidebar-section-trigger {
+  background: var(--brand-yellow-soft);
+}
+
+/* Ícones das seções — amarelo quando ativo */
+.sidebar-section--entrada .sidebar-section-icon,
+.sidebar-section--saida .sidebar-section-icon,
+.sidebar-section--editar .sidebar-section-icon,
+.sidebar-section--consulta .sidebar-section-icon,
+.sidebar-section--historico .sidebar-section-icon,
+.sidebar-section--painel .sidebar-section-icon,
+.sidebar-section--canceladas .sidebar-section-icon,
+.sidebar-section--imprimir .sidebar-section-icon,
+.sidebar-section--cadastroVoz .sidebar-section-icon {
+  color: var(--sidebar-text-muted);
+}
+
+.sidebar-section--open .sidebar-section-icon {
+  color: var(--brand-yellow);
+}
+
+/* Painel de conteúdo aberto no menu — cartão branco */
+.sidebar.sidebar--wide .sidebar-section--open .sidebar-section-inner {
+  background: #ffffff;
+  color: #000000;
+  border-radius: 10px;
+  margin: 4px 10px 14px;
+  padding: 14px 14px 16px !important;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.18);
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .muted {
+  color: #5c6670;
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .error {
+  color: var(--danger);
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner h3,
+.sidebar.sidebar--wide .sidebar-section-inner h4 {
+  color: #000000;
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .input-nf,
+.sidebar.sidebar--wide .sidebar-section-inner input,
+.sidebar.sidebar--wide .sidebar-section-inner select,
+.sidebar.sidebar--wide .sidebar-section-inner textarea {
+  background: #ffffff;
+  border-color: #dde1e6;
+  color: #000000;
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .btn {
+  background: #f3f4f6;
+  border-color: #dde1e6;
+  color: #000000;
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .btn-ghost {
+  background: transparent;
+  color: #5c6670;
+}
+
+/* —— Área principal —— */
+.main-panel {
+  background: var(--content-bg);
+  position: relative;
+}
+
+.main-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    url('/logo-ultrafrio-horizontal-azul.svg') center 42% / min(420px, 70%) no-repeat,
+    radial-gradient(circle at center, rgb(249 219 0 / 0.04) 0%, transparent 55%);
+  opacity: 0.07;
+  z-index: 0;
+}
+
+.main-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.layout-legend {
+  background: var(--content-bg);
+  border-bottom-color: #dde1e6;
+}
+
+[data-theme='dark'] .layout-legend {
+  background: var(--bg);
+  border-bottom-color: var(--border);
+}
+
+[data-theme='dark'] .main-panel {
+  background: var(--bg);
+}
+
+[data-theme='dark'] .main-panel::before {
+  opacity: 0.04;
+}
+
+/* —— Botões primários amarelos —— */
+.btn.primary,
+.upload-btn {
+  background: var(--brand-yellow);
+  border-color: var(--brand-yellow);
+  color: var(--brand-black);
+  font-weight: 700;
+}
+
+.btn.primary:hover:not(:disabled),
+.upload-btn:hover {
+  background: var(--brand-yellow-hover);
+  border-color: var(--brand-yellow-hover);
+  filter: none;
+}
+
+.btn.primary:disabled {
+  opacity: 0.5;
+}
+
+.sidebar-layout-btn--active {
+  background: var(--brand-yellow-soft) !important;
+  color: var(--brand-black) !important;
+  border-color: var(--brand-yellow) !important;
+}
+
+[data-theme='dark'] .sidebar-layout-btn--active {
+  color: var(--brand-yellow) !important;
+}
+
+.app-topbar .theme-toggle:hover,
+.sidebar-layout-btn:hover {
+  border-color: var(--brand-yellow);
+}
+
+/* —— Abas e chips ativos —— */
+.consulta-modo-tab.is-active,
+.painel-periodo-btn--active,
+.nf-chip--active,
+.nf-chip--active.nf-chip--em_andamento {
+  background: var(--brand-yellow) !important;
+  border-color: var(--brand-yellow) !important;
+  color: var(--brand-black) !important;
+  box-shadow: none;
+}
+
+.consulta-modo-tab.is-active {
+  font-weight: 700;
+}
+
+.nf-chip--active {
+  outline: 2px solid var(--brand-black);
+  outline-offset: -1px;
+}
+
+/* —— Cards e painéis no conteúdo —— */
+.sidebar.sidebar--wide .sidebar-section-inner .painel-hero,
+.sidebar.sidebar--wide .sidebar-section-inner .painel-kpi,
+.sidebar.sidebar--wide .sidebar-section-inner .painel-grafico-card,
+.sidebar.sidebar--wide .sidebar-section-inner .nf-detail,
+.sidebar.sidebar--wide .sidebar-section-inner .consulta-filtros {
+  border-color: #e5e7eb;
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .painel-periodo-btn--active {
+  color: var(--brand-black);
+}
+
+/* —— Splash —— */
+.intro-splash {
+  background: radial-gradient(ellipse at center, #fffef5 0%, #f9db00 120%, #000000 220%);
+}
+
+.intro-glow {
+  background: radial-gradient(circle, rgb(249 219 0 / 0.35) 0%, transparent 70%);
+}
+
+.intro-progress-bar {
+  background: linear-gradient(90deg, #000000, #f9db00, #000000);
+  background-size: 200% 100%;
+}
+
+.intro-logo {
+  filter: drop-shadow(0 12px 32px rgb(0 0 0 / 0.2));
+}
+
+[data-theme='light'] .intro-splash {
+  background: radial-gradient(ellipse at center, #ffffff 0%, #fff9cc 45%, #eef1f4 100%);
+}
+
+/* —— HUD voz —— */
+.voice-assistant-hud-inner {
+  border-color: rgb(249 219 0 / 0.45);
+}
+
+.voice-assistant-hud-dot--ouvindo {
+  background: var(--brand-yellow);
+  box-shadow: 0 0 8px var(--brand-yellow);
+}
+
+/* —— Toast busca —— */
+.busca-encontrada-toast {
+  border-color: rgb(249 219 0 / 0.5);
+  background: linear-gradient(135deg, rgb(249 219 0 / 0.18), #ffffff);
+}
+
+.busca-encontrada-icon {
+  color: #000000;
+  background: var(--brand-yellow);
+}
+
+/* accent-color em inputs dentro do sidebar claro */
+.sidebar.sidebar--wide .sidebar-section-inner input[type='checkbox'],
+.sidebar.sidebar--wide .sidebar-section-inner input[type='radio'] {
+  accent-color: var(--brand-black);
+}
