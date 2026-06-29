@@ -177,7 +177,7 @@ export function AppSidebar({
 
       <CollapsibleSidebarSection
         id="cadastroVoz"
-        title="Cadastro de voz"
+        title="Comando de voz"
         open={openSection === 'cadastroVoz'}
         onOpenChange={(open) => sectionOpenChange('cadastroVoz', open)}
         onBeforeToggle={guardOtherSection}

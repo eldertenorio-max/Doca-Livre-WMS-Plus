@@ -224,6 +224,16 @@
   border-bottom-color: #dde1e6;
 }
 
+.app-topbar-legend.layout-legend {
+  background: transparent;
+  border-bottom: none;
+  color: #5c6670;
+}
+
+[data-theme='dark'] .app-topbar-legend.layout-legend {
+  color: #b0b0b0;
+}
+
 [data-theme='dark'] .layout-legend {
   background: var(--bg);
   border-bottom-color: var(--border);

@@ -4,6 +4,8 @@ export type VoicePrefs = {
   calibrated: boolean
   /** Só aceita a voz individual cadastrada junto com a frase de ativação. */
   voiceLocked: boolean
+  /** Após "ok estoque", conversa por voz perguntando o que fazer. */
+  interactiveMode: boolean
 }
 
 export const VOICE_PREFS_KEY = 'ultrafrio-voice-prefs'
@@ -15,6 +17,7 @@ export function defaultVoicePrefs(): VoicePrefs {
     wakePhrase: DEFAULT_WAKE_PHRASE,
     calibrated: false,
     voiceLocked: false,
+    interactiveMode: true,
   }
 }
 

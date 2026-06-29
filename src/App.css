@@ -51,6 +51,35 @@
   min-width: 0;
 }
 
+.app-topbar-left {
+  flex: 1;
+}
+
+.app-topbar-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-topbar-legend.layout-legend {
+  margin-bottom: 0;
+  padding: 0;
+  border-bottom: none;
+  position: static;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+  gap: 6px 12px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.app-topbar-legend.layout-legend span {
+  white-space: nowrap;
+}
+
 .app-topbar-right {
   margin-left: auto;
   flex-shrink: 0;
@@ -1942,16 +1971,7 @@
 }
 
 .layout-panel--mobile .layout-legend {
-  flex-wrap: wrap;
-  overflow-x: visible;
-  gap: 6px 10px;
-  padding-bottom: 6px;
-  font-size: 0.68rem;
-  position: static;
-}
-
-.layout-panel--mobile .layout-legend span {
-  flex-shrink: 1;
+  display: none;
 }
 
 .layout-panel--mobile .camara-section {
@@ -2937,7 +2957,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   height: 18px;
 }
 
-/* Cadastro de voz */
+/* Comando de voz */
 .cadastro-voz-title {
   margin: 0 0 8px;
   font-size: 1rem;
@@ -3321,6 +3341,33 @@ html.scroll-locked .sidebar.sidebar--wide {
   border-radius: 2px;
   background: var(--danger);
   animation: movimentacao-voz-wave 0.85s ease-in-out infinite;
+}
+
+.voice-assistant-hud--conversa .voice-assistant-hud-inner {
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+.voice-assistant-hud-chat {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.voice-assistant-hud-chat-line {
+  margin: 0 0 4px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.voice-assistant-hud-chat-line--assistant {
+  color: var(--text);
+}
+
+.voice-assistant-hud-chat-line--user {
+  color: var(--text-muted);
 }
 
 .sidebar-header .muted,
@@ -6747,6 +6794,10 @@ html.scroll-locked .sidebar.sidebar--wide {
 
   .app-topbar-wms {
     font-size: 1.05rem;
+  }
+
+  .app-topbar-legend.layout-legend {
+    display: none;
   }
 
   .app-topbar-meta,

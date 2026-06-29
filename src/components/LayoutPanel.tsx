@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
@@ -549,56 +548,6 @@ function cellTooltip(
   return `${label} — Disponível`
 }
 
-type LegendItem = { swatch: string; label: string; swatchStyle?: CSSProperties }
-
-function buildLegendItems(props: Props): LegendItem[] {
-  const items: LegendItem[] = [
-    { swatch: 'swatch--disp', label: 'Disponível' },
-    { swatch: 'swatch--ocup', label: 'Ocupado' },
-  ]
-
-  const entradaAtiva = props.allocateMode && !props.editMode && !!props.activeNfNumero
-  if (entradaAtiva) {
-    items.push({ swatch: 'swatch--sel', label: 'Selecionando' })
-    items.push({ swatch: 'swatch--confirm', label: 'Confirmado' })
-  }
-
-  const consultaAtiva =
-    props.consultaAddresses != null && props.consultaAddresses.size > 0
-  const movimentacaoAtiva =
-    props.editItemAtivo || (props.editAddresses != null && props.editAddresses.size > 0)
-
-  if (consultaAtiva) {
-    items.push({ swatch: 'swatch--consulta', label: 'Consulta' })
-  }
-  if (movimentacaoAtiva) {
-    items.push({ swatch: 'swatch--destaque', label: 'Movimentação' })
-  }
-
-  if (props.saidaItemDestaqueAddresses != null && props.saidaItemDestaqueAddresses.size > 0) {
-    items.push({ swatch: 'swatch--destaque', label: 'Onde retirar' })
-  }
-  if (props.saidaAddresses != null && props.saidaAddresses.size > 0) {
-    items.push({ swatch: 'swatch--saida', label: 'NF na saída' })
-  }
-  if (props.saidaFlaggedAddresses != null && props.saidaFlaggedAddresses.size > 0) {
-    items.push({ swatch: 'swatch--saida-flag', label: 'Item para retirar' })
-  }
-
-  items.push({
-    swatch: 'swatch--porta',
-    label: 'Porta',
-    swatchStyle: {
-      backgroundImage: `url("${portaCamaraUrl}")`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    },
-  })
-  items.push({ swatch: 'swatch--nv5', label: 'Sem nível 5' })
-
-  return items
-}
-
 function useScrollToMapFocus(
   focusAddressId: AddressId | null | undefined,
   focusStage: boolean | undefined,
@@ -672,15 +621,6 @@ export function LayoutPanel(props: Props) {
                 : 'paletes a endereçar'}
         </div>
       )}
-      <div className="layout-legend" aria-label="Legenda do painel">
-        {buildLegendItems(props).map((item) => (
-          <span key={item.label}>
-            <i className={`swatch ${item.swatch}`} style={item.swatchStyle} aria-hidden />
-            {item.label}
-          </span>
-        ))}
-      </div>
-
       <div className="camaras-stack">
         {CAMARAS.map((cam) => (
           <CamaraSection

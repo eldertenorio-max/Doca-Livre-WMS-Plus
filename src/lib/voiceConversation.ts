@@ -1,0 +1,300 @@
+import { parseVoiceCommand, type VoiceCommand } from './parseVoiceCommand'
+import { normalizeVoiceText } from './voiceNormalize'
+
+export const VOICE_CONVERSATION_GREETING =
+  'Olá! Sou o assistente do estoque. O que você deseja fazer? Posso abrir consulta, entrada, saída, movimentação, relatório, histórico ou buscar uma nota fiscal.'
+
+export type ConversationPending =
+  | { kind: 'buscar_nota' }
+  | { kind: 'consultar'; campo?: 'nf' | 'item' | 'remetente' }
+
+export type ConversationState = {
+  pending: ConversationPending | null
+}
+
+export type ConversationTurnResult = {
+  reply: string
+  state: ConversationState
+  command: VoiceCommand | null
+  endSession: boolean
+}
+
+export function createConversationState(): ConversationState {
+  return { pending: null }
+}
+
+function isExitPhrase(norm: string): boolean {
+  return (
+    /\b(sair|encerrar|cancelar|tchau|adeus|parar|desligar|fechar)\b/.test(norm) &&
+    (/\b(conversa|assistente|voz|estoque)\b/.test(norm) ||
+      /\b(nada mais|obrigad|valeu|pode parar|so isso|só isso)\b/.test(norm) ||
+      norm.length < 24)
+  )
+}
+
+function isHelpPhrase(norm: string): boolean {
+  return (
+    /\b(ajuda|help|o que voce faz|oque voce faz|quais comandos|menu|opcoes|opções)\b/.test(norm)
+  )
+}
+
+function helpReply(): string {
+  return 'Posso abrir consulta, entrada, saída, movimentação, relatório ou histórico. Também busco notas fiscais e consulto itens. Diga o que precisa ou fale sair para encerrar.'
+}
+
+function followUpAfterCommand(label: string): string {
+  return `Pronto! ${label}. Deseja mais alguma coisa?`
+}
+
+function commandLabel(cmd: VoiceCommand): string {
+  switch (cmd.type) {
+    case 'open_section':
+      return `Abri ${cmd.label}`
+    case 'close_section':
+      return cmd.section ? `Fechei ${cmd.label}` : 'Fechei as seções abertas'
+    case 'buscar_nota':
+      return `Buscando a nota ${cmd.numero}`
+    case 'consultar':
+      return 'Consultando o estoque'
+    case 'painel_periodo':
+      return `Painel: ${cmd.label}`
+    case 'confirmar_movimentacao':
+      return 'Movimentação confirmada'
+    case 'sidebar_mode':
+    case 'toggle_theme':
+      return cmd.label
+    case 'endereco':
+      return `Endereço ${cmd.addressId} selecionado`
+    case 'parar':
+      return 'Encerrando'
+    case 'blocked':
+      return cmd.message
+    case 'desconhecido':
+      return `Não entendi "${cmd.raw}"`
+  }
+}
+
+function tryPartialIntent(norm: string): ConversationPending | null {
+  if (/\b(buscar|procurar|achar|localizar)\b/.test(norm) && /\b(nota|nf)\b/.test(norm)) {
+    return { kind: 'buscar_nota' }
+  }
+  if (/\b(consultar|consulta|pesquisar)\b/.test(norm)) {
+    if (/\b(nota|nf)\b/.test(norm)) return { kind: 'consultar', campo: 'nf' }
+    if (/\b(item|produto|codigo|código)\b/.test(norm)) return { kind: 'consultar', campo: 'item' }
+    if (/\b(remetente|emitente|fornecedor)\b/.test(norm)) return { kind: 'consultar', campo: 'remetente' }
+    return { kind: 'consultar' }
+  }
+  return null
+}
+
+function resolvePending(text: string, pending: ConversationPending): ConversationTurnResult {
+  const norm = normalizeVoiceText(text)
+  const state = createConversationState()
+
+  if (pending.kind === 'buscar_nota') {
+    const digits = norm.replace(/\D/g, '')
+    if (digits.length >= 3) {
+      const cmd: VoiceCommand = { type: 'buscar_nota', numero: digits }
+      return {
+        reply: followUpAfterCommand(commandLabel(cmd)),
+        state,
+        command: cmd,
+        endSession: false,
+      }
+    }
+    return {
+      reply: 'Informe o número da nota fiscal, por favor.',
+      state: { pending },
+      command: null,
+      endSession: false,
+    }
+  }
+
+  if (pending.kind === 'consultar') {
+    const cmd = parseVoiceCommand(text)
+    if (cmd && cmd.type === 'consultar') {
+      return {
+        reply: followUpAfterCommand(commandLabel(cmd)),
+        state,
+        command: cmd,
+        endSession: false,
+      }
+    }
+
+    const digits = norm.replace(/\D/g, '')
+    if ((pending.campo === 'nf' || digits.length >= 3) && digits.length >= 3) {
+      const c: VoiceCommand = { type: 'consultar', filtros: { nfNumero: digits } }
+      return {
+        reply: followUpAfterCommand(commandLabel(c)),
+        state,
+        command: c,
+        endSession: false,
+      }
+    }
+
+    if (pending.campo === 'item' || (!pending.campo && norm.length > 2 && !/^\d+$/.test(norm))) {
+      const c: VoiceCommand = { type: 'consultar', filtros: { item: text.trim() } }
+      return {
+        reply: followUpAfterCommand(commandLabel(c)),
+        state,
+        command: c,
+        endSession: false,
+      }
+    }
+
+    if (pending.campo === 'remetente') {
+      const c: VoiceCommand = { type: 'consultar', filtros: { remetente: text.trim() } }
+      return {
+        reply: followUpAfterCommand(commandLabel(c)),
+        state,
+        command: c,
+        endSession: false,
+      }
+    }
+
+    return {
+      reply: 'Diga o número da nota, o código do item ou o nome do remetente.',
+      state: { pending },
+      command: null,
+      endSession: false,
+    }
+  }
+
+  return {
+    reply: helpReply(),
+    state,
+    command: null,
+    endSession: false,
+  }
+}
+
+export function processConversationTurn(
+  text: string,
+  state: ConversationState,
+): ConversationTurnResult {
+  const trimmed = text.trim()
+  const norm = normalizeVoiceText(trimmed)
+
+  if (!trimmed) {
+    return {
+      reply: 'Não ouvi nada. Pode repetir?',
+      state,
+      command: null,
+      endSession: false,
+    }
+  }
+
+  if (isExitPhrase(norm)) {
+    return {
+      reply: 'Até logo! Quando precisar, fale ok estoque.',
+      state: createConversationState(),
+      command: { type: 'parar' },
+      endSession: true,
+    }
+  }
+
+  if (isHelpPhrase(norm)) {
+    return {
+      reply: helpReply(),
+      state: { pending: null },
+      command: null,
+      endSession: false,
+    }
+  }
+
+  if (state.pending) {
+    return resolvePending(trimmed, state.pending)
+  }
+
+  const cmd = parseVoiceCommand(trimmed)
+
+  if (cmd?.type === 'parar') {
+    return {
+      reply: 'Até logo! Quando precisar, fale ok estoque.',
+      state: createConversationState(),
+      command: cmd,
+      endSession: true,
+    }
+  }
+
+  if (cmd && cmd.type !== 'desconhecido' && cmd.type !== 'blocked') {
+    return {
+      reply: followUpAfterCommand(commandLabel(cmd)),
+      state: createConversationState(),
+      command: cmd,
+      endSession: false,
+    }
+  }
+
+  if (cmd?.type === 'blocked') {
+    return {
+      reply: cmd.message,
+      state,
+      command: null,
+      endSession: false,
+    }
+  }
+
+  const partial = tryPartialIntent(norm)
+  if (partial?.kind === 'buscar_nota') {
+    const digits = norm.replace(/\D/g, '')
+    if (digits.length >= 3) {
+      const c: VoiceCommand = { type: 'buscar_nota', numero: digits }
+      return {
+        reply: followUpAfterCommand(commandLabel(c)),
+        state: createConversationState(),
+        command: c,
+        endSession: false,
+      }
+    }
+    return {
+      reply: 'Qual o número da nota fiscal?',
+      state: { pending: partial },
+      command: null,
+      endSession: false,
+    }
+  }
+
+  if (partial?.kind === 'consultar') {
+    if (partial.campo === 'nf') {
+      return {
+        reply: 'Qual o número da nota?',
+        state: { pending: partial },
+        command: null,
+        endSession: false,
+      }
+    }
+    if (partial.campo === 'item') {
+      return {
+        reply: 'Qual o código ou descrição do item?',
+        state: { pending: partial },
+        command: null,
+        endSession: false,
+      }
+    }
+    if (partial.campo === 'remetente') {
+      return {
+        reply: 'Qual o nome do remetente ou emitente?',
+        state: { pending: partial },
+        command: null,
+        endSession: false,
+      }
+    }
+    return {
+      reply: 'O que deseja consultar? Número da nota, item ou remetente?',
+      state: { pending: partial },
+      command: null,
+      endSession: false,
+    }
+  }
+
+  return {
+    reply:
+      cmd?.type === 'desconhecido'
+        ? `Não entendi "${cmd.raw}". ${helpReply()}`
+        : helpReply(),
+    state,
+    command: null,
+    endSession: false,
+  }
+}

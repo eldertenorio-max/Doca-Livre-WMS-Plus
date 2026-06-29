@@ -1,10 +1,15 @@
 import type { VoiceAssistantPhase } from '../hooks/useVoiceAssistant'
 
+type ConversationLine = { role: 'user' | 'assistant'; text: string }
+
 type Props = {
   phase: VoiceAssistantPhase
   liveText: string
   lastHint: string | null
   feedback: string | null
+  conversationLines: ConversationLine[]
+  interactiveMode: boolean
+  wakePhrase: string
   onCancel: () => void
 }
 
@@ -13,9 +18,11 @@ export function VoiceAssistantHUD({
   liveText,
   lastHint,
   feedback,
+  conversationLines,
+  interactiveMode,
+  wakePhrase,
   onCancel,
 }: Props) {
-  // Escuta contínua: mostra o que o microfone capta enquanto aguarda a frase de ativação
   if (phase === 'ouvindo') {
     return (
       <div className="voice-assistant-hud voice-assistant-hud--passive" role="status" aria-live="polite">
@@ -29,11 +36,61 @@ export function VoiceAssistantHUD({
               </p>
             ) : (
               <p className="voice-assistant-hud-hint muted">
-                Fale &quot;ok estoque&quot; + comando na mesma frase, ex.: &quot;ok estoque abrir consulta&quot;.
+                {interactiveMode
+                  ? `Fale "${wakePhrase}" para conversar com o assistente do estoque.`
+                  : `Fale "${wakePhrase}" + comando, ex.: "${wakePhrase} abrir consulta".`}
               </p>
             )}
             {feedback && <p className="voice-assistant-hud-feedback">{feedback}</p>}
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'conversando' || phase === 'executando') {
+    const recent = conversationLines.slice(-6)
+    return (
+      <div className="voice-assistant-hud voice-assistant-hud--conversa" role="status" aria-live="polite">
+        <div className="voice-assistant-hud-inner">
+          <span
+            className={`voice-assistant-hud-dot ${phase === 'executando' ? 'voice-assistant-hud-dot--executando' : 'voice-assistant-hud-dot--armado'}`}
+            aria-hidden
+          />
+          <div className="voice-assistant-hud-body">
+            <strong className="voice-assistant-hud-title">
+              {phase === 'executando' ? 'Processando…' : 'Conversando com o estoque'}
+            </strong>
+            {liveText && phase === 'conversando' && (
+              <p className="voice-assistant-hud-live">
+                Você: <strong>{liveText}</strong>
+              </p>
+            )}
+            {recent.length > 0 && (
+              <ul className="voice-assistant-hud-chat">
+                {recent.map((line, i) => (
+                  <li
+                    key={`${line.role}-${i}-${line.text.slice(0, 24)}`}
+                    className={`voice-assistant-hud-chat-line voice-assistant-hud-chat-line--${line.role}`}
+                  >
+                    {line.role === 'assistant' ? 'Assistente' : 'Você'}: {line.text}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {feedback && <p className="voice-assistant-hud-feedback">{feedback}</p>}
+            {!liveText && !feedback && lastHint && (
+              <p className="voice-assistant-hud-hint muted">{lastHint}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="voice-assistant-hud-cancel"
+            onClick={onCancel}
+            aria-label="Encerrar conversa por voz"
+          >
+            Encerrar
+          </button>
         </div>
       </div>
     )

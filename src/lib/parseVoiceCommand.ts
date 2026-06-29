@@ -160,14 +160,16 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
   },
   {
     section: 'cadastroVoz',
-    label: 'Cadastro de voz',
-    openExample: 'abrir cadastro de voz',
-    closeExample: 'fechar cadastro de voz',
+    label: 'Comando de voz',
+    openExample: 'abrir comando de voz',
+    closeExample: 'fechar comando de voz',
     openPatterns: [
+      /\b(abrir|mostrar|ver|ir para)\s+(o\s+)?comando de voz\b/,
       /\b(abrir|mostrar|ver|ir para)\s+(o\s+)?cadastro de voz\b/,
       /\b(abrir|mostrar)\s+(a\s+)?voz\b/,
     ],
     closePatterns: [
+      /\b(fechar|ocultar|esconder|recolher|sair)\s+(do\s+)?(o\s+)?comando de voz\b/,
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(do\s+)?(o\s+)?cadastro de voz\b/,
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(da\s+)?(a\s+)?voz\b/,
     ],

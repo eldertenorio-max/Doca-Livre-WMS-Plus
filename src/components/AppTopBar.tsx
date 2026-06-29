@@ -3,6 +3,7 @@ import type { SidebarMode } from '../lib/sidebarMode'
 import type { Theme } from '../lib/theme'
 import { SidebarLayoutControl } from './SidebarLayoutControl'
 import { ThemeToggle } from './ThemeToggle'
+import { LayoutLegend, type LayoutLegendProps } from './LayoutLegend'
 import { BRAND_PRODUCT_NAME, LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   onToggleTheme: () => void
   saving: boolean
   persistError: string | null
+  mapLegend: LayoutLegendProps
 }
 
 function formatClock(now: Date): { time: string; date: string } {
@@ -38,6 +40,7 @@ export function AppTopBar({
   onToggleTheme,
   saving,
   persistError,
+  mapLegend,
 }: Props) {
   const [clock, setClock] = useState(() => formatClock(new Date()))
 
@@ -73,9 +76,12 @@ export function AppTopBar({
           <span className="app-topbar-menu-icon" aria-hidden />
         </button>
 
-        <div className="app-topbar-brand">
-          <BrandMark />
-          <strong className="app-topbar-wms">{BRAND_PRODUCT_NAME}</strong>
+        <div className="app-topbar-brand-row">
+          <div className="app-topbar-brand">
+            <BrandMark />
+            <strong className="app-topbar-wms">{BRAND_PRODUCT_NAME}</strong>
+          </div>
+          <LayoutLegend {...mapLegend} className="app-topbar-legend" />
         </div>
       </div>
 

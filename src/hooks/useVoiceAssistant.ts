@@ -41,9 +41,10 @@ type SpeechRecognitionErrorEvent = {
   error: string
 }
 
-export type VoiceAssistantPhase = 'off' | 'ouvindo' | 'armado' | 'executando'
+export type VoiceAssistantPhase = 'off' | 'ouvindo' | 'armado' | 'conversando' | 'executando'
 
 const ARMED_TIMEOUT_MS = 12000
+const CONVERSATION_TIMEOUT_MS = 45000
 const AUDIO_BUFFER_MS = 9000
 const SILENCE_AFTER_SPEECH_MS = 2400
 
@@ -103,7 +104,10 @@ type Options = {
   wakePhrase: string
   voiceProfiles: NamedVoiceProfile[]
   requireVoiceMatch: boolean
+  interactive?: boolean
   onCommandText: (text: string) => void
+  onConversationStart?: () => Promise<void>
+  onConversationUtterance?: (text: string) => Promise<boolean>
   onError?: (message: string) => void
 }
 
@@ -112,7 +116,10 @@ export function useVoiceAssistant({
   wakePhrase,
   voiceProfiles,
   requireVoiceMatch,
+  interactive = true,
   onCommandText,
+  onConversationStart,
+  onConversationUtterance,
   onError,
 }: Options) {
   const [supported, setSupported] = useState(false)
@@ -123,6 +130,7 @@ export function useVoiceAssistant({
   const recRef = useRef<SpeechRecognitionInstance | null>(null)
   const runningRef = useRef(false)
   const armedRef = useRef(false)
+  const conversingRef = useRef(false)
   const armedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -131,7 +139,10 @@ export function useVoiceAssistant({
   const listeningBufferRef = useRef('')
   const sessionAccumRef = useRef('')
   const onCommandTextRef = useRef(onCommandText)
+  const onConversationStartRef = useRef(onConversationStart)
+  const onConversationUtteranceRef = useRef(onConversationUtterance)
   const onErrorRef = useRef(onError)
+  const interactiveRef = useRef(interactive)
   const wakePhraseRef = useRef(wakePhrase)
   const voiceProfilesRef = useRef(voiceProfiles)
   const requireVoiceMatchRef = useRef(requireVoiceMatch)
@@ -149,6 +160,18 @@ export function useVoiceAssistant({
   useEffect(() => {
     onCommandTextRef.current = onCommandText
   }, [onCommandText])
+
+  useEffect(() => {
+    onConversationStartRef.current = onConversationStart
+  }, [onConversationStart])
+
+  useEffect(() => {
+    onConversationUtteranceRef.current = onConversationUtterance
+  }, [onConversationUtterance])
+
+  useEffect(() => {
+    interactiveRef.current = interactive
+  }, [interactive])
 
   useEffect(() => {
     onErrorRef.current = onError
@@ -313,6 +336,95 @@ export function useVoiceAssistant({
     [clearListeningBuffers, clearSilenceTimer],
   )
 
+  const resumeConversationListeningRef = useRef<() => void>(() => {})
+
+  const resetConversationTimer = useCallback(() => {
+    clearArmedTimer()
+    armedTimerRef.current = setTimeout(() => {
+      conversingRef.current = false
+      armedRef.current = false
+      setLastHint('Conversa encerrada por inatividade.')
+      scheduleRecognitionRestartRef.current()
+    }, CONVERSATION_TIMEOUT_MS)
+  }, [clearArmedTimer])
+
+  const endConversation = useCallback(() => {
+    conversingRef.current = false
+    armedRef.current = false
+    clearArmedTimer()
+    clearListeningBuffers()
+    scheduleRecognitionRestartRef.current()
+  }, [clearArmedTimer, clearListeningBuffers])
+
+  const runConversationUtterance = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed || !onConversationUtteranceRef.current) return
+
+      clearSilenceTimer()
+      armedBufferRef.current = ''
+      armedInterimRef.current = ''
+      setPhase('executando')
+      setLastHint('Processando…')
+
+      recRef.current?.abort()
+
+      let continueSession = false
+      try {
+        continueSession = await onConversationUtteranceRef.current(trimmed)
+      } catch {
+        onErrorRef.current?.('Erro ao processar a fala.')
+      }
+
+      if (!runningRef.current) return
+
+      if (!continueSession) {
+        endConversation()
+        return
+      }
+
+      conversingRef.current = true
+      armedRef.current = true
+      setPhase('conversando')
+      setLastHint('Pode falar…')
+      setLiveText('')
+      resetConversationTimer()
+      resumeConversationListeningRef.current()
+    },
+    [clearSilenceTimer, endConversation, resetConversationTimer],
+  )
+
+  const startConversation = useCallback(
+    async (skipGreeting = false) => {
+      conversingRef.current = true
+      armedRef.current = true
+      armedBufferRef.current = ''
+      armedInterimRef.current = ''
+      sessionAccumRef.current = ''
+      listeningBufferRef.current = ''
+      clearSilenceTimer()
+      setPhase('conversando')
+      setLastHint('Iniciando conversa…')
+
+      recRef.current?.abort()
+
+      if (!skipGreeting && onConversationStartRef.current) {
+        try {
+          await onConversationStartRef.current()
+        } catch {
+          onErrorRef.current?.('Erro ao iniciar conversa por voz.')
+        }
+      }
+
+      if (!runningRef.current) return
+
+      setLastHint('Pode falar…')
+      resetConversationTimer()
+      resumeConversationListeningRef.current()
+    },
+    [clearSilenceTimer, resetConversationTimer],
+  )
+
   const arm = useCallback(() => {
     armedRef.current = true
     armedBufferRef.current = ''
@@ -341,8 +453,27 @@ export function useVoiceAssistant({
 
       const remainder = stripWakePhrase(raw, wake)
       if (remainder) {
-        dispatchCommand(remainder)
-        scheduleRecognitionRestartRef.current()
+        if (interactiveRef.current && onConversationUtteranceRef.current) {
+          conversingRef.current = true
+          armedRef.current = true
+          armedBufferRef.current = ''
+          armedInterimRef.current = ''
+          setPhase('conversando')
+          resetConversationTimer()
+          await runConversationUtterance(remainder)
+        } else {
+          dispatchCommand(remainder)
+          scheduleRecognitionRestartRef.current()
+        }
+        sessionAccumRef.current = ''
+        listeningBufferRef.current = ''
+        return true
+      }
+
+      if (interactiveRef.current && onConversationUtteranceRef.current) {
+        await startConversation(false)
+        sessionAccumRef.current = ''
+        listeningBufferRef.current = ''
         return true
       }
 
@@ -351,17 +482,21 @@ export function useVoiceAssistant({
       listeningBufferRef.current = ''
       return true
     },
-    [arm, dispatchCommand, verifyRegisteredVoice],
+    [arm, dispatchCommand, resetConversationTimer, runConversationUtterance, startConversation, verifyRegisteredVoice],
   )
 
   const flushAfterSilence = useCallback(async () => {
     silenceTimerRef.current = null
 
-    if (armedRef.current) {
+    if (armedRef.current || conversingRef.current) {
       const text = `${armedBufferRef.current} ${armedInterimRef.current}`.replace(/\s+/g, ' ').trim()
       if (text) {
-        dispatchCommand(text)
-        scheduleRecognitionRestartRef.current()
+        if (conversingRef.current && interactiveRef.current) {
+          await runConversationUtterance(text)
+        } else {
+          dispatchCommand(text)
+          scheduleRecognitionRestartRef.current()
+        }
       }
       return
     }
@@ -373,7 +508,7 @@ export function useVoiceAssistant({
       sessionAccumRef.current = ''
       listeningBufferRef.current = ''
     }
-  }, [dispatchCommand, processWake])
+  }, [dispatchCommand, processWake, runConversationUtterance])
 
   const scheduleSilenceFlush = useCallback(() => {
     clearSilenceTimer()
@@ -408,14 +543,14 @@ export function useVoiceAssistant({
       rec.onresult = (ev) => {
         const { interim, final, combined } = readIncrementalTranscript(ev)
 
-        if (armedRef.current) {
+        if (armedRef.current || conversingRef.current) {
           if (final) {
             armedBufferRef.current = `${armedBufferRef.current} ${final}`.replace(/\s+/g, ' ').trim()
           }
           armedInterimRef.current = interim
           const preview = `${armedBufferRef.current}${interim ? ` ${interim}` : ''}`.trim()
           setLiveText(preview || combined)
-          setPhase('armado')
+          setPhase(conversingRef.current ? 'conversando' : 'armado')
           if (preview || combined) scheduleSilenceFlush()
           return
         }
@@ -451,6 +586,40 @@ export function useVoiceAssistant({
     [flushAfterSilence, handlePassiveTranscript, scheduleSilenceFlush],
   )
 
+  const resumeConversationListening = useCallback(() => {
+    if (!runningRef.current || pausedForLocalSpeechRef.current) return
+
+    restartingRef.current = true
+    const oldRec = recRef.current
+    recRef.current = null
+    try {
+      oldRec?.abort()
+    } catch {
+      /* ignore */
+    }
+
+    const rec = createRecognitionInstance()
+    if (!rec) {
+      restartingRef.current = false
+      return
+    }
+    recRef.current = rec
+    bindRecognitionHandlers(rec)
+
+    try {
+      rec.start()
+      scheduleVoiceCaptureIfNeeded()
+    } catch {
+      /* onend tenta de novo */
+    } finally {
+      restartingRef.current = false
+    }
+  }, [bindRecognitionHandlers, scheduleVoiceCaptureIfNeeded])
+
+  useEffect(() => {
+    resumeConversationListeningRef.current = resumeConversationListening
+  }, [resumeConversationListening])
+
   const scheduleRecognitionRestart = useCallback(
     (mode: 'soft' | 'hard' = 'hard') => {
       if (!runningRef.current || pausedForLocalSpeechRef.current) return
@@ -469,14 +638,20 @@ export function useVoiceAssistant({
           /* ignore */
         }
 
-        armedRef.current = false
-        clearArmedTimer()
-        clearSilenceTimer()
-        if (mode === 'hard') {
-          clearListeningBuffers()
-          setLastHint(null)
+        if (!conversingRef.current) {
+          armedRef.current = false
+          clearArmedTimer()
+          clearSilenceTimer()
+          if (mode === 'hard') {
+            clearListeningBuffers()
+            setLastHint(null)
+          }
+          setPhase('ouvindo')
+        } else {
+          armedRef.current = true
+          clearSilenceTimer()
+          setPhase('conversando')
         }
-        setPhase('ouvindo')
 
         const rec = createRecognitionInstance()
         if (!rec) return
@@ -507,14 +682,10 @@ export function useVoiceAssistant({
     scheduleRecognitionRestartRef.current = scheduleRecognitionRestart
   }, [scheduleRecognitionRestart])
 
-  const disarm = useCallback(() => {
-    scheduleRecognitionRestart()
-  }, [scheduleRecognitionRestart])
-
   const cancelArmed = useCallback(() => {
-    if (!armedRef.current) return
-    disarm()
-  }, [disarm])
+    if (!armedRef.current && !conversingRef.current) return
+    endConversation()
+  }, [endConversation])
 
   const stopRecognition = useCallback(() => {
     runningRef.current = false
@@ -527,6 +698,7 @@ export function useVoiceAssistant({
     clearArmedTimer()
     clearSilenceTimer()
     armedRef.current = false
+    conversingRef.current = false
     clearListeningBuffers()
     setPhase('off')
     setLastHint(null)

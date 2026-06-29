@@ -79,7 +79,14 @@ import {
   describeVoiceCommand,
   painelFiltrosPorDias,
   parseVoiceCommand,
+  type VoiceCommand,
 } from './lib/parseVoiceCommand'
+import {
+  createConversationState,
+  processConversationTurn,
+  VOICE_CONVERSATION_GREETING,
+} from './lib/voiceConversation'
+import { speakText, stopSpeaking } from './lib/voiceSpeech'
 import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
 import { prepareVoiceCommandText } from './lib/voiceNormalize'
 import { hasRegisteredVoices } from './lib/voiceProfile'
@@ -193,6 +200,10 @@ export default function App() {
     refresh: refreshVoiceRegistry,
   } = useVoiceRegistry()
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null)
+  const [conversationLines, setConversationLines] = useState<
+    { role: 'user' | 'assistant'; text: string }[]
+  >([])
+  const conversationStateRef = useRef(createConversationState())
   const openSectionRef = useRef<SidebarSectionId | null>(null)
   const [introDone, setIntroDone] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
@@ -2500,21 +2511,16 @@ export default function App() {
         return prev
       }
       if (patch.enabled === false) {
+        stopSpeaking()
+        setConversationLines([])
         setVoiceFeedback('Voz desativada.')
       }
       return next
     })
   }, [voiceRegistry])
 
-  const handleVoiceCommandText = useCallback(
-    (text: string) => {
-      const cleaned = prepareVoiceCommandText(text, voicePrefs.wakePhrase)
-      const cmd = parseVoiceCommand(cleaned || text)
-      if (!cmd) {
-        setVoiceFeedback('Comando vazio ou não reconhecido. Tente: "abrir consulta" ou "buscar nota 12345".')
-        return
-      }
-
+  const executeVoiceCommand = useCallback(
+    (cmd: VoiceCommand) => {
       if (cmd.type === 'parar') {
         setVoiceFeedback('Assistente desarmado.')
         return
@@ -2526,7 +2532,9 @@ export default function App() {
       }
 
       const msg = describeVoiceCommand(cmd)
-      setVoiceFeedback(msg)
+      if (cmd.type !== 'desconhecido') {
+        setVoiceFeedback(msg)
+      }
 
       switch (cmd.type) {
         case 'open_section':
@@ -2603,8 +2611,53 @@ export default function App() {
       setSidebarMode,
       setTheme,
       vozOrigemAddress,
-      voicePrefs.wakePhrase,
     ],
+  )
+
+  const handleVoiceCommandText = useCallback(
+    (text: string) => {
+      const cleaned = prepareVoiceCommandText(text, voicePrefs.wakePhrase)
+      const cmd = parseVoiceCommand(cleaned || text)
+      if (!cmd) {
+        setVoiceFeedback('Comando vazio ou não reconhecido. Tente: "abrir consulta" ou "buscar nota 12345".')
+        return
+      }
+      executeVoiceCommand(cmd)
+    },
+    [executeVoiceCommand, voicePrefs.wakePhrase],
+  )
+
+  const handleConversationStart = useCallback(async () => {
+    conversationStateRef.current = createConversationState()
+    setConversationLines([{ role: 'assistant', text: VOICE_CONVERSATION_GREETING }])
+    setVoiceFeedback(VOICE_CONVERSATION_GREETING)
+    await speakText(VOICE_CONVERSATION_GREETING)
+  }, [])
+
+  const handleConversationUtterance = useCallback(
+    async (text: string): Promise<boolean> => {
+      const result = processConversationTurn(text, conversationStateRef.current)
+      conversationStateRef.current = result.state
+
+      setConversationLines((prev) => [
+        ...prev,
+        { role: 'user', text: text.trim() },
+        { role: 'assistant', text: result.reply },
+      ])
+      setVoiceFeedback(result.reply)
+      await speakText(result.reply)
+
+      if (result.command) {
+        executeVoiceCommand(result.command)
+      }
+
+      if (result.endSession) {
+        setConversationLines([])
+      }
+
+      return !result.endSession
+    },
+    [executeVoiceCommand],
   )
 
   const voiceAssistant = useVoiceAssistant({
@@ -2612,7 +2665,10 @@ export default function App() {
     wakePhrase: voicePrefs.wakePhrase,
     voiceProfiles: voiceRegistry.profiles,
     requireVoiceMatch: voicePrefs.voiceLocked,
+    interactive: voicePrefs.interactiveMode,
     onCommandText: handleVoiceCommandText,
+    onConversationStart: handleConversationStart,
+    onConversationUtterance: handleConversationUtterance,
     onError: (message) => setVoiceFeedback(message),
   })
 
@@ -2640,6 +2696,21 @@ export default function App() {
         onToggleTheme={toggleTheme}
         saving={saving}
         persistError={error}
+        mapLegend={{
+          allocateMode: panelAllocateMode,
+          editMode: editMode || (nfEditar != null && !editMarcandoStage),
+          activeNfNumero: panelActiveNfNumero,
+          editItemAtivo: editMode,
+          editAddresses: editMapAddresses,
+          consultaAddresses: consultaAddresses.size > 0 ? consultaAddresses : undefined,
+          saidaAddresses:
+            nfEditar ? undefined : saidaAddresses.size > 0 ? saidaAddresses : undefined,
+          saidaItemDestaqueAddresses:
+            nfEditar || saidaItemDestaqueAddresses.size === 0
+              ? undefined
+              : saidaItemDestaqueAddresses,
+          saidaFlaggedAddresses: editMode ? undefined : saidaFlaggedAddresses,
+        }}
       />
       <div className="app-workspace">
       <AppSidebar
@@ -2895,7 +2966,12 @@ export default function App() {
         liveText={voiceAssistant.liveText}
         lastHint={voiceAssistant.lastHint}
         feedback={voiceFeedback}
+        conversationLines={conversationLines}
+        interactiveMode={voicePrefs.interactiveMode}
+        wakePhrase={voicePrefs.wakePhrase}
         onCancel={() => {
+          stopSpeaking()
+          setConversationLines([])
           voiceAssistant.cancelArmed()
           setVoiceFeedback(null)
         }}

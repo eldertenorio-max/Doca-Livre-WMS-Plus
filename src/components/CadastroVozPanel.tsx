@@ -160,8 +160,9 @@ export function CadastroVozPanel({
       <div className="sidebar-block">
         <h3 className="cadastro-voz-title">Assistente de voz</h3>
         <p className="muted cadastro-voz-intro">
-          Fale <strong>{wake}</strong> e o comando. Você pode usar só a frase de ativação ou também
-          cadastrar vozes individuais para maior segurança.
+          Fale <strong>{wake}</strong> para conversar com o assistente. Ele pergunta o que você
+          precisa e responde por voz. Você também pode cadastrar vozes individuais para maior
+          segurança.
         </p>
 
         {!supported && (
@@ -200,9 +201,9 @@ export function CadastroVozPanel({
 
         {assistantActive && (
           <p className="cadastro-voz-status cadastro-voz-status--on">
-            Microfone aguardando &quot;{wake}&quot; — diga tudo junto, por exemplo: &quot;{wake} abrir
-            consulta&quot; ou &quot;{wake} buscar nota 201077&quot;. Variações como &quot;okay
-            estoque&quot; e &quot;aqui estoque&quot; também funcionam.
+            {prefs.interactiveMode
+              ? `Microfone aguardando "${wake}". Ao falar, o assistente conversa com você e executa as ações no sistema. Diga "sair" para encerrar.`
+              : `Microfone aguardando "${wake}" — diga tudo junto, por exemplo: "${wake} abrir consulta".`}
           </p>
         )}
 
@@ -214,7 +215,9 @@ export function CadastroVozPanel({
           <p className="muted cadastro-voz-status-hint">
             {prefs.voiceLocked && !temVozCadastrada
               ? 'Cadastre uma voz abaixo ou desmarque "Exigir voz cadastrada" para testar só com a frase de ativação.'
-              : `Toque em Ativar voz e fale "${wake}" seguido do comando (pode ser na mesma frase).`}
+              : prefs.interactiveMode
+                ? `Toque em Ativar voz e fale "${wake}" — o assistente conversa com você e pergunta o que deseja fazer.`
+                : `Toque em Ativar voz e fale "${wake}" seguido do comando (pode ser na mesma frase).`}
           </p>
         )}
 
@@ -228,6 +231,16 @@ export function CadastroVozPanel({
             </ul>
           </div>
         )}
+
+        <label className="cadastro-voz-toggle">
+          <input
+            type="checkbox"
+            checked={prefs.interactiveMode}
+            disabled={!supported || assistantActive}
+            onChange={(e) => onPrefsChange({ interactiveMode: e.target.checked })}
+          />
+          <span>Modo conversa interativa (assistente pergunta e responde por voz)</span>
+        </label>
 
         <label className="cadastro-voz-toggle">
           <input
