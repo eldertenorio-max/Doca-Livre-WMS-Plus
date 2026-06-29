@@ -5628,9 +5628,9 @@ html.scroll-locked .sidebar.sidebar--wide {
   padding: 3px 10px;
   border-radius: 999px;
   margin-bottom: 8px;
-  color: var(--accent-hover);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--btn-surface-fg);
+  background: var(--btn-surface-bg);
+  border: 1px solid var(--btn-surface-border);
 }
 
 .painel-hero-text {
@@ -6794,18 +6794,19 @@ html.scroll-locked .sidebar.sidebar--wide {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--btn-surface-border);
   border-radius: 6px;
-  background: var(--bg-elevated);
-  color: var(--accent-hover);
+  background: var(--btn-surface-bg);
+  color: var(--btn-surface-fg);
   font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .hist-detalhes-toggle:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  background: var(--btn-surface-hover-bg);
+  border-color: var(--btn-surface-border);
+  color: var(--btn-surface-fg);
 }
 
 .hist-detalhes-body {
