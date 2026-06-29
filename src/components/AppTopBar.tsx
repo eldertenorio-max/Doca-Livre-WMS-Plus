@@ -4,7 +4,7 @@ import type { Theme } from '../lib/theme'
 import { SidebarLayoutControl } from './SidebarLayoutControl'
 import { ThemeToggle } from './ThemeToggle'
 import { LayoutLegend, type LayoutLegendProps } from './LayoutLegend'
-import { BRAND_PRODUCT_NAME, LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
+import { BRAND_PRODUCT_NAME, BRAND_PRODUCT_VARIANT, LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
 
 type Props = {
   sidebarMode: SidebarMode
@@ -79,13 +79,16 @@ export function AppTopBar({
         <div className="app-topbar-brand-row">
           <div className="app-topbar-brand">
             <BrandMark />
-            <strong className="app-topbar-wms">{BRAND_PRODUCT_NAME}</strong>
+            <strong className="app-topbar-wms">
+              <span className="app-topbar-wms-light">{BRAND_PRODUCT_VARIANT}</span>
+              {BRAND_PRODUCT_NAME}
+            </strong>
           </div>
-          <LayoutLegend {...mapLegend} className="app-topbar-legend" />
         </div>
       </div>
 
       <div className="app-topbar-right">
+        <LayoutLegend {...mapLegend} className="app-topbar-legend" />
         <SidebarLayoutControl
           mode={sidebarMode}
           onChange={onSidebarModeChange}

@@ -59,7 +59,6 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  flex: 1;
   min-width: 0;
 }
 
@@ -69,8 +68,7 @@
   border-bottom: none;
   position: static;
   background: transparent;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
   gap: 6px 12px;
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -131,12 +129,24 @@
 }
 
 .app-topbar-wms {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
   font-size: 1.35rem;
   font-weight: 900;
   letter-spacing: 0.06em;
   color: var(--text);
   white-space: nowrap;
   line-height: 1;
+}
+
+.app-topbar-wms-light {
+  font-size: 0.38em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  opacity: 0.75;
+  transform: translateY(-0.05em);
 }
 
 .app-topbar-mark {
