@@ -79,10 +79,89 @@ export function nfTemHistoricoEnderecos(
   nf: NotaFiscal,
   movimentos: MovimentoRegistro[],
 ): boolean {
+  if (nf.items.length === 0) {
+    return movimentos.some(
+      (m) =>
+        !m.excluido &&
+        m.nfId === nf.id &&
+        (m.tipo === 'entrada' || m.tipo === 'movimentacao') &&
+        m.itens.some((it) => it.addressIds.length > 0),
+    )
+  }
   return nf.items.some((it) => {
     if (itemNoStage(it) || it.allocatedAddresses.length > 0) return false
     return ultimoSnapshotEnderecosItem(movimentos, nf.id, it.index).length > 0
   })
+}
+
+function scoreMovimentoItens(mov: MovimentoRegistro): number {
+  return mov.itens.reduce((s, it) => s + (it.addressIds?.length ?? 0), 0) * 1000 + mov.itens.length
+}
+
+function snapshotParaNfeItem(
+  snap: MovimentoItemSnapshot,
+  movimentos: MovimentoRegistro[],
+  nfId: string,
+): NfeItem {
+  const enderecosHistorico = ultimoSnapshotEnderecosItem(movimentos, nfId, snap.itemIndex)
+  const enderecos =
+    enderecosHistorico.length > 0 ? enderecosHistorico : [...(snap.addressIds ?? [])]
+  return {
+    index: snap.itemIndex,
+    codigo: snap.codigo ?? '',
+    descricao: snap.descricao ?? '',
+    quantidade: snap.quantidade ?? 0,
+    unidade: snap.unidade ?? 'UN',
+    allocatedAddresses: enderecos,
+    ...(enderecos.length > 0 ? { localizacao: 'armazem' as const } : {}),
+    ...(snap.paletes != null
+      ? { paletes: snap.paletes }
+      : enderecos.length > 0
+        ? { paletes: enderecos.length }
+        : {}),
+    ...(snap.up ? { up: snap.up } : {}),
+    ...(snap.lote ? { lote: snap.lote } : {}),
+    ...(snap.dataFabricacao ? { dataFabricacao: snap.dataFabricacao } : {}),
+    ...(snap.dataValidade ? { dataValidade: snap.dataValidade } : {}),
+    ...(snap.pesoBruto != null ? { pesoBruto: snap.pesoBruto } : {}),
+    ...(snap.valorUnitario != null ? { valorUnitario: snap.valorUnitario } : {}),
+    ...(snap.valorTotal != null ? { valorTotal: snap.valorTotal } : {}),
+  }
+}
+
+/**
+ * Reconstrói itens de NF cujo array ficou vazio no banco, usando snapshots do histórico.
+ */
+export function recuperarItensPerdidos(data: PersistedData): PersistedData {
+  let changed = false
+  const notas = data.notas.map((nf) => {
+    if (nf.items.length > 0) return nf
+
+    const candidatos = data.movimentos.filter(
+      (m) =>
+        !m.excluido &&
+        m.nfId === nf.id &&
+        (m.tipo === 'entrada' || m.tipo === 'movimentacao') &&
+        m.itens.some((it) => it.codigo || it.descricao || it.addressIds.length > 0),
+    )
+    if (candidatos.length === 0) return nf
+
+    const mov =
+      candidatos.find((m) => m.tipo === 'entrada' && m.itens.length > 0) ??
+      [...candidatos].sort((a, b) => scoreMovimentoItens(b) - scoreMovimentoItens(a))[0]
+
+    const items = mov.itens.map((snap) => snapshotParaNfeItem(snap, data.movimentos, nf.id))
+    if (items.length === 0) return nf
+
+    changed = true
+    return {
+      ...nf,
+      items,
+      status: nf.status === 'em_andamento' ? nf.status : ('concluida' as const),
+    }
+  })
+
+  return changed ? { ...data, notas } : data
 }
 
 /**

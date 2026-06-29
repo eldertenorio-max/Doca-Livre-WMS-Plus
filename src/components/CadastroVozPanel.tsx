@@ -160,8 +160,8 @@ export function CadastroVozPanel({
       <div className="sidebar-block">
         <h3 className="cadastro-voz-title">Assistente de voz</h3>
         <p className="muted cadastro-voz-intro">
-          Cadastre até <strong>{limitePessoas} pessoas</strong>, depois fale <strong>{wake}</strong>{' '}
-          e o comando. O sistema só responde às vozes cadastradas.
+          Fale <strong>{wake}</strong> e o comando. Você pode usar só a frase de ativação ou também
+          cadastrar vozes individuais para maior segurança.
         </p>
 
         {!supported && (
@@ -200,9 +200,9 @@ export function CadastroVozPanel({
 
         {assistantActive && (
           <p className="cadastro-voz-status cadastro-voz-status--on">
-            Microfone aguardando &quot;{wake}&quot; — diga a frase para abrir o comando de voz.
-            Fale com calma; variações como &quot;okay estoque&quot; ou &quot;oque estoque&quot; também
-            funcionam.
+            Microfone aguardando &quot;{wake}&quot; — diga tudo junto, por exemplo: &quot;{wake} abrir
+            consulta&quot; ou &quot;{wake} buscar nota 201077&quot;. Variações como &quot;okay
+            estoque&quot; e &quot;aqui estoque&quot; também funcionam.
           </p>
         )}
 
@@ -212,9 +212,9 @@ export function CadastroVozPanel({
 
         {!assistantActive && supported && (
           <p className="muted cadastro-voz-status-hint">
-            {temVozCadastrada
-              ? `Toque em Ativar voz e fale "${wake}" com uma das vozes cadastradas.`
-              : 'Cadastre uma voz abaixo antes de ativar.'}
+            {prefs.voiceLocked && !temVozCadastrada
+              ? 'Cadastre uma voz abaixo ou desmarque "Exigir voz cadastrada" para testar só com a frase de ativação.'
+              : `Toque em Ativar voz e fale "${wake}" seguido do comando (pode ser na mesma frase).`}
           </p>
         )}
 
@@ -228,6 +228,16 @@ export function CadastroVozPanel({
             </ul>
           </div>
         )}
+
+        <label className="cadastro-voz-toggle">
+          <input
+            type="checkbox"
+            checked={prefs.voiceLocked}
+            disabled={!supported || assistantActive}
+            onChange={(e) => onPrefsChange({ voiceLocked: e.target.checked })}
+          />
+          <span>Exigir voz cadastrada (só responde a quem gravou as 3 amostras)</span>
+        </label>
 
         <label className="cadastro-voz-field">
           <span>Frase de ativação</span>

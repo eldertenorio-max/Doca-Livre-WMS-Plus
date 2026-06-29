@@ -71,6 +71,7 @@ import {
   parseVoiceCommand,
 } from './lib/parseVoiceCommand'
 import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
+import { prepareVoiceCommandText } from './lib/voiceNormalize'
 import { hasRegisteredVoices } from './lib/voiceProfile'
 import { useVoiceRegistry } from './hooks/useVoiceRegistry'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
@@ -129,9 +130,12 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
 function mensagemNfSemEstoqueVisivel(nf: NotaFiscal, movimentos: MovimentoRegistro[]): string {
   if (nfTemHistoricoEnderecos(nf, movimentos)) {
     return (
-      `NF ${nf.numero} existe no sistema, mas os endereços sumiram do mapa. ` +
+      `NF ${nf.numero} existe no sistema, mas os itens/endereços sumiram do mapa. ` +
       'Recarregue a página (F5) para restaurar do histórico.'
     )
+  }
+  if (nf.items.length === 0) {
+    return `NF ${nf.numero} está cadastrada, mas sem itens no estoque. Verifique o histórico ou suba o XML novamente após corrigir no sistema.`
   }
   return 'NF sem itens no armazém nem no stage.'
 }
@@ -2439,9 +2443,10 @@ export default function App() {
 
   const handleVoiceCommandText = useCallback(
     (text: string) => {
-      const cmd = parseVoiceCommand(text)
+      const cleaned = prepareVoiceCommandText(text, voicePrefs.wakePhrase)
+      const cmd = parseVoiceCommand(cleaned || text)
       if (!cmd) {
-        setVoiceFeedback('Comando vazio ou não reconhecido.')
+        setVoiceFeedback('Comando vazio ou não reconhecido. Tente: "abrir consulta" ou "buscar nota 12345".')
         return
       }
 
@@ -2522,6 +2527,9 @@ export default function App() {
           }
           break
         case 'desconhecido':
+          setVoiceFeedback(
+            `Não entendi "${cmd.raw}". Exemplos: abrir consulta, buscar nota 201077, confirmar movimentação.`,
+          )
           break
       }
     },
@@ -2530,6 +2538,7 @@ export default function App() {
       setSidebarMode,
       setTheme,
       vozOrigemAddress,
+      voicePrefs.wakePhrase,
     ],
   )
 

@@ -5,6 +5,23 @@ import type { SidebarMode } from './sidebarMode'
 import { normalizeVoiceText } from './voiceNormalize'
 import type { AddressId } from '../types'
 
+const SPOKEN_DIGITS: Record<string, string> = {
+  zero: '0',
+  um: '1',
+  uma: '1',
+  dois: '2',
+  duas: '2',
+  tres: '3',
+  três: '3',
+  quatro: '4',
+  cinco: '5',
+  seis: '6',
+  meia: '6',
+  sete: '7',
+  oito: '8',
+  nove: '9',
+}
+
 export type VoiceCommand =
   | { type: 'open_section'; section: SidebarSectionId; label: string }
   | { type: 'close_section'; section: SidebarSectionId | null; label: string }
@@ -48,8 +65,9 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
     openExample: 'abrir consulta',
     closeExample: 'fechar consulta',
     openPatterns: [
-      /\b(abrir|mostrar|ver|ir para)\s+(a\s+)?consulta\b/,
+      /\b(abrir|mostrar|ver|ir para|abre|mostra)\s+(a\s+)?consulta\b/,
       /\bconsulta estoque\b/,
+      /\bconsultar estoque\b/,
     ],
     closePatterns: [
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(da\s+)?(a\s+)?consulta\b/,
@@ -61,8 +79,10 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
     openExample: 'abrir movimentação',
     closeExample: 'fechar movimentação',
     openPatterns: [
-      /\b(abrir|mostrar|ver|ir para)\s+(a\s+)?movimentac(ao|ao)\b/,
-      /\b(abrir|mostrar)\s+reposicionar\b/,
+      /\b(abrir|mostrar|ver|ir para|ir ao|abre|mostra)\s+(a\s+)?movimentac(ao|ao)\b/,
+      /\b(abrir|mostrar|abre|mostra)\s+reposicionar\b/,
+      /\bmovimentac(ao|ao)\b/,
+      /\breposicionar\b/,
     ],
     closePatterns: [
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(da\s+)?(a\s+)?movimentac(ao|ao)\b/,
@@ -220,7 +240,50 @@ export const VOICE_COMMAND_EXAMPLES = buildCommandExamples()
 
 function extractAfter(text: string, pattern: RegExp): string | null {
   const m = text.match(pattern)
-  return m?.[1]?.trim() ?? null
+  if (!m) return null
+  for (let i = m.length - 1; i >= 1; i--) {
+    const g = m[i]?.trim()
+    if (g) return g
+  }
+  return null
+}
+
+/** Converte sequência falada de dígitos ("dois zero um zero sete sete") em número. */
+function parseSpokenDigitSequence(text: string): string {
+  const out: string[] = []
+  for (const raw of text.split(/\s+/)) {
+    const tok = normalizeVoiceText(raw)
+    if (!tok) continue
+    if (/^\d+$/.test(tok)) {
+      out.push(...tok.split(''))
+      continue
+    }
+    const digit = SPOKEN_DIGITS[tok]
+    if (digit != null) {
+      out.push(digit)
+    }
+  }
+  return out.join('')
+}
+
+function extractNumeroNota(norm: string): string | null {
+  const patterns = [
+    /\b(buscar|procurar|pesquisar|abrir|localizar|achar)\s+(a\s+)?(nota|nf)\s+(.+)/,
+    /\b(nota|nf)\s+(numero\s+)?(.+)/,
+    /\b(buscar|procurar|pesquisar)\s+(?:a\s+)?(\d[\d\s.-]+)/,
+    /\b(buscar|procurar|pesquisar)\s+(?:a\s+)?(.+)/,
+  ]
+
+  for (const re of patterns) {
+    const tail = extractAfter(norm, re)
+    if (!tail) continue
+    const compact = tail.replace(/\D/g, '')
+    if (compact.length >= 3) return compact
+    const spoken = parseSpokenDigitSequence(tail)
+    if (spoken.length >= 3) return spoken
+  }
+
+  return null
 }
 
 export function isDestructiveVoiceCommand(text: string): boolean {
@@ -296,34 +359,35 @@ export function parseVoiceCommand(text: string): VoiceCommand | null {
     return { type: 'sidebar_mode', mode: 'collapsed', label: 'Menu recolhido' }
   }
 
-  if (/^(confirme|confirmar)$/.test(norm) || /\bconfirmar movimentac/.test(norm)) {
+  if (/^(confirme|confirmar|confirmado|confirmada|sim confirmar|pode confirmar)$/.test(norm)) {
+    return { type: 'confirmar_movimentacao' }
+  }
+  if (/\bconfirmar movimentac/.test(norm) || /\bconfirmar reposicion/.test(norm)) {
     return { type: 'confirmar_movimentacao' }
   }
 
   const closeSection = matchCloseSection(norm)
   if (closeSection) return closeSection
 
-  const notaNum = extractAfter(
-    norm,
-    /\b(buscar|procurar|pesquisar|abrir)\s+(a\s+)?(nota|nf)\s+(\d[\d\s.-]*)/,
-  )
+  const notaNum = extractNumeroNota(norm)
   if (notaNum) {
-    const numero = notaNum.replace(/\D/g, '')
-    if (numero) return { type: 'buscar_nota', numero }
+    return { type: 'buscar_nota', numero: notaNum }
   }
 
   const consultaNota = extractAfter(
     norm,
-    /\bconsultar\s+(a\s+)?(nota|nf)\s+(\d[\d\s.-]*)/,
+    /\b(?:consultar|consulta|pesquisar)\s+(?:a\s+)?(?:nota|nf)\s+(.+)/,
   )
   if (consultaNota) {
-    const numero = consultaNota.replace(/\D/g, '')
+    const compact = consultaNota.replace(/\D/g, '')
+    const spoken = parseSpokenDigitSequence(consultaNota)
+    const numero = compact.length >= 3 ? compact : spoken.length >= 3 ? spoken : ''
     if (numero) return { type: 'consultar', filtros: { nfNumero: numero } }
   }
 
   const consultaQuery =
-    extractAfter(norm, /\bconsultar\s+(o\s+)?(item\s+)?(.+)/) ??
-    extractAfter(norm, /\bpesquisar\s+(o\s+)?(item\s+)?(.+)/)
+    extractAfter(norm, /\b(?:consultar|consulta)\s+(?:o\s+)?(?:item\s+)?(.+)/) ??
+    extractAfter(norm, /\bpesquisar\s+(?:o\s+)?(?:item\s+)?(.+)/)
   if (consultaQuery) {
     const q = consultaQuery.trim()
     if (/^\d[\d\s.-]*$/.test(q.replace(/\s/g, ''))) {

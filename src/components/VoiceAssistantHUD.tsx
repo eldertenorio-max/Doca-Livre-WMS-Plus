@@ -28,7 +28,9 @@ export function VoiceAssistantHUD({
                 Ouvindo: <strong>{liveText}</strong>
               </p>
             ) : (
-              <p className="voice-assistant-hud-hint muted">Fale &quot;ok estoque&quot; com calma.</p>
+              <p className="voice-assistant-hud-hint muted">
+                Fale &quot;ok estoque&quot; + comando na mesma frase, ex.: &quot;ok estoque abrir consulta&quot;.
+              </p>
             )}
             {feedback && <p className="voice-assistant-hud-feedback">{feedback}</p>}
           </div>

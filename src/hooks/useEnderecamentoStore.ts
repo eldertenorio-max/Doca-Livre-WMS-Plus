@@ -4,7 +4,7 @@ import { clearLocalPersistedData, localRepository } from '../lib/repository/loca
 import { ensureSupabaseConfig } from '../lib/supabaseConfig'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
 import { subscribeEnderecamentoChanges } from '../lib/supabaseRealtime'
-import { normalizePersistedData, prepareLoadedData, prepareLoadedDataWithRepair } from '../lib/persistence'
+import { normalizePersistedData, prepareLoadedDataWithRepair } from '../lib/persistence'
 import { mesclarEmitentesSugeridos, normalizarEmitente } from '../lib/emitentesRegistry'
 import {
   mergePersistedData,
@@ -24,10 +24,13 @@ const emptyState: AppState = {
 }
 
 const SAVE_DEBOUNCE_MS = 400
+const SAVE_DEBOUNCE_SUPABASE_MS = 50
 const REMOTE_RELOAD_DEBOUNCE_MS = 300
-const IGNORE_REMOTE_AFTER_SAVE_MS = 5000
-const POLL_INTERVAL_MS = 3000
+const IGNORE_REMOTE_AFTER_SAVE_MS = 8000
+const POLL_INTERVAL_MS = 5000
 const PERSIST_RETRY_MS = 600
+const PERSIST_AUTO_RETRY_MS = 2500
+const PERSIST_AUTO_RETRY_MAX = 5
 
 function formatPersistErrorMessage(e: unknown, supabaseMode: boolean): string {
   if (!supabaseMode) {
@@ -104,6 +107,8 @@ export function useEnderecamentoStore() {
   const persistChainRef = useRef<Promise<void>>(Promise.resolve())
   const lastPersistedRef = useRef<PersistedData | null>(null)
   const stateRef = useRef(state)
+  const autoRetryCountRef = useRef(0)
+  const autoRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -177,6 +182,11 @@ export function useEnderecamentoStore() {
           lastPersistedRef.current = dataToSave
           pendingSaveRef.current = null
           ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
+          autoRetryCountRef.current = 0
+          if (autoRetryTimerRef.current) {
+            clearTimeout(autoRetryTimerRef.current)
+            autoRetryTimerRef.current = null
+          }
           setError(null)
           lastError = null
           break
@@ -193,6 +203,28 @@ export function useEnderecamentoStore() {
       }
     } catch (e) {
       setError(formatPersistErrorMessage(e, repo.mode === 'supabase'))
+      if (
+        repo.mode === 'supabase' &&
+        autoRetryCountRef.current < PERSIST_AUTO_RETRY_MAX &&
+        hasPendingLocalChanges(stateRef.current, lastPersistedRef.current, null, null) &&
+        !autoRetryTimerRef.current
+      ) {
+        autoRetryCountRef.current += 1
+        autoRetryTimerRef.current = setTimeout(() => {
+          autoRetryTimerRef.current = null
+          if (
+            skipSave.current ||
+            savingRef.current ||
+            !hasPendingLocalChanges(stateRef.current, lastPersistedRef.current, null, null)
+          ) {
+            return
+          }
+          const job = persistChainRef.current
+            .catch(() => {})
+            .then(() => persistInner(stateRef.current))
+          persistChainRef.current = job.catch(() => {})
+        }, PERSIST_AUTO_RETRY_MS)
+      }
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -240,18 +272,42 @@ export function useEnderecamentoStore() {
     skipSave.current = true
     try {
       const remote = await repoRef.current.loadData()
-      const data = prepareLoadedData(remote)
+      const { data, dadosReparados } = prepareLoadedDataWithRepair(remote)
       const base = lastPersistedRef.current
 
       setState((prev) => {
         const local = pickPersisted(prev)
         const merged = base ? mergePersistedData(base, local, data) : data
-        lastPersistedRef.current = merged
-        const next = preserveUi(prev, merged)
+        const normalized = normalizePersistedData(merged)
+        lastPersistedRef.current = normalized
+        const next = preserveUi(prev, normalized)
         if (persistedEquals(pickPersisted(prev), pickPersisted(next))) return prev
         return next
       })
       setError(null)
+
+      const merged = lastPersistedRef.current
+      const precisaSalvarReparo = dadosReparados || (merged && !persistedEquals(merged, data))
+
+      if (precisaSalvarReparo && merged) {
+        skipSave.current = true
+        try {
+          const reparado = normalizePersistedData(merged)
+          await repoRef.current.saveData({
+            notas: reparado.notas,
+            movimentos: reparado.movimentos,
+            notasCanceladas: reparado.notasCanceladas,
+          })
+          lastPersistedRef.current = reparado
+          ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
+        } catch (e) {
+          setError(
+            e instanceof Error
+              ? `Dados recuperados do histórico, mas falhou ao salvar na nuvem: ${e.message}`
+              : 'Dados recuperados do histórico, mas falhou ao salvar na nuvem.',
+          )
+        }
+      }
     } catch (e) {
       setError(
         e instanceof Error
@@ -288,7 +344,7 @@ export function useEnderecamentoStore() {
 
       try {
         const remote = await repo.loadData()
-        const { data, enderecosRecuperados } = prepareLoadedDataWithRepair(remote)
+        const { data, dadosReparados } = prepareLoadedDataWithRepair(remote)
         const ui = repo.mode === 'supabase' ? { activeNfId: null, activeItemIndex: null } : repo.loadUiPrefs()
 
         if (!cancelled) {
@@ -296,7 +352,7 @@ export function useEnderecamentoStore() {
           setState({ ...data, ...ui })
           setError(null)
 
-          if (repo.mode === 'supabase' && enderecosRecuperados > 0) {
+          if (repo.mode === 'supabase' && dadosReparados) {
             skipSave.current = true
             try {
               await repo.saveData({
@@ -309,8 +365,8 @@ export function useEnderecamentoStore() {
             } catch (e) {
               setError(
                 e instanceof Error
-                  ? `Endereços recuperados do histórico, mas falhou ao salvar na nuvem: ${e.message}`
-                  : 'Endereços recuperados do histórico, mas falhou ao salvar na nuvem.',
+                  ? `Dados recuperados do histórico, mas falhou ao salvar na nuvem: ${e.message}`
+                  : 'Dados recuperados do histórico, mas falhou ao salvar na nuvem.',
               )
             } finally {
               skipSave.current = false
@@ -375,15 +431,16 @@ export function useEnderecamentoStore() {
 
     pendingSaveRef.current = state
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    const debounceMs = storageMode === 'supabase' ? SAVE_DEBOUNCE_SUPABASE_MS : SAVE_DEBOUNCE_MS
     saveTimer.current = setTimeout(() => {
       const pending = pendingSaveRef.current ?? stateRef.current
       pendingSaveRef.current = null
       void persist(pending)
-    }, SAVE_DEBOUNCE_MS)
+    }, debounceMs)
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
-  }, [state, loading, persist])
+  }, [state, loading, persist, storageMode])
 
   useEffect(() => {
     const flushPendingSave = () => {

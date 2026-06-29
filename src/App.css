@@ -2707,6 +2707,21 @@ html.scroll-locked .sidebar.sidebar--wide {
   font-size: 0.82rem;
 }
 
+.cadastro-voz-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.cadastro-voz-toggle input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
 .cadastro-voz-field span {
   color: var(--text-muted);
 }

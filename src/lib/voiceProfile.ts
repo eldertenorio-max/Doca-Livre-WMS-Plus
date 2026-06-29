@@ -19,7 +19,7 @@ export const VOICE_REGISTRY_KEY = 'ultrafrio-voice-registry'
 export const VOICE_PROFILE_KEY = 'ultrafrio-voice-profile'
 export const MAX_VOICE_PROFILES = 5
 export const VOICE_ENROLLMENT_SAMPLES = 3
-export const VOICE_MATCH_THRESHOLD = 0.62
+export const VOICE_MATCH_THRESHOLD = 0.55
 
 export function createVoiceId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

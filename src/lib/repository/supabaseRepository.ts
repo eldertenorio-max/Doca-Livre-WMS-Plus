@@ -79,22 +79,113 @@ async function upsertNf(
   return result
 }
 
-async function insertItens(
+async function upsertItem(
   sb: ReturnType<typeof getSupabase>,
   nfId: string,
-  items: NotaFiscal['items'],
+  it: NotaFiscal['items'][number],
 ): Promise<{ error: { message: string } | null }> {
-  if (!items.length) return { error: null }
-  let result = await sb.from('ultrafrio_nf_itens').insert(items.map((it) => itemInsertRow(nfId, it)))
+  let result = await sb
+    .from('ultrafrio_nf_itens')
+    .upsert(itemInsertRow(nfId, it), { onConflict: 'nf_id,item_index' })
   if (result.error && missingColumnError(result.error.message) && !omitItemExtendedFields) {
     omitItemExtendedFields = true
-    result = await sb.from('ultrafrio_nf_itens').insert(items.map((it) => itemInsertRow(nfId, it)))
+    result = await sb
+      .from('ultrafrio_nf_itens')
+      .upsert(itemInsertRow(nfId, it), { onConflict: 'nf_id,item_index' })
   }
   if (result.error && missingColumnError(result.error.message) && !omitItemLocalizacaoField) {
     omitItemLocalizacaoField = true
-    result = await sb.from('ultrafrio_nf_itens').insert(items.map((it) => itemInsertRow(nfId, it)))
+    result = await sb
+      .from('ultrafrio_nf_itens')
+      .upsert(itemInsertRow(nfId, it), { onConflict: 'nf_id,item_index' })
   }
   return result
+}
+
+/** Sincroniza itens sem apagar tudo — evita perda se o insert falhar após delete. */
+async function syncNfItens(sb: ReturnType<typeof getSupabase>, nf: NotaFiscal): Promise<void> {
+  const { data: existing, error: loadErr } = await sb
+    .from('ultrafrio_nf_itens')
+    .select('item_index')
+    .eq('nf_id', nf.id)
+  if (loadErr) throw new Error(loadErr.message)
+
+  if (nf.items.length === 0) {
+    if (existing?.length) return
+    return
+  }
+
+  const keep = new Set(nf.items.map((it) => it.index))
+  for (const row of existing ?? []) {
+    if (!keep.has(row.item_index)) {
+      const { error } = await sb
+        .from('ultrafrio_nf_itens')
+        .delete()
+        .eq('nf_id', nf.id)
+        .eq('item_index', row.item_index)
+      if (error) throw new Error(error.message)
+    }
+  }
+
+  for (const it of nf.items) {
+    const { error } = await upsertItem(sb, nf.id, it)
+    if (error) throw new Error(error.message)
+  }
+}
+
+/** Sincroniza endereços incrementalmente — não apaga posições se o estado local veio vazio por engano. */
+async function syncNfEnderecamentos(sb: ReturnType<typeof getSupabase>, nf: NotaFiscal): Promise<void> {
+  const desired = nf.items.flatMap((it) =>
+    it.allocatedAddresses.map((address_id) => ({
+      nf_id: nf.id,
+      item_index: it.index,
+      address_id,
+    })),
+  )
+
+  const { data: existing, error: loadErr } = await sb
+    .from('ultrafrio_enderecamentos')
+    .select('item_index, address_id')
+    .eq('nf_id', nf.id)
+  if (loadErr) throw new Error(loadErr.message)
+
+  const temEnderecosNoEstado = nf.items.some((it) => it.allocatedAddresses.length > 0)
+  if (desired.length === 0 && (existing?.length ?? 0) > 0 && !temEnderecosNoEstado) {
+    return
+  }
+
+  const desiredByAddr = new Map(desired.map((d) => [d.address_id, d]))
+  const desiredIds = new Set(desired.map((d) => d.address_id))
+
+  for (const row of existing ?? []) {
+    if (!desiredIds.has(row.address_id)) {
+      const { error } = await sb
+        .from('ultrafrio_enderecamentos')
+        .delete()
+        .eq('nf_id', nf.id)
+        .eq('address_id', row.address_id)
+      if (error) throw new Error(error.message)
+    }
+  }
+
+  const existingIds = new Set((existing ?? []).map((e) => e.address_id))
+  const toInsert = desired.filter((d) => !existingIds.has(d.address_id))
+  if (toInsert.length) {
+    const { error } = await sb.from('ultrafrio_enderecamentos').insert(toInsert)
+    if (error) throw new Error(error.message)
+  }
+
+  for (const [address_id, d] of desiredByAddr) {
+    const ex = (existing ?? []).find((e) => e.address_id === address_id)
+    if (ex && ex.item_index !== d.item_index) {
+      const { error } = await sb
+        .from('ultrafrio_enderecamentos')
+        .update({ item_index: d.item_index })
+        .eq('nf_id', nf.id)
+        .eq('address_id', address_id)
+      if (error) throw new Error(error.message)
+    }
+  }
 }
 
 function mapNotas(
@@ -306,6 +397,7 @@ export const supabaseRepository: EnderecamentoRepository = {
   async saveData({ notas, movimentos, notasCanceladas }) {
     omitNfCommercialFields = false
     omitItemExtendedFields = false
+    omitItemLocalizacaoField = false
 
     const cleaned = limparMovimentosEntradaOrfaos({
       notas,
@@ -342,26 +434,8 @@ export const supabaseRepository: EnderecamentoRepository = {
       const { error: upErr } = await upsertNf(sb, nf)
       if (upErr) throw new Error(upErr.message)
 
-      const { error: delIt } = await sb.from('ultrafrio_nf_itens').delete().eq('nf_id', nf.id)
-      if (delIt) throw new Error(delIt.message)
-
-      const { error: insIt } = await insertItens(sb, nf.id, nf.items)
-      if (insIt) throw new Error(insIt.message)
-
-      const { error: delEnd } = await sb.from('ultrafrio_enderecamentos').delete().eq('nf_id', nf.id)
-      if (delEnd) throw new Error(delEnd.message)
-
-      const rows = nf.items.flatMap((it) =>
-        it.allocatedAddresses.map((address_id) => ({
-          nf_id: nf.id,
-          item_index: it.index,
-          address_id,
-        })),
-      )
-      if (rows.length) {
-        const { error: insEnd } = await sb.from('ultrafrio_enderecamentos').insert(rows)
-        if (insEnd) throw new Error(insEnd.message)
-      }
+      await syncNfItens(sb, nf)
+      await syncNfEnderecamentos(sb, nf)
     }
 
     const keepMov = movimentos.map((m) => m.id)

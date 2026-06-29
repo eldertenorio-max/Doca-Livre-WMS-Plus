@@ -157,6 +157,38 @@ async function inserirEnderecos(nfId, porItem) {
   return endRows.length
 }
 
+async function restaurarItensSeVazio(nfId, candidatos) {
+  const itensDb = await getJson(
+    `ultrafrio_nf_itens?select=item_index&nf_id=eq.${encodeURIComponent(nfId)}`,
+  )
+  if (itensDb.length) return false
+
+  const mov = [...candidatos].sort((a, b) => scoreMovimento(b) - scoreMovimento(a))[0]
+  const snapshots = (mov.payload?.itens ?? []).filter(
+    (it) => it.codigo || it.descricao || it.addressIds?.length,
+  )
+  if (!snapshots.length) return false
+
+  await postJson(
+    'ultrafrio_nf_itens',
+    snapshots.map((it) => ({
+      nf_id: nfId,
+      item_index: it.itemIndex,
+      codigo: it.codigo ?? '',
+      descricao: it.descricao ?? '',
+      quantidade: it.quantidade ?? 0,
+      unidade: it.unidade ?? 'UN',
+      localizacao: 'armazem',
+      ...(it.paletes != null ? { paletes: it.paletes } : { paletes: it.addressIds?.length ?? 0 }),
+      ...(it.up ? { up: it.up } : {}),
+      ...(it.lote ? { lote: it.lote } : {}),
+      ...(it.dataFabricacao ? { data_fabricacao: it.dataFabricacao } : {}),
+      ...(it.dataValidade ? { data_validade: it.dataValidade } : {}),
+    })),
+  )
+  return true
+}
+
 async function restaurarEnderecosExistente(numero, nf) {
   const ends = await getJson(
     `ultrafrio_enderecamentos?select=address_id&nf_id=eq.${encodeURIComponent(nf.id)}`,
@@ -171,6 +203,8 @@ async function restaurarEnderecosExistente(numero, nf) {
     console.log(`NF ${numero}: histórico sem endereços salvos — não é possível restaurar.`)
     return
   }
+
+  const itensRestaurados = await restaurarItensSeVazio(nf.id, candidatos)
 
   const porItem = ultimoSnapshotPorItem(candidatos)
   if (!porItem.size) {
@@ -190,7 +224,7 @@ async function restaurarEnderecosExistente(numero, nf) {
   })
 
   console.log(
-    `NF ${numero}: ${porItem.size} item(ns), ${inseridos} posição(ões) restaurada(s) na NF existente.`,
+    `NF ${numero}: ${porItem.size} item(ns), ${inseridos} posição(ões) restaurada(s) na NF existente${itensRestaurados ? ' (itens recriados)' : ''}.`,
   )
 }
 

@@ -14,7 +14,7 @@ export function defaultVoicePrefs(): VoicePrefs {
     enabled: false,
     wakePhrase: DEFAULT_WAKE_PHRASE,
     calibrated: false,
-    voiceLocked: true,
+    voiceLocked: false,
   }
 }
 

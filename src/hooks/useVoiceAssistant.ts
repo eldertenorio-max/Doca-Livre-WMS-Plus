@@ -43,9 +43,9 @@ type SpeechRecognitionErrorEvent = {
 
 export type VoiceAssistantPhase = 'off' | 'ouvindo' | 'armado' | 'executando'
 
-const ARMED_TIMEOUT_MS = 8000
+const ARMED_TIMEOUT_MS = 12000
 const AUDIO_BUFFER_MS = 9000
-const SILENCE_AFTER_SPEECH_MS = 1500
+const SILENCE_AFTER_SPEECH_MS = 2400
 
 function readIncrementalTranscript(ev: SpeechRecognitionResultEvent): {
   interim: string
@@ -271,7 +271,7 @@ export function useVoiceAssistant({
       )
       if (!match) {
         onErrorRef.current?.(
-          `Voz não reconhecida (${Math.round(score * 100)}%). Só responde às vozes cadastradas com "${wakePhraseRef.current}".`,
+          `Voz não reconhecida (${Math.round(score * 100)}%). Desative "Exigir voz cadastrada" no menu de voz ou grave sua voz novamente.`,
         )
         return false
       }

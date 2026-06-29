@@ -4,6 +4,7 @@ import {
   limparMovimentosEntradaOrfaos,
   migrarRuasNosDados,
   recuperarEnderecosPerdidos,
+  recuperarItensPerdidos,
   sincronizarMovimentosEntrada,
 } from './movimentos'
 import { syncVinculosNotas } from './nfCanceladas'
@@ -25,7 +26,7 @@ export function normalizePersistedData(data: PersistedData): PersistedData {
   const base = limparMovimentosEntradaOrfaos(
     syncVinculosNotas(
       recuperarEnderecosPerdidos(
-        sincronizarMovimentosEntrada(migrarRuasNosDados(data)),
+        recuperarItensPerdidos(sincronizarMovimentosEntrada(migrarRuasNosDados(data))),
       ),
     ),
   )
@@ -44,9 +45,16 @@ export function prepareLoadedData(remote: PersistedData): PersistedData {
 export function prepareLoadedDataWithRepair(remote: PersistedData): {
   data: PersistedData
   enderecosRecuperados: number
+  dadosReparados: boolean
 } {
-  const antes = contarEnderecosPersistidos(remote)
+  const antesEnd = contarEnderecosPersistidos(remote)
+  const antesItens = remote.notas.reduce((s, nf) => s + nf.items.length, 0)
   const data = normalizePersistedData(remote)
-  const depois = contarEnderecosPersistidos(data)
-  return { data, enderecosRecuperados: Math.max(0, depois - antes) }
+  const depoisEnd = contarEnderecosPersistidos(data)
+  const depoisItens = data.notas.reduce((s, nf) => s + nf.items.length, 0)
+  return {
+    data,
+    enderecosRecuperados: Math.max(0, depoisEnd - antesEnd),
+    dadosReparados: depoisEnd > antesEnd || depoisItens > antesItens,
+  }
 }
