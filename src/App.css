@@ -2105,8 +2105,24 @@
   height: 15px;
 }
 
+.modal-backdrop--fullscreen {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.modal-backdrop--fullscreen .camara-info-modal {
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+}
+
 .camara-info-modal {
   width: min(96vw, 1100px);
+  max-width: min(96vw, 1100px);
   max-height: min(92vh, 900px);
   display: flex;
   flex-direction: column;
@@ -2206,7 +2222,10 @@
 
 .camara-info-table-wrap {
   overflow: auto;
-  max-height: 320px;
+}
+
+.modal-backdrop--fullscreen .camara-info-table-wrap {
+  max-height: none;
 }
 
 .camara-info-table {
@@ -2242,19 +2261,14 @@
   max-width: 220px;
 }
 
+.modal-backdrop--fullscreen .camara-info-table td:nth-child(3) {
+  max-width: none;
+}
+
 .camara-info-table tbody tr:hover {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
-.layout-panel--mobile .camara-info-modal {
-  width: 100vw;
-  max-height: 100vh;
-  border-radius: 0;
-}
-
-.layout-panel--mobile .camara-info-table-wrap {
-  max-height: 240px;
-}
 
 
 .camara-stats {

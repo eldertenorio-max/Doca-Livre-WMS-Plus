@@ -51,7 +51,7 @@ export function CamaraInfoModal({ camaraId, tipo, notas, movimentos, onClose }: 
   )
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="presentation">
+    <div className="modal-backdrop modal-backdrop--fullscreen" onClick={onClose} role="presentation">
       <div
         className="modal camara-info-modal"
         onClick={(e) => e.stopPropagation()}
