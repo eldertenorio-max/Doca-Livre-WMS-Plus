@@ -120,6 +120,19 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
     ],
   },
   {
+    section: 'relatorio',
+    label: 'Relatório',
+    openExample: 'abrir relatório',
+    closeExample: 'fechar relatório',
+    openPatterns: [
+      /\b(abrir|mostrar|ver|ir para|gerar)\s+(o\s+)?relatorio\b/,
+      /\brelatorio de estoque\b/,
+    ],
+    closePatterns: [
+      /\b(fechar|ocultar|esconder|recolher|sair)\s+(do\s+)?(o\s+)?relatorio\b/,
+    ],
+  },
+  {
     section: 'imprimir',
     label: 'Mapa',
     openExample: 'abrir mapa',

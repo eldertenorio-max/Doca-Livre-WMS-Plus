@@ -3,6 +3,7 @@ import type { SidebarMode } from '../lib/sidebarMode'
 import type { Theme } from '../lib/theme'
 import { SidebarLayoutControl } from './SidebarLayoutControl'
 import { ThemeToggle } from './ThemeToggle'
+import { BRAND_PRODUCT_NAME, LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
 
 type Props = {
   sidebarMode: SidebarMode
@@ -22,17 +23,11 @@ function formatClock(now: Date): { time: string; date: string } {
 
 function BrandMark() {
   return (
-    <svg viewBox="0 0 36 36" width="36" height="36" aria-hidden>
-      <rect width="36" height="36" rx="6" fill="#F9DB00" />
-      <path
-        d="M8 18h8M20 18h8M14 13l-4 5 4 5M22 23l4-5-4-5"
-        stroke="#000000"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
+    <img
+      src={LOGO_DOCA_LIVRE_SRC}
+      alt="Doca Livre"
+      className="app-topbar-logo"
+    />
   )
 }
 
@@ -79,13 +74,8 @@ export function AppTopBar({
         </button>
 
         <div className="app-topbar-brand">
-          <span className="app-topbar-mark" aria-hidden>
-            <BrandMark />
-          </span>
-          <div className="app-topbar-brand-text">
-            <strong className="app-topbar-brand-main">ULTRAFRIO</strong>
-            <span className="app-topbar-brand-sub">Stock System</span>
-          </div>
+          <BrandMark />
+          <strong className="app-topbar-wms">{BRAND_PRODUCT_NAME}</strong>
         </div>
       </div>
 
@@ -105,13 +95,13 @@ export function AppTopBar({
 
         <div className="app-topbar-user">
           <div className="app-topbar-user-text">
-            <strong>Ultrafrio</strong>
+            <strong>Doca Livre</strong>
             <span>Estoque / NF-e</span>
             {saving && <em className="app-topbar-saving">Salvando…</em>}
             {persistError && <em className="app-topbar-error">{persistError}</em>}
           </div>
           <span className="app-topbar-avatar" aria-hidden>
-            <img src="/logo-ultrafrio-vertical-azul.svg" alt="" />
+            <img src={LOGO_DOCA_LIVRE_SRC} alt="" />
           </span>
         </div>
       </div>

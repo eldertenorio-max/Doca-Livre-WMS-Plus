@@ -21,13 +21,17 @@
 }
 
 .app-topbar-mark {
-  background: var(--brand-yellow);
-  border-radius: 6px;
+  background: transparent;
+  border-radius: 0;
   box-shadow: none;
 }
 
 .app-topbar-mark svg {
-  display: block;
+  display: none;
+}
+
+.app-topbar-wms {
+  color: #000000;
 }
 
 .app-topbar-brand-main {
@@ -40,6 +44,10 @@
   color: #000000;
   letter-spacing: 0.28em;
   opacity: 0.72;
+}
+
+[data-theme='dark'] .app-topbar-wms {
+  color: #ffffff;
 }
 
 [data-theme='dark'] .app-topbar-brand-main,
@@ -133,6 +141,7 @@
 .sidebar-section--editar .sidebar-section-icon,
 .sidebar-section--consulta .sidebar-section-icon,
 .sidebar-section--historico .sidebar-section-icon,
+.sidebar-section--relatorio .sidebar-section-icon,
 .sidebar-section--painel .sidebar-section-icon,
 .sidebar-section--canceladas .sidebar-section-icon,
 .sidebar-section--imprimir .sidebar-section-icon,
@@ -199,7 +208,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    url('/logo-ultrafrio-horizontal-azul.svg') center 42% / min(420px, 70%) no-repeat,
+    url('/logo-doca-livre.png') center 42% / min(420px, 70%) no-repeat,
     radial-gradient(circle at center, rgb(249 219 0 / 0.04) 0%, transparent 55%);
   opacity: 0.07;
   z-index: 0;
@@ -228,20 +237,46 @@
   opacity: 0.04;
 }
 
-/* —— Botões primários amarelos —— */
+/* —— Botões primários —— */
 .btn.primary,
 .upload-btn {
-  background: var(--brand-yellow);
-  border-color: var(--brand-yellow);
-  color: var(--brand-black);
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+  color: var(--btn-primary-fg);
   font-weight: 700;
 }
 
 .btn.primary:hover:not(:disabled),
 .upload-btn:hover {
-  background: var(--brand-yellow-hover);
-  border-color: var(--brand-yellow-hover);
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
   filter: none;
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .btn.primary,
+.sidebar.sidebar--wide .sidebar-section-inner .upload-btn {
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+  color: var(--btn-primary-fg);
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .btn.primary:hover:not(:disabled),
+.sidebar.sidebar--wide .sidebar-section-inner .upload-btn:hover {
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+}
+
+.upload-btn.upload-btn--muted,
+.sidebar.sidebar--wide .sidebar-section-inner .upload-btn.upload-btn--muted {
+  background: var(--upload-muted-bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.upload-btn.upload-btn--muted:hover,
+.sidebar.sidebar--wide .sidebar-section-inner .upload-btn.upload-btn--muted:hover {
+  background: var(--upload-muted-hover);
+  border-color: var(--border);
 }
 
 .btn.primary:disabled {

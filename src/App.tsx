@@ -2725,6 +2725,9 @@ export default function App() {
           canceladas: state.notasCanceladas,
           notas: state.notas,
         }}
+        relatorio={{
+          notas: state.notas,
+        }}
         painel={{
           filtros: painelFiltros,
           movimentos: movimentosHistorico,

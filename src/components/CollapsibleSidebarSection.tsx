@@ -6,6 +6,7 @@ export type SidebarSectionId =
   | 'editar'
   | 'consulta'
   | 'historico'
+  | 'relatorio'
   | 'painel'
   | 'canceladas'
   | 'imprimir'
@@ -181,6 +182,35 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
           strokeWidth="1.5"
           strokeLinecap="round"
           opacity="0.45"
+        />
+      </svg>
+    )
+  }
+
+  if (id === 'relatorio') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          className="icon-relatorio-doc"
+          d="M7 4h10v16H7z"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+        />
+        <path
+          className="icon-relatorio-line"
+          d="M9.5 9h5M9.5 12.5h5M9.5 16h3.5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <path
+          className="icon-relatorio-chart"
+          d="M15 17l2-3 2 2 2-4"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     )

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
 import './IntroSplash.css'
 
 const MIN_INTRO_MS = 2200
-const LOGO_SRC = '/logo-ultrafrio-vertical-azul.svg'
 
 type Props = {
   loading: boolean
@@ -54,7 +54,7 @@ export function IntroSplash({ loading, onFinish }: Props) {
     <div className={`intro-splash ${exiting ? 'intro-splash--exit' : ''}`} aria-busy="true">
       <div className="intro-glow" aria-hidden />
       <div className="intro-content">
-        <img src={LOGO_SRC} alt="Ultrafrio" className="intro-logo" />
+        <img src={LOGO_DOCA_LIVRE_SRC} alt="Doca Livre" className="intro-logo" />
         <div className="intro-progress-wrap">
           <div className="intro-progress-track">
             <div className="intro-progress-bar" style={{ width: `${progress}%` }} />

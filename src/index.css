@@ -17,6 +17,10 @@
   --accent: var(--brand-yellow);
   --accent-hover: var(--brand-yellow-hover);
   --accent-fg: var(--brand-black);
+  --btn-primary-bg: #6e7681;
+  --btn-primary-hover: #57606a;
+  --btn-primary-border: #6e7681;
+  --btn-primary-fg: #ffffff;
   --success: #22c55e;
   --warning: #f9db00;
   --cell-disp: #3b82f6;
@@ -74,6 +78,10 @@
   --accent: var(--brand-yellow);
   --accent-hover: var(--brand-yellow-hover);
   --accent-fg: var(--brand-black);
+  --btn-primary-bg: #8b949e;
+  --btn-primary-hover: #6e7681;
+  --btn-primary-border: #8b949e;
+  --btn-primary-fg: #ffffff;
   --success: #16a34a;
   --warning: #ca8a04;
   --cell-disp: #54aeff;

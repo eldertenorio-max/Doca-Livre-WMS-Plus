@@ -7,6 +7,7 @@ import { EntradaPanel } from './EntradaPanel'
 import { HistoricoPanel } from './HistoricoPanel'
 import { ImprimirPanel } from './ImprimirPanel'
 import { PainelPanel } from './PainelPanel'
+import { RelatorioPanel } from './RelatorioPanel'
 import { SaidaPanel } from './SaidaPanel'
 import { useSidebarExpand } from '../hooks/useSidebarExpand'
 import type { SidebarMode } from '../lib/sidebarMode'
@@ -22,6 +23,7 @@ type Props = {
   editar: ComponentProps<typeof EditarPosicaoPanel>
   consulta: ComponentProps<typeof ConsultaEstoquePanel>
   historico: ComponentProps<typeof HistoricoPanel>
+  relatorio: ComponentProps<typeof RelatorioPanel>
   painel: ComponentProps<typeof PainelPanel>
   canceladas: ComponentProps<typeof CanceladasPanel>
   imprimir: ComponentProps<typeof ImprimirPanel>
@@ -39,6 +41,7 @@ export function AppSidebar({
   editar,
   consulta,
   historico,
+  relatorio,
   painel,
   canceladas,
   imprimir,
@@ -150,6 +153,16 @@ export function AppSidebar({
         onBeforeToggle={guardOtherSection}
       >
         <HistoricoPanel {...historico} />
+      </CollapsibleSidebarSection>
+
+      <CollapsibleSidebarSection
+        id="relatorio"
+        title="Relatório"
+        open={openSection === 'relatorio'}
+        onOpenChange={(open) => sectionOpenChange('relatorio', open)}
+        onBeforeToggle={guardOtherSection}
+      >
+        <RelatorioPanel {...relatorio} />
       </CollapsibleSidebarSection>
 
       <CollapsibleSidebarSection
