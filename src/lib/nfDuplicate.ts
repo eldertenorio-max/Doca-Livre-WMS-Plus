@@ -1,5 +1,5 @@
 import type { MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../types'
-import { nfPrecisaReparoEnderecos } from './repararNfEstoque'
+import { nfPrecisaAtualizacao } from './repararNfEstoque'
 
 type NfRef = Pick<NotaFiscal, 'id' | 'chave' | 'numero' | 'serie'>
 
@@ -24,6 +24,10 @@ function mesmaNf(a: NfRef, b: NfRef): boolean {
   return false
 }
 
+export function findNotaDuplicada(nf: NfRef, notas: NotaFiscal[]): NotaFiscal | undefined {
+  return notas.find((n) => mesmaNf(n, nf))
+}
+
 export function mensagemNfDuplicada(
   nf: NfRef,
   notas: NotaFiscal[],
@@ -32,10 +36,10 @@ export function mensagemNfDuplicada(
 ): string | null {
   const dupNota = notas.find((n) => mesmaNf(n, nf))
   if (dupNota) {
-    if (movimentos.length > 0 && nfPrecisaReparoEnderecos(dupNota, movimentos)) {
+    if (nfPrecisaAtualizacao(dupNota, movimentos)) {
       return (
-        `Esta NF já está cadastrada (NF ${dupNota.numero}), mas os endereços sumiram do mapa. ` +
-        'O sistema vai tentar restaurar do histórico automaticamente.'
+        `Esta NF já está cadastrada (NF ${dupNota.numero}), mas não aparece no estoque. ` +
+        'O sistema vai restaurar ou atualizar automaticamente a partir do XML.'
       )
     }
     return `Esta NF já foi importada (NF ${dupNota.numero}).`

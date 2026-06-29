@@ -16,6 +16,27 @@ export function stopSpeaking(): void {
   window.speechSynthesis.cancel()
 }
 
+function waitSpeechIdle(maxMs = 4000): Promise<void> {
+  if (!isSpeechSynthesisSupported()) return Promise.resolve()
+
+  return new Promise((resolve) => {
+    const start = Date.now()
+    const tick = () => {
+      const synth = window.speechSynthesis
+      if (!synth.speaking && !synth.pending) {
+        resolve()
+        return
+      }
+      if (Date.now() - start >= maxMs) {
+        resolve()
+        return
+      }
+      window.setTimeout(tick, 60)
+    }
+    tick()
+  })
+}
+
 export function speakText(text: string): Promise<void> {
   if (!text.trim() || !isSpeechSynthesisSupported()) return Promise.resolve()
 
@@ -34,11 +55,11 @@ export function speakText(text: string): Promise<void> {
     const finish = () => {
       if (settled) return
       settled = true
-      resolve()
+      void waitSpeechIdle().then(() => resolve())
     }
 
     utter.onend = () => {
-      window.setTimeout(finish, 120)
+      window.setTimeout(finish, 180)
     }
     utter.onerror = finish
 
@@ -51,5 +72,8 @@ export function speakText(text: string): Promise<void> {
         if (v) utter.voice = v
       }
     }
+
+    // Fallback se onend não disparar (comum no Chrome/Windows)
+    window.setTimeout(finish, Math.min(20000, Math.max(2500, text.length * 90)))
   })
 }

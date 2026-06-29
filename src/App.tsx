@@ -101,7 +101,7 @@ import {
 } from './lib/contaSessao'
 import { useVoiceRegistry } from './hooks/useVoiceRegistry'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
-import { nfPrecisaReparoEnderecos, tentarRepararPersistido } from './lib/repararNfEstoque'
+import { repararNfDuplicadaDoXml, tentarRepararPersistido } from './lib/repararNfEstoque'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
 import { parseEnderecoFalado, validarEnderecoDestinoVoz } from './lib/parseEnderecoFalado'
@@ -158,14 +158,20 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
 function mensagemNfSemEstoqueVisivel(nf: NotaFiscal, movimentos: MovimentoRegistro[]): string {
   if (nfTemHistoricoEnderecos(nf, movimentos)) {
     return (
-      `NF ${nf.numero} existe no sistema, mas os itens/endereços sumiram do mapa. ` +
-      'Recarregue a página (F5) para restaurar do histórico.'
+      `NF ${nf.numero} existe no sistema, mas os endereços sumiram do mapa. ` +
+      'Recarregue a página (F5) ou suba o XML de novo na Entrada para restaurar.'
     )
   }
   if (nf.items.length === 0) {
-    return `NF ${nf.numero} está cadastrada, mas sem itens no estoque. Verifique o histórico ou suba o XML novamente após corrigir no sistema.`
+    return (
+      `NF ${nf.numero} está cadastrada, mas sem itens. ` +
+      'Suba o XML na aba Entrada — o sistema atualiza automaticamente.'
+    )
   }
-  return 'NF sem itens no armazém nem no stage.'
+  return (
+    `NF ${nf.numero} está cadastrada, mas sem posições no armazém. ` +
+    'Suba o XML na Entrada para atualizar ou enderece no mapa.'
+  )
 }
 
 const PAINEL_FILTROS_KEY = 'ultrafrio-painel-filtros'
@@ -654,25 +660,23 @@ export default function App() {
         const nf = parseNfeXml(text)
         const dup = mensagemNfDuplicada(nf, acumulado, state.notasCanceladas, movimentos)
         if (dup) {
-          const dupNota = findNotaByNumero(acumulado, nf.numero)
-          if (dupNota && nfPrecisaReparoEnderecos(dupNota, movimentos)) {
-            const { data: reparado, reparado: ok, enderecosRecuperados } = tentarRepararPersistido({
-              notas: state.notas,
+          const resultado = repararNfDuplicadaDoXml(
+            {
+              notas: acumulado,
               movimentos,
               notasCanceladas: state.notasCanceladas,
               emitentes: state.emitentes,
-            })
-            if (ok) {
-              const nextState = { ...state, ...reparado }
-              setState(nextState)
-              movimentos = reparado.movimentos
-              acumulado.splice(0, acumulado.length, ...reparado.notas)
-              await saveNow(nextState)
-              reparos.push(
-                `NF ${dupNota.numero}: ${enderecosRecuperados} posição(ões) restaurada(s) do histórico.`,
-              )
-              continue
-            }
+            },
+            nf,
+          )
+          if (resultado) {
+            const nextState = { ...state, ...resultado.data }
+            setState(nextState)
+            movimentos = resultado.data.movimentos
+            acumulado.splice(0, acumulado.length, ...resultado.data.notas)
+            await saveNow(nextState)
+            reparos.push(resultado.mensagem)
+            continue
           }
           skipped.push(`NF ${nf.numero} (${file.name}): ${dup}`)
           continue

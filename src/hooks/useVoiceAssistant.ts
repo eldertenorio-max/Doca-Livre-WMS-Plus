@@ -47,7 +47,7 @@ const ARMED_TIMEOUT_MS = 12000
 const CONVERSATION_TIMEOUT_MS = 45000
 const AUDIO_BUFFER_MS = 9000
 const SILENCE_AFTER_SPEECH_MS = 2400
-const POST_TTS_DELAY_MS = 500
+const POST_TTS_DELAY_MS = 650
 const REC_START_RETRY_DELAYS_MS = [0, 280, 650] as const
 
 function sleep(ms: number): Promise<void> {
@@ -158,6 +158,7 @@ export function useVoiceAssistant({
   const stopRecognitionRef = useRef<() => void>(() => {})
   const scheduleRecognitionRestartRef = useRef<(mode?: 'soft' | 'hard') => void>(() => {})
   const restartingRef = useRef(false)
+  const ttsHoldRef = useRef(false)
   const localSpeechHoldRef = useRef(0)
   const pausedForLocalSpeechRef = useRef(false)
   const enabledRef = useRef(enabled)
@@ -414,6 +415,7 @@ export function useVoiceAssistant({
   const endConversation = useCallback(() => {
     conversingRef.current = false
     armedRef.current = false
+    ttsHoldRef.current = false
     clearArmedTimer()
     clearListeningBuffers()
     scheduleRecognitionRestartRef.current()
@@ -425,11 +427,13 @@ export function useVoiceAssistant({
       if (!trimmed || !onConversationUtteranceRef.current) return
 
       clearSilenceTimer()
+      clearRestartTimer()
       armedBufferRef.current = ''
       armedInterimRef.current = ''
       setPhase('executando')
       setLastHint('Processando…')
 
+      ttsHoldRef.current = true
       recRef.current?.abort()
 
       let continueSession = false
@@ -439,9 +443,13 @@ export function useVoiceAssistant({
         onErrorRef.current?.('Erro ao processar a fala.')
       }
 
-      if (!runningRef.current) return
+      if (!runningRef.current) {
+        ttsHoldRef.current = false
+        return
+      }
 
       if (!continueSession) {
+        ttsHoldRef.current = false
         endConversation()
         return
       }
@@ -453,11 +461,15 @@ export function useVoiceAssistant({
       setLastHint('Pode falar…')
       setLiveText('')
       resetConversationTimer()
+      ttsHoldRef.current = false
       await sleep(POST_TTS_DELAY_MS)
-      if (!runningRef.current) return
+      if (!runningRef.current) {
+        ttsHoldRef.current = false
+        return
+      }
       resumeConversationListeningRef.current()
     },
-    [clearSilenceTimer, endConversation, resetConversationTimer],
+    [clearRestartTimer, clearSilenceTimer, endConversation, resetConversationTimer],
   )
 
   const startConversation = useCallback(
@@ -469,9 +481,12 @@ export function useVoiceAssistant({
       sessionAccumRef.current = ''
       listeningBufferRef.current = ''
       clearSilenceTimer()
+      clearRestartTimer()
       setPhase('conversando')
       setLastHint('Iniciando conversa…')
+      setLiveText('')
 
+      ttsHoldRef.current = true
       recRef.current?.abort()
       stopAudioCapture()
 
@@ -483,15 +498,22 @@ export function useVoiceAssistant({
         }
       }
 
-      if (!runningRef.current) return
+      if (!runningRef.current) {
+        ttsHoldRef.current = false
+        return
+      }
 
       setLastHint('Pode falar…')
       resetConversationTimer()
+      ttsHoldRef.current = false
       await sleep(POST_TTS_DELAY_MS)
-      if (!runningRef.current) return
+      if (!runningRef.current) {
+        ttsHoldRef.current = false
+        return
+      }
       resumeConversationListeningRef.current()
     },
-    [clearSilenceTimer, resetConversationTimer],
+    [clearRestartTimer, clearSilenceTimer, resetConversationTimer, stopAudioCapture],
   )
 
   const arm = useCallback(() => {
@@ -646,7 +668,14 @@ export function useVoiceAssistant({
       }
 
       rec.onend = () => {
-        if (!runningRef.current || restartingRef.current || pausedForLocalSpeechRef.current) return
+        if (
+          !runningRef.current ||
+          restartingRef.current ||
+          pausedForLocalSpeechRef.current ||
+          ttsHoldRef.current
+        ) {
+          return
+        }
         clearSilenceTimer()
         void flushAfterSilence().finally(() => {
           if (!runningRef.current || pausedForLocalSpeechRef.current) return
@@ -695,7 +724,7 @@ export function useVoiceAssistant({
 
   const scheduleRecognitionRestart = useCallback(
     (mode: 'soft' | 'hard' = 'hard') => {
-      if (!runningRef.current || pausedForLocalSpeechRef.current) return
+      if (!runningRef.current || pausedForLocalSpeechRef.current || ttsHoldRef.current) return
       clearRestartTimer()
       const delayMs = mode === 'soft' ? 400 : 200
       restartTimerRef.current = setTimeout(() => {
@@ -764,6 +793,7 @@ export function useVoiceAssistant({
 
   const stopRecognition = useCallback(() => {
     runningRef.current = false
+    ttsHoldRef.current = false
     localSpeechHoldRef.current = 0
     pausedForLocalSpeechRef.current = false
     clearRestartTimer()

@@ -2,7 +2,7 @@ import { parseVoiceCommand, type VoiceCommand } from './parseVoiceCommand'
 import { normalizeVoiceText } from './voiceNormalize'
 
 export const VOICE_CONVERSATION_GREETING =
-  'Olá! Sou o assistente do estoque. O que você deseja fazer? Posso abrir consulta, entrada, saída, movimentação, relatório, histórico ou buscar uma nota fiscal.'
+  'Em que posso ajudar? Diga consulta, entrada, saída, movimentação ou relatório.'
 
 export type ConversationPending =
   | { kind: 'buscar_nota' }
