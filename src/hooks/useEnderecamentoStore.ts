@@ -4,7 +4,7 @@ import { clearLocalPersistedData, localRepository } from '../lib/repository/loca
 import { ensureSupabaseConfig } from '../lib/supabaseConfig'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
 import { subscribeEnderecamentoChanges } from '../lib/supabaseRealtime'
-import { prepareLoadedData, prepareLoadedDataWithRepair } from '../lib/persistence'
+import { normalizePersistedData, prepareLoadedData, prepareLoadedDataWithRepair } from '../lib/persistence'
 import { mesclarEmitentesSugeridos, normalizarEmitente } from '../lib/emitentesRegistry'
 import {
   mergePersistedData,
@@ -149,6 +149,8 @@ export function useEnderecamentoStore() {
         const remote = pickPersisted(await repo.loadData())
         dataToSave = mergePersistedData(lastPersistedRef.current, dataToSave, remote)
       }
+
+      dataToSave = normalizePersistedData(dataToSave)
 
       await repo.saveData({
         notas: dataToSave.notas,

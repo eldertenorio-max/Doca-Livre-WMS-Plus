@@ -551,7 +551,7 @@ export default function App() {
       try {
         const text = await file.text()
         const nf = parseNfeXml(text)
-        const dup = mensagemNfDuplicada(nf, acumulado, state.notasCanceladas)
+        const dup = mensagemNfDuplicada(nf, acumulado, state.notasCanceladas, movimentos)
         if (dup) {
           skipped.push(`NF ${nf.numero} (${file.name}): ${dup}`)
           continue

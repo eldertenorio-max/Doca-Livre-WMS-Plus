@@ -1,4 +1,5 @@
-import type { NotaFiscal, NotaFiscalCancelada } from '../types'
+import type { MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../types'
+import { nfTemHistoricoEnderecos } from './movimentos'
 
 type NfRef = Pick<NotaFiscal, 'id' | 'chave' | 'numero' | 'serie'>
 
@@ -27,9 +28,20 @@ export function mensagemNfDuplicada(
   nf: NfRef,
   notas: NotaFiscal[],
   notasCanceladas: NotaFiscalCancelada[] = [],
+  movimentos: MovimentoRegistro[] = [],
 ): string | null {
   const dupNota = notas.find((n) => mesmaNf(n, nf))
   if (dupNota) {
+    if (
+      movimentos.length > 0 &&
+      nfTemHistoricoEnderecos(dupNota, movimentos) &&
+      !dupNota.items.some((it) => it.allocatedAddresses.length > 0)
+    ) {
+      return (
+        `Esta NF já está cadastrada (NF ${dupNota.numero}), mas os endereços sumiram do mapa. ` +
+        'Recarregue a página (F5) para restaurar do histórico — não é necessário subir o XML de novo.'
+      )
+    }
     return `Esta NF já foi importada (NF ${dupNota.numero}).`
   }
 

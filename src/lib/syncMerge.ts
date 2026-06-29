@@ -9,8 +9,11 @@ function entityJson<T>(entity: T | undefined): string {
 }
 
 function preserveOptionalItemFields(item: NfeItem, fallback: NfeItem): NfeItem {
+  const allocatedAddresses =
+    item.allocatedAddresses.length > 0 ? item.allocatedAddresses : fallback.allocatedAddresses
   return {
     ...item,
+    allocatedAddresses,
     pesoBruto: item.pesoBruto ?? fallback.pesoBruto,
     valorUnitario: item.valorUnitario ?? fallback.valorUnitario,
     valorTotal: item.valorTotal ?? fallback.valorTotal,
