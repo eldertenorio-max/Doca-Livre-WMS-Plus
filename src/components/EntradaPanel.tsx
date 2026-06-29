@@ -218,7 +218,19 @@ export function EntradaPanel({
           )}
 
           {activeItemIndex != null && activeItemStage && (
-            <p className="muted item-actions">Item no stage — pronto sem endereço físico.</p>
+            <div className="item-actions">
+              <p className="muted">
+                Item no <strong>stage</strong> — não precisa endereçar no mapa. Confirme para
+                registrar e seguir para o próximo item.
+              </p>
+              <button
+                type="button"
+                className="btn primary full"
+                onClick={() => void onConfirmItem()}
+              >
+                Confirmar no stage
+              </button>
+            </div>
           )}
 
           {activeNf && activeNf.status === 'em_andamento' && (

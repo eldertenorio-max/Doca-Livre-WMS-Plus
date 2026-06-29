@@ -1213,9 +1213,16 @@ export default function App() {
 
   async function handleConfirmItem() {
     if (!activeNf || state.activeItemIndex == null) return
-    const addresses = [...pendingSelection]
     const currentItemIndex = state.activeItemIndex
     const item = activeNf.items.find((it) => it.index === currentItemIndex)
+    if (!item) return
+
+    if (item.localizacao === 'stage') {
+      await confirmEntradaItemStage(activeNf.id, currentItemIndex)
+      return
+    }
+
+    const addresses = [...pendingSelection]
     const limitePaletes = paletesLimiteItem(item)
     if (limitePaletes > 0 && addresses.length < limitePaletes) {
       setPaletesLimiteAlert('incompleto')
@@ -1246,30 +1253,59 @@ export default function App() {
       }
     })
     let updatedNf = notas.find((n) => n.id === activeNf.id)!
+    await applyEntradaItemConfirmado(updatedNf, currentItemIndex, activeNf.numero)
+  }
+
+  async function confirmEntradaItemStage(nfId: string, currentItemIndex: number) {
+    const snapshot = stateRef.current
+    const nfAtual = snapshot.notas.find((n) => n.id === nfId)
+    if (!nfAtual) return
+    const item = nfAtual.items.find((it) => it.index === currentItemIndex)
+    if (!item || item.localizacao !== 'stage') return
+
+    const notas = snapshot.notas.map((nf) => {
+      if (nf.id !== nfId) return nf
+      return {
+        ...nf,
+        items: nf.items.map((it) =>
+          it.index === currentItemIndex ? aplicarLocalizacaoItem(it, 'stage') : it,
+        ),
+      }
+    })
+    const updatedNf = notas.find((n) => n.id === nfId)!
+    await applyEntradaItemConfirmado(updatedNf, currentItemIndex, nfAtual.numero)
+  }
+
+  async function applyEntradaItemConfirmado(
+    updatedNfInput: NotaFiscal,
+    currentItemIndex: number,
+    nfNumero: string,
+  ) {
+    let updatedNf = updatedNfInput
     if (allItemsAllocated(updatedNf)) {
       updatedNf = { ...updatedNf, status: 'concluida' as const }
     }
-    const notasFinais = notas.map((n) => (n.id === updatedNf.id ? updatedNf : n))
+    const notasFinais = stateRef.current.notas.map((n) =>
+      n.id === updatedNf.id ? updatedNf : n,
+    )
     const nextItem = updatedNf.items.find(
       (it) => it.index !== currentItemIndex && !itemEnderecamentoCompleto(it),
     )
     const nextState = {
-      ...state,
+      ...stateRef.current,
       notas: notasFinais,
-      movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
-      activeItemIndex: consultaAguardandoEndereco
-        ? null
-        : nextItem?.index ?? state.activeItemIndex,
+      movimentos: upsertMovimentoEntrada(stateRef.current.movimentos, updatedNf),
+      activeItemIndex: consultaAguardandoEndereco ? null : nextItem?.index ?? null,
       activeNfId:
         consultaAguardandoEndereco && updatedNf.status === 'concluida'
           ? null
-          : state.activeNfId,
+          : stateRef.current.activeNfId,
     }
     setState(nextState)
     setPendingSelection(new Set())
     if (consultaAguardandoEndereco) {
       setConsultaAguardandoEndereco(false)
-      setConsultaItemAdicionadoMsg(`Posições confirmadas na NF ${activeNf.numero}.`)
+      setConsultaItemAdicionadoMsg(`Posições confirmadas na NF ${nfNumero}.`)
     }
     if (updatedNf.status === 'concluida') {
       setSelectedEntradaIds((prev) => prev.filter((id) => id !== updatedNf.id))
@@ -1360,22 +1396,23 @@ export default function App() {
       }
 
       queueMicrotask(() => {
-        void saveNow(next)
+        void saveNow(stateRef.current)
       })
 
       return next
     })
   }
 
-  function handleUpdateItemLocalizacao(itemIndex: number, localizacao: LocalizacaoEstoque) {
-    if (!state.activeNfId) return
-    if (state.activeItemIndex === itemIndex && localizacao === 'stage') {
+  async function handleUpdateItemLocalizacao(itemIndex: number, localizacao: LocalizacaoEstoque) {
+    const snapshot = stateRef.current
+    if (!snapshot.activeNfId) return
+    if (snapshot.activeItemIndex === itemIndex && localizacao === 'stage') {
       setPendingSelection(new Set())
     }
-    setState((s) => ({
-      ...s,
-      notas: s.notas.map((nf) => {
-        if (nf.id !== s.activeNfId) return nf
+    const nextState = {
+      ...snapshot,
+      notas: snapshot.notas.map((nf) => {
+        if (nf.id !== snapshot.activeNfId) return nf
         return {
           ...nf,
           items: nf.items.map((it) =>
@@ -1383,7 +1420,9 @@ export default function App() {
           ),
         }
       }),
-    }))
+    }
+    setState(nextState)
+    await saveNow(nextState)
   }
 
   async function handleDesmembrarItem(itemIndex: number) {
