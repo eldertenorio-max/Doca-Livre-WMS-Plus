@@ -994,7 +994,18 @@ export default function App() {
 
       if (editMarcandoStage) {
         if (editItemIndex == null) {
-          if (occ?.nfId === nfEditar.id) handleSelectItemEditar(occ.itemIndex)
+          if (occ?.nfId === nfEditar.id && mode === 'add') {
+            const idx = occ.itemIndex
+            const item = nfEditar.items.find((it) => it.index === idx)
+            if (item && !itemNoStage(item) && item.allocatedAddresses.length > 0) {
+              editOriginalAddressesRef.current = new Set(item.allocatedAddresses)
+              setEditItemIndex(idx)
+              setEditPendingSelection(new Set())
+              setEditMoveOrigens(new Set())
+              setEditMoveDestinos(new Set())
+              setEditStagePending(new Set([addressId]))
+            }
+          }
           return
         }
 
@@ -3062,6 +3073,7 @@ export default function App() {
           editMoveOrigens={nfEditar ? editMoveOrigens : undefined}
           editMoveDestinos={nfEditar ? editMoveDestinos : undefined}
           editMarcandoStage={nfEditar ? editMarcandoStage : false}
+          editItemIndex={nfEditar ? editItemIndex : null}
           editItemNoStage={(() => {
             if (nfEditar == null || editItemIndex == null) return false
             const it = nfEditar.items.find((i) => i.index === editItemIndex)

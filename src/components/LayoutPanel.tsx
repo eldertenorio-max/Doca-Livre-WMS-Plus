@@ -47,6 +47,8 @@ type Props = {
   editMoveOrigens?: Set<AddressId>
   editMoveDestinos?: Set<AddressId>
   editMarcandoStage?: boolean
+  /** Item selecionado na movimentação (filtra endereços marcáveis no modo stage). */
+  editItemIndex?: number | null
   editItemNoStage?: boolean
   /** Modo de marcar posições novas no armazém (adicionar paletes ao item). */
   editAdicionandoPosicoes?: boolean
@@ -239,6 +241,7 @@ function RuaGrid({
   editMoveOrigens,
   editMoveDestinos,
   editMarcandoStage = false,
+  editItemIndex = null,
   editAdicionandoPosicoes = false,
   saidaAddresses,
   saidaItemDestaqueAddresses,
@@ -347,7 +350,6 @@ function RuaGrid({
                       className += ' cell--destaque-verde'
                     else if (saidaAddresses?.has(addressId)) className += ' cell--saida'
                     if (allocateMode && (clickable || pending)) className += ' cell--alocavel'
-                    if (paintMode && (clickable || pending)) className += ' cell--pintavel'
 
                     const title = cellTooltip(
                       addressId,
@@ -361,16 +363,19 @@ function RuaGrid({
                     )
                     const origensCount = editMoveOrigens?.size ?? 0
                     const adicionandoPosicoes = editAdicionandoPosicoes
+                    const occMarcavelStage =
+                      editMarcandoStage &&
+                      activeNfId &&
+                      occ != null &&
+                      occ.nfId === activeNfId &&
+                      (editItemIndex == null || occ.itemIndex === editItemIndex)
                     const canInteract = Boolean(
                       (adicionandoPosicoes && clickable && !occ) ||
                         pending ||
                         editMoveOrigens?.has(addressId) ||
                         editMoveDestinos?.has(addressId) ||
                         stagePending ||
-                        (editMode &&
-                          editMarcandoStage &&
-                          clickable &&
-                          !occ) ||
+                        occMarcavelStage ||
                         (editMode &&
                           !editMarcandoStage &&
                           !adicionandoPosicoes &&
@@ -386,10 +391,14 @@ function RuaGrid({
                     if (
                       adicionandoPosicoes ||
                       (editMode && !editMarcandoStage && !adicionandoPosicoes && (occ || origensCount > 0)) ||
-                      (editMode && editMarcandoStage && (clickable || pending)) ||
+                      occMarcavelStage ||
+                      stagePending ||
                       (!editItemAtivo && editAddresses && occ)
                     ) {
                       className += ' cell--alocavel'
+                    }
+                    if (paintMode && (clickable || pending || occMarcavelStage || stagePending)) {
+                      className += ' cell--pintavel'
                     }
 
                     const portaBg =
