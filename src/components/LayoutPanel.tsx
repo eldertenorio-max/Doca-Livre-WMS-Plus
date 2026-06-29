@@ -37,6 +37,8 @@ type Props = {
   editMoveOrigens?: Set<AddressId>
   editMoveDestinos?: Set<AddressId>
   editMarcandoStage?: boolean
+  /** Modo de marcar posições novas no armazém (adicionar paletes ao item). */
+  editAdicionandoPosicoes?: boolean
   saidaAddresses?: Set<AddressId>
   saidaItemDestaqueAddresses?: Set<AddressId>
   saidaFlaggedAddresses?: Set<AddressId>
@@ -219,6 +221,7 @@ function RuaGrid({
   editMoveOrigens,
   editMoveDestinos,
   editMarcandoStage = false,
+  editAdicionandoPosicoes = false,
   saidaAddresses,
   saidaItemDestaqueAddresses,
   saidaFlaggedAddresses,
@@ -337,10 +340,12 @@ function RuaGrid({
                       editMoveDestinos,
                     )
                     const origensCount = editMoveOrigens?.size ?? 0
+                    const adicionandoPosicoes = editAdicionandoPosicoes
                     const canInteract = Boolean(
-                      editMoveOrigens?.has(addressId) ||
-                        editMoveDestinos?.has(addressId) ||
+                      (adicionandoPosicoes && clickable && !occ) ||
                         pending ||
+                        editMoveOrigens?.has(addressId) ||
+                        editMoveDestinos?.has(addressId) ||
                         stagePending ||
                         (editMode &&
                           editMarcandoStage &&
@@ -348,6 +353,7 @@ function RuaGrid({
                           !occ) ||
                         (editMode &&
                           !editMarcandoStage &&
+                          !adicionandoPosicoes &&
                           (occ ||
                             (origensCount > 0 && clickable && !occ))) ||
                         (!editItemAtivo &&
@@ -355,10 +361,11 @@ function RuaGrid({
                           occ &&
                           activeNfId &&
                           occ.nfId === activeNfId) ||
-                        (allocateMode && clickable && !editItemAtivo),
+                        (allocateMode && clickable && !editItemAtivo && !adicionandoPosicoes),
                     )
                     if (
-                      (editMode && !editMarcandoStage && (occ || origensCount > 0)) ||
+                      adicionandoPosicoes ||
+                      (editMode && !editMarcandoStage && !adicionandoPosicoes && (occ || origensCount > 0)) ||
                       (editMode && editMarcandoStage && (clickable || pending)) ||
                       (!editItemAtivo && editAddresses && occ)
                     ) {
@@ -599,16 +606,23 @@ export function LayoutPanel(props: Props) {
 
   return (
     <div className={`layout-panel ${mobile ? 'layout-panel--mobile' : ''} ${paintMode ? 'layout-panel--paint' : ''}`}>
-      {props.paletesTotal != null && props.paletesRestantes != null && props.allocateMode && !props.editMode && (
+      {props.paletesTotal != null &&
+        props.paletesRestantes != null &&
+        props.allocateMode &&
+        (!props.editMode || props.editAdicionandoPosicoes) && (
         <div className="paletes-counter-float" aria-live="polite">
           <strong>{props.paletesRestantes}</strong>{' '}
-          {props.saidaMode
+          {props.editAdicionandoPosicoes
             ? props.paletesRestantes === 1
               ? 'posição a marcar'
               : 'posições a marcar'
-            : props.paletesRestantes === 1
-              ? 'palete a endereçar'
-              : 'paletes a endereçar'}
+            : props.saidaMode
+              ? props.paletesRestantes === 1
+                ? 'posição a marcar'
+                : 'posições a marcar'
+              : props.paletesRestantes === 1
+                ? 'palete a endereçar'
+                : 'paletes a endereçar'}
         </div>
       )}
       <div className="layout-legend" aria-label="Legenda do painel">
@@ -637,15 +651,17 @@ export function LayoutPanel(props: Props) {
 
       {props.editItemAtivo && props.activeNfNumero && (
         <p className="layout-hint">
-          {props.stageDropEnabled
-            ? 'Clique na área STAGE abaixo para confirmar a movimentação dos paletes marcados.'
-            : props.editMarcandoStage
-              ? 'Modo STAGE: clique ou arraste nos endereços ocupados do item para marcar envio ao stage.'
-              : (props.editMoveOrigens?.size ?? 0) === 0
-                ? 'Passo 1: clique ou arraste nos quadrados ocupados para marcar o que vai tirar.'
-                : (props.editMoveDestinos?.size ?? 0) < (props.editMoveOrigens?.size ?? 0)
-                  ? `Passo 2: clique nos quadrados brancos — ${(props.editMoveOrigens?.size ?? 0) - (props.editMoveDestinos?.size ?? 0)} destino(s) restante(s) de ${props.editMoveOrigens?.size ?? 0}.`
-                  : 'Distribuição completa — confirme na barra lateral.'}
+          {props.editAdicionandoPosicoes
+            ? 'Clique ou arraste nos quadrados brancos para marcar as novas posições do item.'
+            : props.stageDropEnabled
+              ? 'Clique na área STAGE abaixo para confirmar a movimentação dos paletes marcados.'
+              : props.editMarcandoStage
+                ? 'Modo STAGE: clique ou arraste nos endereços ocupados do item para marcar envio ao stage.'
+                : (props.editMoveOrigens?.size ?? 0) === 0
+                  ? 'Passo 1: clique ou arraste nos quadrados ocupados para marcar o que vai tirar.'
+                  : (props.editMoveDestinos?.size ?? 0) < (props.editMoveOrigens?.size ?? 0)
+                    ? `Passo 2: clique nos quadrados brancos — ${(props.editMoveOrigens?.size ?? 0) - (props.editMoveDestinos?.size ?? 0)} destino(s) restante(s) de ${props.editMoveOrigens?.size ?? 0}.`
+                    : 'Distribuição completa — confirme na barra lateral.'}
         </p>
       )}
       {props.editAddresses && props.editAddresses.size > 0 && !props.editItemAtivo && (

@@ -1,5 +1,6 @@
 import { sanitizarNotasEntrada, todosItensEnderecados } from './excluirItemNf'
 import {
+  contarEnderecosPersistidos,
   limparMovimentosEntradaOrfaos,
   migrarRuasNosDados,
   recuperarEnderecosPerdidos,
@@ -38,4 +39,14 @@ export function normalizePersistedData(data: PersistedData): PersistedData {
 /** Dados vindos da nuvem — sem mesclar com localStorage do navegador. */
 export function prepareLoadedData(remote: PersistedData): PersistedData {
   return normalizePersistedData(remote)
+}
+
+export function prepareLoadedDataWithRepair(remote: PersistedData): {
+  data: PersistedData
+  enderecosRecuperados: number
+} {
+  const antes = contarEnderecosPersistidos(remote)
+  const data = normalizePersistedData(remote)
+  const depois = contarEnderecosPersistidos(data)
+  return { data, enderecosRecuperados: Math.max(0, depois - antes) }
 }

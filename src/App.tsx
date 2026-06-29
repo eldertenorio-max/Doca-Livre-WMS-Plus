@@ -52,6 +52,7 @@ import {
   criarMovimentoSaida,
   enderecosAlterados,
   enderecosDaNf,
+  nfTemHistoricoEnderecos,
   removerNfDoEstoque,
   removerMovimentoEntradaAtivo,
   upsertMovimentoEntrada,
@@ -87,6 +88,7 @@ import {
   aplicarLocalizacaoItem,
   aplicarLocalizacaoNf,
   aplicarSaidaStage,
+  adicionarPosicoesItemArmazem,
   moverEnderecosParaStage,
   moverItemStageParaArmazem,
   nfTemEstoqueArmazem,
@@ -122,6 +124,16 @@ function buildOccupancyMap(notas: NotaFiscal[]): Map<AddressId, AddressOccupancy
     }
   }
   return map
+}
+
+function mensagemNfSemEstoqueVisivel(nf: NotaFiscal, movimentos: MovimentoRegistro[]): string {
+  if (nfTemHistoricoEnderecos(nf, movimentos)) {
+    return (
+      `NF ${nf.numero} existe no sistema, mas os endereços sumiram do mapa. ` +
+      'Recarregue a página (F5) para restaurar do histórico.'
+    )
+  }
+  return 'NF sem itens no armazém nem no stage.'
 }
 
 const PAINEL_FILTROS_KEY = 'ultrafrio-painel-filtros'
@@ -238,6 +250,8 @@ export default function App() {
     movimentos: MovimentoRegistro[]
   } | null>(null)
   const [editStagePending, setEditStagePending] = useState<Set<AddressId>>(new Set())
+  const [editAdicionarPosicoesAlvo, setEditAdicionarPosicoesAlvo] = useState<number | null>(null)
+  const [editNovasPosicoes, setEditNovasPosicoes] = useState<Set<AddressId>>(new Set())
   const [saidaOrigemEstoque, setSaidaOrigemEstoque] = useState<SaidaOrigemEstoque>('armazem')
   const [saidaDestinoPendente, setSaidaDestinoPendente] = useState<NotaFiscal | null>(null)
   const [saidaStageItemIndex, setSaidaStageItemIndex] = useState<number | null>(null)
@@ -427,13 +441,15 @@ export default function App() {
     ? state.notas.find((n) => n.id === consultaNfAdicionarId) ?? null
     : null
 
-  const panelPendingSelection = editMode
-    ? editPendingSelection
-    : saidaModoPalete && !saidaSelecaoConcluida
-      ? saidaPaletesSelecionados
-      : saidaModoPalete && saidaPaleteAtivo
-        ? new Set([saidaPaleteAtivo])
-        : pendingSelection
+  const panelPendingSelection = editAdicionarPosicoesAlvo != null
+    ? editNovasPosicoes
+    : editMode
+      ? editPendingSelection
+      : saidaModoPalete && !saidaSelecaoConcluida
+        ? saidaPaletesSelecionados
+        : saidaModoPalete && saidaPaleteAtivo
+          ? new Set([saidaPaleteAtivo])
+          : pendingSelection
   const panelAllocateMode =
     allocateMode ||
     editMode ||
@@ -448,9 +464,14 @@ export default function App() {
       ? activeAllocateItem.paletes
       : null
   const paletesRestantesCount =
-    paletesTotal != null ? Math.max(0, paletesTotal - pendingSelection.size) : null
+    editAdicionarPosicoesAlvo != null
+      ? Math.max(0, editAdicionarPosicoesAlvo - editNovasPosicoes.size)
+      : paletesTotal != null
+        ? Math.max(0, paletesTotal - pendingSelection.size)
+        : null
 
-  const panelPaletesTotal = paletesTotal
+  const panelPaletesTotal =
+    editAdicionarPosicoesAlvo ?? paletesTotal
 
   const editEnderecosOcupados = useMemo(() => {
     const ocupados = new Set(occupancy.keys())
@@ -738,6 +759,30 @@ export default function App() {
     const occ = occupancy.get(addressId)
 
     if (nfEditar) {
+      if (
+        editAdicionarPosicoesAlvo != null &&
+        editItemIndex != null &&
+        !editMarcandoStage
+      ) {
+        if (occ) {
+          setOcupadoAlert({ addressId, occ })
+          return
+        }
+
+        setEditNovasPosicoes((prev) => {
+          const next = new Set(prev)
+          if (mode === 'add') {
+            if (next.has(addressId)) return prev
+            if (next.size >= editAdicionarPosicoesAlvo) return prev
+            next.add(addressId)
+          } else {
+            next.delete(addressId)
+          }
+          return next
+        })
+        return
+      }
+
       if (editMode && editItemIndex != null) {
         const item = nfEditar.items.find((it) => it.index === editItemIndex)
         if (item && itemNoStage(item)) {
@@ -1344,7 +1389,7 @@ export default function App() {
       aplicarBuscaSaida(nf, 'armazem')
       return true
     }
-    setBuscaErro('NF sem itens no armazém nem no stage.')
+    setBuscaErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
     setNfBuscaSaidaId(null)
     limparEstadoSaida()
     return false
@@ -1732,7 +1777,7 @@ export default function App() {
     const temArmazem = nfTemEstoqueArmazem(nf)
     const temStage = nfTemEstoqueStage(nf)
     if (!temArmazem && !temStage) {
-      setBuscaEditarErro('NF sem itens no armazém nem no stage.')
+      setBuscaEditarErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
       setNfEditarId(null)
       setEditItemIndex(null)
       setEditPendingSelection(new Set())
@@ -1745,6 +1790,8 @@ export default function App() {
 
   function handleSelectItemEditar(index: number) {
     if (!nfEditar) return
+    setEditAdicionarPosicoesAlvo(null)
+    setEditNovasPosicoes(new Set())
     const item = nfEditar.items.find((it) => it.index === index)
     if (!item) return
 
@@ -2010,6 +2057,65 @@ export default function App() {
     void saveNow(nextState)
   }
 
+  function handleIniciarAdicionarPosicoes(itemIndex: number, quantidade: number) {
+    if (!nfEditar || !(quantidade > 0)) return
+    const item = nfEditar.items.find((it) => it.index === itemIndex)
+    if (!item || itemNoStage(item) || item.allocatedAddresses.length === 0) return
+
+    setEditItemIndex(itemIndex)
+    setEditMarcandoStage(false)
+    setEditMoveOrigens(new Set())
+    setEditMoveDestinos(new Set())
+    setEditPendingSelection(new Set())
+    setEditStagePending(new Set())
+    setVozOrigemAddress(null)
+    setVozErro(null)
+    editOriginalAddressesRef.current = new Set(item.allocatedAddresses)
+    setEditAdicionarPosicoesAlvo(quantidade)
+    setEditNovasPosicoes(new Set())
+    setDetailAddress(null)
+  }
+
+  function handleCancelarAdicionarPosicoes() {
+    setEditAdicionarPosicoesAlvo(null)
+    setEditNovasPosicoes(new Set())
+  }
+
+  async function handleConfirmarAdicionarPosicoes() {
+    if (editSalvando || !nfEditar || editItemIndex == null || editAdicionarPosicoesAlvo == null) {
+      return
+    }
+    if (editNovasPosicoes.size !== editAdicionarPosicoesAlvo) return
+
+    const item = nfEditar.items.find((it) => it.index === editItemIndex)
+    if (!item || itemNoStage(item)) return
+
+    const novos = [...editNovasPosicoes]
+    const notas = state.notas.map((nf) =>
+      nf.id === nfEditar.id ? adicionarPosicoesItemArmazem(nf, editItemIndex, novos) : nf,
+    )
+    const updatedNf = notas.find((n) => n.id === nfEditar.id)!
+    const updatedItem = updatedNf.items.find((it) => it.index === editItemIndex)!
+    const nextState = {
+      ...state,
+      notas,
+      movimentos: [
+        criarMovimentoMovimentacao(updatedNf, editItemIndex, updatedItem.allocatedAddresses),
+        ...state.movimentos,
+      ],
+    }
+
+    setEditSalvando(true)
+    setEditAdicionarPosicoesAlvo(null)
+    setEditNovasPosicoes(new Set())
+    editOriginalAddressesRef.current = new Set(updatedItem.allocatedAddresses)
+    setEditMoveOrigens(new Set())
+    setEditMoveDestinos(new Set())
+    setState(nextState)
+    setEditSalvando(false)
+    await saveNow(nextState)
+  }
+
   function handleCancelarEditar() {
     setNfEditarId(null)
     setEditItemIndex(null)
@@ -2017,6 +2123,8 @@ export default function App() {
     setEditStagePending(new Set())
     setEditMoveOrigens(new Set())
     setEditMoveDestinos(new Set())
+    setEditAdicionarPosicoesAlvo(null)
+    setEditNovasPosicoes(new Set())
     setVozOrigemAddress(null)
     setVozErro(null)
     setEditMarcandoStage(false)
@@ -2034,6 +2142,14 @@ export default function App() {
     const resultados = buscarEstoque(state.notas, filtros)
     setConsultaResultados(resultados)
     if (resultados.length === 0) {
+      const nfQ = filtros.nfNumero.trim()
+      if (nfQ) {
+        const nf = buscarNfPorNumero(state.notas, nfQ)
+        if (nf) {
+          setConsultaErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
+          return
+        }
+      }
       setConsultaErro('Nenhum resultado encontrado com os filtros informados.')
     }
   }
@@ -2522,6 +2638,8 @@ export default function App() {
           marcandoStage: editMarcandoStage,
           onSetMarcandoStage: (value) => {
             setEditMarcandoStage(value)
+            setEditAdicionarPosicoesAlvo(null)
+            setEditNovasPosicoes(new Set())
             setEditMoveOrigens(new Set())
             setEditMoveDestinos(new Set())
             setEditStagePending(new Set())
@@ -2544,6 +2662,11 @@ export default function App() {
           onSalvar: handleSalvarEditar,
           onRemoverDoEstoque: handleRemoverDoEstoque,
           onCancelarEditar: handleCancelarEditar,
+          adicionarPosicoesAlvo: editAdicionarPosicoesAlvo,
+          adicionarPosicoesSelecionadas: editNovasPosicoes.size,
+          onIniciarAdicionarPosicoes: handleIniciarAdicionarPosicoes,
+          onConfirmarAdicionarPosicoes: handleConfirmarAdicionarPosicoes,
+          onCancelarAdicionarPosicoes: handleCancelarAdicionarPosicoes,
           buscaErro: buscaEditarErro,
         }}
         consulta={{
@@ -2618,6 +2741,7 @@ export default function App() {
           editMoveOrigens={nfEditar ? editMoveOrigens : undefined}
           editMoveDestinos={nfEditar ? editMoveDestinos : undefined}
           editMarcandoStage={nfEditar ? editMarcandoStage : false}
+          editAdicionandoPosicoes={editAdicionarPosicoesAlvo != null}
           editAddresses={nfEditar && editItemIndex == null ? editNfAddresses : undefined}
           consultaAddresses={consultaAddresses.size > 0 ? consultaAddresses : undefined}
           notas={state.notas}
@@ -2633,6 +2757,7 @@ export default function App() {
           }
           saidaFlaggedAddresses={editMode ? undefined : saidaFlaggedAddresses}
           paintMode={
+            editAdicionarPosicoesAlvo != null ||
             (editMode && editMarcandoStage) ||
             (editMode && !editMarcandoStage) ||
             (nfEmEdicao && !editMode) ||

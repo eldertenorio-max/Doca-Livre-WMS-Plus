@@ -191,3 +191,26 @@ export function snapshotSaidaStage(
 
   return snapshots
 }
+
+/** Acrescenta novas posições vazias a um item já no armazém. */
+export function adicionarPosicoesItemArmazem(
+  nf: NotaFiscal,
+  itemIndex: number,
+  novosEnderecos: string[],
+): NotaFiscal {
+  if (novosEnderecos.length === 0) return nf
+  return {
+    ...nf,
+    items: nf.items.map((it) => {
+      if (it.index !== itemIndex || itemNoStage(it)) return it
+      const allocatedAddresses = [...it.allocatedAddresses, ...novosEnderecos]
+      const basePaletes = it.paletes ?? it.allocatedAddresses.length
+      return {
+        ...it,
+        localizacao: 'armazem' as const,
+        allocatedAddresses,
+        paletes: basePaletes + novosEnderecos.length,
+      }
+    }),
+  }
+}

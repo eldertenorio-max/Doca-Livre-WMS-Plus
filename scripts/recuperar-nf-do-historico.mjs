@@ -1,6 +1,8 @@
 /**
- * Recupera NF removida do estoque a partir do snapshot no histórico de movimentos.
- * Uso: node scripts/recuperar-nf-do-historico.mjs 13822
+ * Recupera NF removida do estoque ou restaura endereços perdidos em NF existente,
+ * a partir do snapshot no histórico de movimentos (entrada + movimentação).
+ *
+ * Uso: node scripts/recuperar-nf-do-historico.mjs 201077 232367 208359
  */
 import { existsSync, readFileSync } from 'node:fs'
 
@@ -31,7 +33,7 @@ const key = process.env.VITE_SUPABASE_ANON_KEY?.trim() || config.anonKey
 
 const numeros = process.argv.slice(2)
 if (!numeros.length) {
-  console.error('Informe o número da NF. Ex.: node scripts/recuperar-nf-do-historico.mjs 13822')
+  console.error('Informe o número da NF. Ex.: node scripts/recuperar-nf-do-historico.mjs 201077')
   process.exit(1)
 }
 
@@ -42,10 +44,30 @@ const headers = {
   Prefer: 'return=representation',
 }
 
+function normNumero(value) {
+  return String(value ?? '').replace(/^0+/, '') || '0'
+}
+
 function scoreMovimento(mov) {
   const itens = mov.payload?.itens ?? []
   const enderecos = itens.reduce((s, it) => s + (it.addressIds?.length ?? 0), 0)
   return enderecos * 1000 + itens.length
+}
+
+function ultimoSnapshotPorItem(movimentos) {
+  const porItem = new Map()
+  const ordenados = [...movimentos].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
+  for (const mov of ordenados) {
+    for (const it of mov.payload?.itens ?? []) {
+      if (!it.addressIds?.length) continue
+      if (!porItem.has(it.itemIndex)) {
+        porItem.set(it.itemIndex, [...it.addressIds])
+      }
+    }
+  }
+  return porItem
 }
 
 async function getJson(path) {
@@ -74,43 +96,29 @@ async function patchJson(path, body) {
   if (!res.ok) throw new Error(await res.text())
 }
 
-async function recuperarNumero(numero) {
-  const movimentos = await getJson(
+async function buscarNfPorNumero(numero) {
+  const rows = await getJson(
+    `ultrafrio_notas_fiscais?select=id,numero&numero=eq.${encodeURIComponent(numero)}`,
+  )
+  if (rows.length) return rows[0]
+
+  const todas = await getJson('ultrafrio_notas_fiscais?select=id,numero')
+  const alvo = normNumero(numero)
+  return todas.find((n) => normNumero(n.numero) === alvo) ?? null
+}
+
+async function buscarMovimentosComEnderecos(numero) {
+  const entrada = await getJson(
     `ultrafrio_movimentos?select=*&nf_numero=eq.${encodeURIComponent(numero)}&tipo=eq.entrada&order=created_at.desc`,
   )
-  if (!movimentos.length) {
-    console.log(`NF ${numero}: nenhum movimento de entrada encontrado.`)
-    return
-  }
-
-  const candidatos = movimentos.filter((m) => (m.payload?.itens ?? []).some((it) => it.addressIds?.length))
-  if (!candidatos.length) {
-    console.log(`NF ${numero}: histórico sem endereços salvos — não é possível recuperar o estoque.`)
-    return
-  }
-
-  const mov = candidatos.sort((a, b) => scoreMovimento(b) - scoreMovimento(a))[0]
-  const nfId = mov.nf_id ?? mov.payload?.nfIdHistorico
-  if (!nfId) {
-    console.log(`NF ${numero}: movimento sem identificador da NF.`)
-    return
-  }
-
-  const existente = await getJson(`ultrafrio_notas_fiscais?select=id,numero&id=eq.${encodeURIComponent(nfId)}`)
-  if (existente.length) {
-    console.log(`NF ${numero}: já existe no estoque (id ${nfId}).`)
-    return
-  }
-
-  const itens = mov.payload.itens.filter((it) => it.addressIds?.length)
-  const endRows = itens.flatMap((it) =>
-    it.addressIds.map((address_id) => ({
-      nf_id: nfId,
-      item_index: it.itemIndex,
-      address_id,
-    })),
+  const movimentacao = await getJson(
+    `ultrafrio_movimentos?select=*&nf_numero=eq.${encodeURIComponent(numero)}&tipo=eq.movimentacao&order=created_at.desc`,
   )
+  const todos = [...entrada, ...movimentacao]
+  return todos.filter((m) => (m.payload?.itens ?? []).some((it) => it.addressIds?.length))
+}
 
+async function verificarConflitos(endRows) {
   const ocupados = await Promise.all(
     [...new Set(endRows.map((r) => r.address_id))].map(async (address_id) => {
       const rows = await getJson(
@@ -119,11 +127,88 @@ async function recuperarNumero(numero) {
       return rows.length ? address_id : null
     }),
   )
-  const conflitos = ocupados.filter(Boolean)
+  return ocupados.filter(Boolean)
+}
+
+async function inserirEnderecos(nfId, porItem) {
+  const endRows = []
+  for (const [itemIndex, addressIds] of porItem.entries()) {
+    for (const address_id of addressIds) {
+      endRows.push({ nf_id: nfId, item_index: itemIndex, address_id })
+    }
+  }
+  if (!endRows.length) return 0
+
+  const conflitos = await verificarConflitos(endRows)
   if (conflitos.length) {
-    console.log(`NF ${numero}: posições já ocupadas por outra NF: ${conflitos.join(', ')}`)
+    console.log(`Posições já ocupadas por outra NF: ${conflitos.join(', ')}`)
+    return -1
+  }
+
+  await postJson('ultrafrio_enderecamentos', endRows)
+
+  for (const [itemIndex, addressIds] of porItem.entries()) {
+    await patchJson(
+      `ultrafrio_nf_itens?nf_id=eq.${encodeURIComponent(nfId)}&item_index=eq.${itemIndex}`,
+      { localizacao: 'armazem', paletes: addressIds.length },
+    )
+  }
+
+  return endRows.length
+}
+
+async function restaurarEnderecosExistente(numero, nf) {
+  const ends = await getJson(
+    `ultrafrio_enderecamentos?select=address_id&nf_id=eq.${encodeURIComponent(nf.id)}`,
+  )
+  if (ends.length) {
+    console.log(`NF ${numero}: já tem ${ends.length} endereço(s) no banco.`)
     return
   }
+
+  const candidatos = await buscarMovimentosComEnderecos(numero)
+  if (!candidatos.length) {
+    console.log(`NF ${numero}: histórico sem endereços salvos — não é possível restaurar.`)
+    return
+  }
+
+  const porItem = ultimoSnapshotPorItem(candidatos)
+  if (!porItem.size) {
+    console.log(`NF ${numero}: nenhum snapshot com endereços encontrado.`)
+    return
+  }
+
+  const inseridos = await inserirEnderecos(nf.id, porItem)
+  if (inseridos < 0) return
+  if (inseridos === 0) {
+    console.log(`NF ${numero}: nada a restaurar.`)
+    return
+  }
+
+  await patchJson(`ultrafrio_notas_fiscais?id=eq.${encodeURIComponent(nf.id)}`, {
+    status: 'concluida',
+  })
+
+  console.log(
+    `NF ${numero}: ${porItem.size} item(ns), ${inseridos} posição(ões) restaurada(s) na NF existente.`,
+  )
+}
+
+async function recuperarNfRemovida(numero, mov) {
+  const nfId = mov.nf_id ?? mov.payload?.nfIdHistorico
+  if (!nfId) {
+    console.log(`NF ${numero}: movimento sem identificador da NF.`)
+    return
+  }
+
+  const existente = await getJson(`ultrafrio_notas_fiscais?select=id,numero&id=eq.${encodeURIComponent(nfId)}`)
+  if (existente.length) {
+    await restaurarEnderecosExistente(numero, existente[0])
+    return
+  }
+
+  const itens = mov.payload.itens.filter((it) => it.addressIds?.length)
+  const porItem = new Map(itens.map((it) => [it.itemIndex, [...it.addressIds]]))
 
   await postJson('ultrafrio_notas_fiscais', {
     id: nfId,
@@ -145,7 +230,8 @@ async function recuperarNumero(numero) {
       descricao: it.descricao ?? '',
       quantidade: it.quantidade ?? 0,
       unidade: it.unidade ?? 'UN',
-      ...(it.paletes != null ? { paletes: it.paletes } : {}),
+      localizacao: 'armazem',
+      ...(it.paletes != null ? { paletes: it.paletes } : { paletes: it.addressIds.length }),
       ...(it.up ? { up: it.up } : {}),
       ...(it.lote ? { lote: it.lote } : {}),
       ...(it.dataFabricacao ? { data_fabricacao: it.dataFabricacao } : {}),
@@ -153,7 +239,8 @@ async function recuperarNumero(numero) {
     })),
   )
 
-  await postJson('ultrafrio_enderecamentos', endRows)
+  const inseridos = await inserirEnderecos(nfId, porItem)
+  if (inseridos < 0) return
 
   await patchJson(`ultrafrio_movimentos?id=eq.${mov.id}`, {
     nf_id: nfId,
@@ -165,8 +252,25 @@ async function recuperarNumero(numero) {
   })
 
   console.log(
-    `NF ${numero} recuperada: ${itens.length} item(ns), ${endRows.length} posição(ões) restaurada(s).`,
+    `NF ${numero} recuperada: ${itens.length} item(ns), ${inseridos} posição(ões) restaurada(s).`,
   )
+}
+
+async function recuperarNumero(numero) {
+  const nfExistente = await buscarNfPorNumero(numero)
+  if (nfExistente) {
+    await restaurarEnderecosExistente(numero, nfExistente)
+    return
+  }
+
+  const candidatos = await buscarMovimentosComEnderecos(numero)
+  if (!candidatos.length) {
+    console.log(`NF ${numero}: nenhum movimento com endereços no histórico.`)
+    return
+  }
+
+  const mov = candidatos.sort((a, b) => scoreMovimento(b) - scoreMovimento(a))[0]
+  await recuperarNfRemovida(numero, mov)
 }
 
 async function main() {

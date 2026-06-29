@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { MOTIVOS_REMOCAO_ESTOQUE } from '../lib/motivoRemocaoEstoque'
+import { parsePaletesInput } from '../lib/paletes'
 import type { AddressId, MotivoRemocaoEstoqueId, NotaFiscal } from '../types'
 import { itemNoStage } from '../layout/stage'
 import { nfTemEstoqueArmazem, nfTemEstoqueStage } from '../lib/stageEstoque'
@@ -34,6 +35,11 @@ type Props = {
   onSalvar: () => void | Promise<void>
   onRemoverDoEstoque: (nfId: string, motivo: MotivoRemocaoEstoqueId) => void
   onCancelarEditar: () => void
+  adicionarPosicoesAlvo: number | null
+  adicionarPosicoesSelecionadas: number
+  onIniciarAdicionarPosicoes: (itemIndex: number, quantidade: number) => void
+  onConfirmarAdicionarPosicoes: () => void | Promise<void>
+  onCancelarAdicionarPosicoes: () => void
   buscaErro: string | null
 }
 
@@ -67,13 +73,22 @@ export function EditarPosicaoPanel({
   onSalvar,
   onRemoverDoEstoque,
   onCancelarEditar,
+  adicionarPosicoesAlvo,
+  adicionarPosicoesSelecionadas,
+  onIniciarAdicionarPosicoes,
+  onConfirmarAdicionarPosicoes,
+  onCancelarAdicionarPosicoes,
   buscaErro,
 }: Props) {
   const [numero, setNumero] = useState('')
   const [confirmarCancelar, setConfirmarCancelar] = useState(false)
   const [confirmarRemover, setConfirmarRemover] = useState(false)
   const [motivoRemocao, setMotivoRemocao] = useState<MotivoRemocaoEstoqueId | null>(null)
-  useBodyScrollLock(confirmarCancelar || confirmarRemover)
+  const [modalAdicionar, setModalAdicionar] = useState(false)
+  const [qtdPosicoesInput, setQtdPosicoesInput] = useState('')
+  const [itemAdicionarIndex, setItemAdicionarIndex] = useState<number | null>(null)
+  const [adicionarErro, setAdicionarErro] = useState<string | null>(null)
+  useBodyScrollLock(confirmarCancelar || confirmarRemover || modalAdicionar)
 
   function handleBuscar() {
     onBuscar(numero.trim())
@@ -85,12 +100,56 @@ export function EditarPosicaoPanel({
     setMotivoRemocao(null)
   }
 
+  const itensArmazem =
+    nfBusca?.items.filter((it) => !itemNoStage(it) && it.allocatedAddresses.length > 0) ?? []
+
+  function abrirModalAdicionar() {
+    setAdicionarErro(null)
+    setQtdPosicoesInput('')
+    const padrao =
+      itemIndex != null && itensArmazem.some((it) => it.index === itemIndex)
+        ? itemIndex
+        : itensArmazem.length === 1
+          ? itensArmazem[0].index
+          : null
+    setItemAdicionarIndex(padrao)
+    setModalAdicionar(true)
+  }
+
+  function confirmarModalAdicionar() {
+    const qtd = parsePaletesInput(qtdPosicoesInput)
+    if (!qtd || qtd <= 0) {
+      setAdicionarErro('Informe quantas posições deseja adicionar.')
+      return
+    }
+    if (itemAdicionarIndex == null) {
+      setAdicionarErro('Selecione o item.')
+      return
+    }
+    onIniciarAdicionarPosicoes(itemAdicionarIndex, qtd)
+    setModalAdicionar(false)
+    setAdicionarErro(null)
+  }
+
+  const adicionandoPosicoes = adicionarPosicoesAlvo != null
+  const adicionarCompleto =
+    adicionandoPosicoes && adicionarPosicoesSelecionadas === adicionarPosicoesAlvo
+
   const nfActions = nfBusca ? (
     <div className="nf-detail-actions">
       <button
         type="button"
+        className="btn btn-sm"
+        onClick={abrirModalAdicionar}
+        disabled={itensArmazem.length === 0 || adicionandoPosicoes}
+      >
+        Adicionar posição
+      </button>
+      <button
+        type="button"
         className="btn btn-danger btn-sm"
         onClick={() => setConfirmarRemover(true)}
+        disabled={adicionandoPosicoes}
       >
         Remover do estoque
       </button>
@@ -98,6 +157,7 @@ export function EditarPosicaoPanel({
         type="button"
         className="btn btn-ghost btn-sm"
         onClick={() => setConfirmarCancelar(true)}
+        disabled={adicionandoPosicoes}
       >
         Cancelar edição
       </button>
@@ -164,7 +224,34 @@ export function EditarPosicaoPanel({
 
           {itemIndex != null && (
             <div className="item-actions">
-              {itemStage ? (
+              {adicionandoPosicoes ? (
+                <>
+                  <p className="muted movimentacao-adicionar-hint">
+                    Marque <strong>{adicionarPosicoesAlvo}</strong> posição
+                    {adicionarPosicoesAlvo !== 1 ? 'ões' : ''} no mapa para o item selecionado (
+                    <strong>
+                      {adicionarPosicoesSelecionadas} / {adicionarPosicoesAlvo}
+                    </strong>{' '}
+                    selecionada{adicionarPosicoesSelecionadas !== 1 ? 's' : ''}).
+                  </p>
+                  <button
+                    type="button"
+                    className="btn success full"
+                    onClick={() => void onConfirmarAdicionarPosicoes()}
+                    disabled={!adicionarCompleto || salvando}
+                  >
+                    {salvando ? 'Salvando…' : 'Confirmar novas posições'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost full"
+                    onClick={onCancelarAdicionarPosicoes}
+                    disabled={salvando}
+                  >
+                    Cancelar adição
+                  </button>
+                </>
+              ) : itemStage ? (
                 <>
                   <p className="muted">
                     {pendingCount} endereço(s) selecionado(s) — use os campos acima ou clique/arraste
@@ -279,6 +366,63 @@ export function EditarPosicaoPanel({
         <div className="sidebar-block nf-detail">
           <NfDetalheLeitura nf={nfBusca} actions={nfActions} />
           <p className="muted sidebar-block">Esta NF não possui estoque no armazém nem no stage.</p>
+        </div>
+      )}
+
+      {modalAdicionar && nfBusca && (
+        <div className="confirm-backdrop" onClick={() => setModalAdicionar(false)}>
+          <div className="confirm-box confirm-box--wide" onClick={(e) => e.stopPropagation()}>
+            <h4>Adicionar posições</h4>
+            <p>
+              NF <strong>{nfBusca.numero}</strong> — informe quantas posições novas deseja
+              acrescentar ao item.
+            </p>
+            {itensArmazem.length > 1 && (
+              <label className="consulta-campo">
+                <span>Item</span>
+                <select
+                  className="input-nf"
+                  value={itemAdicionarIndex ?? ''}
+                  onChange={(e) =>
+                    setItemAdicionarIndex(e.target.value ? Number(e.target.value) : null)
+                  }
+                >
+                  <option value="">Selecione…</option>
+                  {itensArmazem.map((it) => (
+                    <option key={it.index} value={it.index}>
+                      {it.codigo} — {it.descricao} ({it.allocatedAddresses.length} pos.)
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {itensArmazem.length === 1 && (
+              <p className="muted">
+                Item: <strong>{itensArmazem[0].codigo}</strong> — {itensArmazem[0].descricao}
+              </p>
+            )}
+            <label className="consulta-campo">
+              <span>Quantidade de posições</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                className="input-nf"
+                placeholder="Ex.: 4"
+                value={qtdPosicoesInput}
+                onChange={(e) => setQtdPosicoesInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmarModalAdicionar()}
+              />
+            </label>
+            {adicionarErro && <p className="error">{adicionarErro}</p>}
+            <div className="confirm-actions">
+              <button type="button" className="btn" onClick={() => setModalAdicionar(false)}>
+                Voltar
+              </button>
+              <button type="button" className="btn primary" onClick={confirmarModalAdicionar}>
+                Marcar no mapa
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -46,22 +46,48 @@ export function nfTemEnderecos(nf: NotaFiscal): boolean {
   return nf.items.some((it) => it.allocatedAddresses.length > 0)
 }
 
-function entradaComMaisEnderecos(
+export function contarEnderecosPersistidos(data: PersistedData): number {
+  return data.notas.reduce(
+    (s, nf) => s + nf.items.reduce((s2, it) => s2 + it.allocatedAddresses.length, 0),
+    0,
+  )
+}
+
+/** Último snapshot com endereços para um item (entrada ou movimentação posterior). */
+export function ultimoSnapshotEnderecosItem(
   movimentos: MovimentoRegistro[],
   nfId: string,
-): MovimentoRegistro | undefined {
-  return movimentos
-    .filter((m) => m.tipo === 'entrada' && m.nfId === nfId && !m.excluido)
-    .sort((a, b) => {
-      const endA = a.itens.reduce((sum, it) => sum + it.addressIds.length, 0)
-      const endB = b.itens.reduce((sum, it) => sum + it.addressIds.length, 0)
-      return endB - endA
-    })[0]
+  itemIndex: number,
+): AddressId[] {
+  const relevant = movimentos
+    .filter(
+      (m) =>
+        !m.excluido &&
+        m.nfId === nfId &&
+        (m.tipo === 'entrada' || m.tipo === 'movimentacao'),
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  for (const mov of relevant) {
+    const snap = mov.itens.find((it) => it.itemIndex === itemIndex && it.addressIds.length > 0)
+    if (snap) return [...snap.addressIds]
+  }
+  return []
+}
+
+export function nfTemHistoricoEnderecos(
+  nf: NotaFiscal,
+  movimentos: MovimentoRegistro[],
+): boolean {
+  return nf.items.some((it) => {
+    if (itemNoStage(it) || it.allocatedAddresses.length > 0) return false
+    return ultimoSnapshotEnderecosItem(movimentos, nf.id, it.index).length > 0
+  })
 }
 
 /**
- * Recupera endereços perdidos no estoque usando o snapshot do movimento de entrada
- * (quando a NF ainda existe, mas allocatedAddresses ficou vazio indevidamente).
+ * Recupera endereços perdidos no estoque usando snapshots do histórico
+ * (entrada e movimentações posteriores), quando allocatedAddresses ficou vazio indevidamente.
  */
 export function recuperarEnderecosPerdidos(data: PersistedData): PersistedData {
   const ocupacao = new Map<AddressId, string>()
@@ -75,16 +101,13 @@ export function recuperarEnderecosPerdidos(data: PersistedData): PersistedData {
 
   let changed = false
   const notas = data.notas.map((nf) => {
-    const entrada = entradaComMaisEnderecos(data.movimentos, nf.id)
-    if (!entrada) return nf
-
     const items = nf.items.map((it) => {
       if (itemNoStage(it) || it.allocatedAddresses.length > 0) return it
 
-      const snap = entrada.itens.find((s) => s.itemIndex === it.index)
-      if (!snap || snap.addressIds.length === 0) return it
+      const candidatos = ultimoSnapshotEnderecosItem(data.movimentos, nf.id, it.index)
+      if (candidatos.length === 0) return it
 
-      const enderecos = snap.addressIds.filter(
+      const enderecos = candidatos.filter(
         (addr) => !ocupacao.has(addr) || ocupacao.get(addr) === nf.id,
       )
       if (enderecos.length === 0) return it

@@ -4,7 +4,7 @@ import { clearLocalPersistedData, localRepository } from '../lib/repository/loca
 import { ensureSupabaseConfig } from '../lib/supabaseConfig'
 import { isSupabaseConfigured } from '../lib/supabaseClient'
 import { subscribeEnderecamentoChanges } from '../lib/supabaseRealtime'
-import { prepareLoadedData } from '../lib/persistence'
+import { prepareLoadedData, prepareLoadedDataWithRepair } from '../lib/persistence'
 import { mesclarEmitentesSugeridos, normalizarEmitente } from '../lib/emitentesRegistry'
 import {
   mergePersistedData,
@@ -286,13 +286,34 @@ export function useEnderecamentoStore() {
 
       try {
         const remote = await repo.loadData()
-        const data = prepareLoadedData(remote)
+        const { data, enderecosRecuperados } = prepareLoadedDataWithRepair(remote)
         const ui = repo.mode === 'supabase' ? { activeNfId: null, activeItemIndex: null } : repo.loadUiPrefs()
 
         if (!cancelled) {
           lastPersistedRef.current = data
           setState({ ...data, ...ui })
           setError(null)
+
+          if (repo.mode === 'supabase' && enderecosRecuperados > 0) {
+            skipSave.current = true
+            try {
+              await repo.saveData({
+                notas: data.notas,
+                movimentos: data.movimentos,
+                notasCanceladas: data.notasCanceladas,
+              })
+              lastPersistedRef.current = data
+              ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
+            } catch (e) {
+              setError(
+                e instanceof Error
+                  ? `Endereços recuperados do histórico, mas falhou ao salvar na nuvem: ${e.message}`
+                  : 'Endereços recuperados do histórico, mas falhou ao salvar na nuvem.',
+              )
+            } finally {
+              skipSave.current = false
+            }
+          }
         }
       } catch (e) {
         if (!cancelled) {
