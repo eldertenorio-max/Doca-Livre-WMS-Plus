@@ -60,7 +60,11 @@ function preserveUi(prev: AppState, data: PersistedData): AppState {
   if (activeNfId) {
     const inMerged = notas.some((n) => n.id === activeNfId)
     const prevNf = prev.notas.find((n) => n.id === activeNfId)
-    if (!inMerged && prevNf?.status === 'em_andamento') {
+    if (
+      !inMerged &&
+      prevNf &&
+      (prevNf.status === 'em_andamento' || prevNf.status === 'concluida')
+    ) {
       notas = [prevNf, ...notas.filter((n) => n.id !== activeNfId)]
     } else if (!inMerged) {
       activeNfId = null

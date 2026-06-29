@@ -28,6 +28,13 @@ export function primeiroEnderecoNf(nf: NotaFiscal): MapFocusTarget | null {
   return null
 }
 
+export function primeiroEnderecoIds(ids: Iterable<AddressId>): MapFocusTarget | null {
+  for (const addressId of ids) {
+    return { type: 'address', addressId }
+  }
+  return null
+}
+
 export function avisoConsultaEncontrada(
   resultados: ConsultaEstoqueResultado[],
 ): BuscaEncontradaAviso {

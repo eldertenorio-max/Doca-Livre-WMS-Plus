@@ -93,7 +93,7 @@ export function ConsultaEstoqueInventario({
       </div>
 
       <p className="muted consulta-inventario-dica">
-        Clique em uma NF para destacar ou desestacar no painel.
+        Clique em uma NF para destacar no mapa — a tela rola até a posição automaticamente.
       </p>
 
       <ul className={`consulta-inventario-lista consulta-inventario-lista--${vista}`}>

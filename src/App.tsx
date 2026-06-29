@@ -66,11 +66,12 @@ import {
   syncVinculosNotas,
   vincularNotaCancelada,
 } from './lib/nfCanceladas'
-import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, CONSULTA_FILTROS_VAZIOS, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
+import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, resultadosEstaoDestacados, CONSULTA_FILTROS_VAZIOS, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
 import {
   avisoConsultaEncontrada,
   avisoNfEncontrada,
   primeiroEnderecoConsulta,
+  primeiroEnderecoIds,
   primeiroEnderecoNf,
   type BuscaEncontradaAviso,
   type MapFocusTarget,
@@ -310,27 +311,31 @@ export default function App() {
     storeVoicePrefs(voicePrefs)
   }, [voicePrefs])
 
-  const focarMapaBuscaEncontrado = useCallback(
-    (target: MapFocusTarget | null, aviso: BuscaEncontradaAviso) => {
+  const focarMapaDestaque = useCallback(
+    (target: MapFocusTarget | null) => {
+      if (!target) return
       if (sidebarMode === 'fullscreen') setSidebarMode('open')
 
       setMapFocusScrollToken((t) => t + 1)
-      if (target?.type === 'address') {
+      if (target.type === 'address') {
         setMapFocusAddressId(target.addressId)
         setMapFocusStage(false)
         setMapPulseAddressId(target.addressId)
-      } else if (target?.type === 'stage') {
+      } else {
         setMapFocusAddressId(null)
         setMapFocusStage(true)
         setMapPulseAddressId(null)
-      } else {
-        setMapFocusAddressId(null)
-        setMapFocusStage(false)
-        setMapPulseAddressId(null)
       }
-      setBuscaEncontrada(aviso)
     },
     [sidebarMode, setSidebarMode],
+  )
+
+  const focarMapaBuscaEncontrado = useCallback(
+    (target: MapFocusTarget | null, aviso: BuscaEncontradaAviso) => {
+      focarMapaDestaque(target)
+      setBuscaEncontrada(aviso)
+    },
+    [focarMapaDestaque],
   )
 
   useEffect(() => {
@@ -1156,7 +1161,7 @@ export default function App() {
       }
     })
     let updatedNf = notas.find((n) => n.id === activeNf.id)!
-    if (consultaAguardandoEndereco && allItemsAllocated(updatedNf)) {
+    if (allItemsAllocated(updatedNf)) {
       updatedNf = { ...updatedNf, status: 'concluida' as const }
     }
     const notasFinais = notas.map((n) => (n.id === updatedNf.id ? updatedNf : n))
@@ -1180,9 +1185,9 @@ export default function App() {
     if (consultaAguardandoEndereco) {
       setConsultaAguardandoEndereco(false)
       setConsultaItemAdicionadoMsg(`Posições confirmadas na NF ${activeNf.numero}.`)
-      if (updatedNf.status === 'concluida') {
-        setSelectedEntradaIds((prev) => prev.filter((id) => id !== updatedNf.id))
-      }
+    }
+    if (updatedNf.status === 'concluida') {
+      setSelectedEntradaIds((prev) => prev.filter((id) => id !== updatedNf.id))
     }
     await saveNow(nextState)
   }
@@ -1608,6 +1613,7 @@ export default function App() {
 
     resetSelecaoPaletesSaida()
     setSaidaItemIndex(index)
+    focarMapaDestaque(primeiroEnderecoIds(item.allocatedAddresses))
   }
 
   function handleIniciarSelecaoSaida() {
@@ -1927,6 +1933,7 @@ export default function App() {
     setVozErro(null)
     setEditMarcandoStage(false)
     setDetailAddress(null)
+    focarMapaDestaque({ type: 'stage' })
     return
   }
 
@@ -1941,6 +1948,7 @@ export default function App() {
   setVozErro(null)
     setEditMarcandoStage(false)
     setDetailAddress(null)
+    focarMapaDestaque(primeiroEnderecoIds(item.allocatedAddresses))
   }
 
   function handleSelectVozOrigem(addressId: AddressId, index: number) {
@@ -2194,6 +2202,7 @@ export default function App() {
     setEditAdicionarPosicoesAlvo(quantidade)
     setEditNovasPosicoes(new Set())
     setDetailAddress(null)
+    focarMapaDestaque(primeiroEnderecoIds(item.allocatedAddresses))
   }
 
   function handleCancelarAdicionarPosicoes() {
@@ -2276,8 +2285,12 @@ export default function App() {
   }
 
   function handleAlternarDestaqueInventario(resultados: ConsultaEstoqueResultado[]) {
-    setConsultaResultados((prev) => alternarDestaqueConsulta(prev, resultados))
     setConsultaErro(null)
+    const removendo = resultadosEstaoDestacados(resultados, consultaResultados)
+    setConsultaResultados((prev) => alternarDestaqueConsulta(prev, resultados))
+    if (!removendo) {
+      focarMapaDestaque(primeiroEnderecoConsulta(resultados))
+    }
   }
 
   function handleBuscarNfAdicionar(numero: string) {

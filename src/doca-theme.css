@@ -30,8 +30,26 @@
   display: none;
 }
 
-.app-topbar-wms {
+.app-topbar-wms-main {
   color: #000000;
+}
+
+.app-topbar-wms-light {
+  color: #5c6670;
+  background: #f3f4f6;
+  border-color: #d0d7de;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+[data-theme='dark'] .app-topbar-wms-main {
+  color: #ffffff;
+}
+
+[data-theme='dark'] .app-topbar-wms-light {
+  color: #b0b0b0;
+  background: color-mix(in srgb, #fff 8%, #1a1a1a);
+  border-color: color-mix(in srgb, #fff 18%, #333);
+  box-shadow: none;
 }
 
 .app-topbar-brand-main {
@@ -44,10 +62,6 @@
   color: #000000;
   letter-spacing: 0.28em;
   opacity: 0.72;
-}
-
-[data-theme='dark'] .app-topbar-wms {
-  color: #ffffff;
 }
 
 [data-theme='dark'] .app-topbar-brand-main,
@@ -250,30 +264,44 @@
 /* —— Botões primários —— */
 .btn.primary,
 .upload-btn {
-  background: var(--btn-primary-bg);
-  border-color: var(--btn-primary-border);
-  color: var(--btn-primary-fg);
+  background: var(--btn-surface-bg);
+  border-color: var(--btn-surface-border);
+  color: var(--btn-surface-fg);
   font-weight: 700;
 }
 
 .btn.primary:hover:not(:disabled),
 .upload-btn:hover {
-  background: var(--btn-primary-hover);
-  border-color: var(--btn-primary-hover);
+  background: var(--btn-surface-hover-bg);
+  border-color: var(--btn-surface-border);
   filter: none;
+}
+
+.btn.primary:active:not(:disabled),
+.upload-btn:active {
+  background: var(--btn-surface-active-bg);
+  border-color: var(--btn-surface-active-border);
+  color: var(--btn-surface-active-fg);
 }
 
 .sidebar.sidebar--wide .sidebar-section-inner .btn.primary,
 .sidebar.sidebar--wide .sidebar-section-inner .upload-btn {
-  background: var(--btn-primary-bg);
-  border-color: var(--btn-primary-border);
-  color: var(--btn-primary-fg);
+  background: var(--btn-surface-bg);
+  border-color: var(--btn-surface-border);
+  color: var(--btn-surface-fg);
 }
 
 .sidebar.sidebar--wide .sidebar-section-inner .btn.primary:hover:not(:disabled),
 .sidebar.sidebar--wide .sidebar-section-inner .upload-btn:hover {
-  background: var(--btn-primary-hover);
-  border-color: var(--btn-primary-hover);
+  background: var(--btn-surface-hover-bg);
+  border-color: var(--btn-surface-border);
+}
+
+.sidebar.sidebar--wide .sidebar-section-inner .btn.primary:active:not(:disabled),
+.sidebar.sidebar--wide .sidebar-section-inner .upload-btn:active {
+  background: var(--btn-surface-active-bg);
+  border-color: var(--btn-surface-active-border);
+  color: var(--btn-surface-active-fg);
 }
 
 .upload-btn.upload-btn--muted,
@@ -294,28 +322,30 @@
 }
 
 .sidebar-layout-btn--active {
-  background: var(--brand-yellow-soft) !important;
-  color: var(--brand-black) !important;
-  border-color: var(--brand-yellow) !important;
+  background: var(--btn-surface-active-bg) !important;
+  color: var(--btn-surface-active-fg) !important;
+  border-color: var(--btn-surface-active-border) !important;
 }
 
 [data-theme='dark'] .sidebar-layout-btn--active {
-  color: var(--brand-yellow) !important;
+  color: var(--btn-surface-active-fg) !important;
 }
 
 .app-topbar .theme-toggle:hover,
 .sidebar-layout-btn:hover {
-  border-color: var(--brand-yellow);
+  border-color: var(--btn-surface-border);
+  background: var(--btn-surface-hover-bg);
 }
 
 /* —— Abas e chips ativos —— */
 .consulta-modo-tab.is-active,
+.saida-modo-btn--active,
 .painel-periodo-btn--active,
-.nf-chip--active,
-.nf-chip--active.nf-chip--em_andamento {
-  background: var(--brand-yellow) !important;
-  border-color: var(--brand-yellow) !important;
-  color: var(--brand-black) !important;
+.hist-filter--active,
+.consulta-inventario-vista-btn.is-active {
+  background: var(--btn-surface-active-bg) !important;
+  border-color: var(--btn-surface-active-border) !important;
+  color: var(--btn-surface-active-fg) !important;
   box-shadow: none;
 }
 
@@ -323,8 +353,16 @@
   font-weight: 700;
 }
 
+.nf-chip--active,
+.nf-chip--active.nf-chip--em_andamento {
+  background: var(--btn-surface-active-bg) !important;
+  border-color: var(--btn-surface-active-border) !important;
+  color: var(--btn-surface-active-fg) !important;
+  box-shadow: none;
+}
+
 .nf-chip--active {
-  outline: 2px solid var(--brand-black);
+  outline: 2px solid var(--btn-surface-active-border);
   outline-offset: -1px;
 }
 
@@ -338,7 +376,7 @@
 }
 
 .sidebar.sidebar--wide .sidebar-section-inner .painel-periodo-btn--active {
-  color: var(--brand-black);
+  color: var(--btn-surface-active-fg);
 }
 
 /* —— Splash —— */

@@ -13,6 +13,7 @@ export type LinhaRelatorioNota = {
   dataEmissao: string
   status: string
   qtdItens: number
+  quantidadeProdutos: number
   qtdPosicoes: number
   qtdPaletes: number
   valorTotal?: number
@@ -112,6 +113,7 @@ export function coletarRelatorioEstoque(
       dataEmissao: nf.dataEmissao,
       status: nf.status === 'concluida' ? 'Concluída' : 'Em andamento',
       qtdItens: itensNf.length,
+      quantidadeProdutos: itensNf.reduce((s, it) => s + it.quantidade, 0),
       qtdPosicoes,
       qtdPaletes: itensNf.reduce((s, it) => s + it.paletes, 0),
       ...(nf.valorTotalNota != null ? { valorTotal: nf.valorTotalNota } : {}),
@@ -146,6 +148,7 @@ export function gerarCsvNotas(linhas: LinhaRelatorioNota[]): string {
     'Data emissão',
     'Status',
     'Qtd itens',
+    'Quantidade produtos',
     'Qtd posições',
     'Qtd paletes',
     'Valor total',
@@ -159,6 +162,7 @@ export function gerarCsvNotas(linhas: LinhaRelatorioNota[]): string {
       n.dataEmissao,
       n.status,
       n.qtdItens,
+      formatQuantidadeNfe(n.quantidadeProdutos),
       n.qtdPosicoes,
       n.qtdPaletes,
       n.valorTotal != null ? formatValorNfe(n.valorTotal) : '',
@@ -273,7 +277,7 @@ export function imprimirRelatorioNotas(linhas: LinhaRelatorioNota[], origem: Rel
   const gerado = new Date().toLocaleString('pt-BR')
   const subtitle = `${labelOrigem(origem)} · ${linhas.length} nota(s) · Gerado em ${gerado}`
   const table = htmlTable(
-    ['NF', 'Série', 'Emitente', 'Emissão', 'Status', 'Itens', 'Posições', 'Paletes', 'Valor', 'Peso'],
+    ['NF', 'Série', 'Emitente', 'Emissão', 'Status', 'Itens', 'Qtd produtos', 'Posições', 'Paletes', 'Valor', 'Peso'],
     linhas.map((n) => [
       n.nfNumero,
       n.serie,
@@ -281,6 +285,7 @@ export function imprimirRelatorioNotas(linhas: LinhaRelatorioNota[], origem: Rel
       n.dataEmissao,
       n.status,
       String(n.qtdItens),
+      formatQuantidadeNfe(n.quantidadeProdutos),
       String(n.qtdPosicoes),
       String(n.qtdPaletes),
       n.valorTotal != null ? formatValorNfe(n.valorTotal) : '—',

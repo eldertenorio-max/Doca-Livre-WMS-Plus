@@ -74,9 +74,9 @@ export function AppTopBar({
         <div className="app-topbar-brand-row">
           <div className="app-topbar-brand">
             <BrandMark />
-            <strong className="app-topbar-wms">
+            <strong className="app-topbar-wms" aria-label={`${BRAND_PRODUCT_NAME} ${BRAND_PRODUCT_VARIANT}`}>
+              <span className="app-topbar-wms-main">{BRAND_PRODUCT_NAME}</span>
               <span className="app-topbar-wms-light">{BRAND_PRODUCT_VARIANT}</span>
-              {BRAND_PRODUCT_NAME}
             </strong>
           </div>
         </div>

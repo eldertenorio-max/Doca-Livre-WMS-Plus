@@ -1,3 +1,5 @@
+import { todosItensEnderecados } from './excluirItemNf'
+import { itemEnderecamentoCompleto } from './paletes'
 import type { NotaFiscal, NfeItem, PersistedData } from '../types'
 
 function entityById<T extends { id: string }>(list: T[], id: string): T | undefined {
@@ -8,9 +10,24 @@ function entityJson<T>(entity: T | undefined): string {
   return entity === undefined ? '__missing__' : JSON.stringify(entity)
 }
 
+function enderecoCount(nf: NotaFiscal): number {
+  return nf.items.reduce((s, it) => s + it.allocatedAddresses.length, 0)
+}
+
+function nfCompleteness(nf: NotaFiscal): number {
+  const completeItems = nf.items.filter(itemEnderecamentoCompleto).length
+  const statusBonus = nf.status === 'concluida' ? 1_000_000 : 0
+  return statusBonus + completeItems * 1_000 + enderecoCount(nf)
+}
+
+function mergeAllocatedAddresses(remote: string[], fallback: string[]): string[] {
+  if (fallback.length > remote.length) return [...fallback]
+  if (remote.length > fallback.length) return [...remote]
+  return remote.length > 0 ? [...remote] : [...fallback]
+}
+
 function preserveOptionalItemFields(item: NfeItem, fallback: NfeItem): NfeItem {
-  const allocatedAddresses =
-    item.allocatedAddresses.length > 0 ? item.allocatedAddresses : fallback.allocatedAddresses
+  const allocatedAddresses = mergeAllocatedAddresses(item.allocatedAddresses, fallback.allocatedAddresses)
   return {
     ...item,
     allocatedAddresses,
@@ -26,21 +43,72 @@ function preserveOptionalItemFields(item: NfeItem, fallback: NfeItem): NfeItem {
   }
 }
 
-function preserveOptionalNfFields(nf: NotaFiscal, fallback: NotaFiscal): NotaFiscal {
+function mergeNfItems(primary: NotaFiscal, fallback: NotaFiscal): NfeItem[] {
+  const primaryByIndex = new Map(primary.items.map((it) => [it.index, it]))
   const fallbackByIndex = new Map(fallback.items.map((it) => [it.index, it]))
+  const indexes = new Set([...primaryByIndex.keys(), ...fallbackByIndex.keys()])
+  return [...indexes]
+    .sort((a, b) => a - b)
+    .map((index) => {
+      const primary = primaryByIndex.get(index)
+      const fb = fallbackByIndex.get(index)
+      if (primary && fb) return preserveOptionalItemFields(primary, fb)
+      return (primary ?? fb)!
+    })
+}
+
+function resolveNfStatus(
+  nf: NotaFiscal,
+  fallback: NotaFiscal,
+  items: NfeItem[],
+): NotaFiscal['status'] {
+  if (fallback.status === 'concluida') return 'concluida'
+  const candidate = { ...nf, items }
+  if (todosItensEnderecados(candidate)) return 'concluida'
+  if (nf.status === 'concluida') return 'concluida'
+  return nf.status
+}
+
+function preserveOptionalNfFields(nf: NotaFiscal, fallback: NotaFiscal): NotaFiscal {
+  const items = mergeNfItems(nf, fallback)
   return {
     ...nf,
+    status: resolveNfStatus(nf, fallback, items),
     pesoBruto: nf.pesoBruto ?? fallback.pesoBruto,
     pesoLiquido: nf.pesoLiquido ?? fallback.pesoLiquido,
     valorTotalNota: nf.valorTotalNota ?? fallback.valorTotalNota,
     quantidadeVolume: nf.quantidadeVolume ?? fallback.quantidadeVolume,
     nfCanceladaOrigemId: nf.nfCanceladaOrigemId ?? fallback.nfCanceladaOrigemId,
     nfCanceladaOrigemNumero: nf.nfCanceladaOrigemNumero ?? fallback.nfCanceladaOrigemNumero,
-    items: nf.items.map((it) => {
-      const fb = fallbackByIndex.get(it.index)
-      return fb ? preserveOptionalItemFields(it, fb) : it
-    }),
+    items,
   }
+}
+
+function pickBestNf(a: NotaFiscal, b: NotaFiscal): NotaFiscal {
+  const scoreA = nfCompleteness(a)
+  const scoreB = nfCompleteness(b)
+  return scoreA >= scoreB ? a : b
+}
+
+function mergeSingleNotaFiscal(
+  b: NotaFiscal | undefined,
+  l: NotaFiscal | undefined,
+  r: NotaFiscal | undefined,
+): NotaFiscal | undefined {
+  if (entityJson(b) !== entityJson(l)) {
+    return l
+  }
+
+  if (entityJson(b) !== entityJson(r)) {
+    if (r === undefined) return l
+    const fallback = l ?? b
+    if (!fallback) return r
+    const fromRemote = preserveOptionalNfFields(r, fallback)
+    const fromFallback = preserveOptionalNfFields(fallback, r)
+    return pickBestNf(fromFallback, fromRemote)
+  }
+
+  return l
 }
 
 function mergeNotaFiscal(base: NotaFiscal[], local: NotaFiscal[], remote: NotaFiscal[]): NotaFiscal[] {
@@ -52,26 +120,8 @@ function mergeNotaFiscal(base: NotaFiscal[], local: NotaFiscal[], remote: NotaFi
   const result: NotaFiscal[] = []
 
   for (const id of allIds) {
-    const b = entityById(base, id)
-    const l = entityById(local, id)
-    const r = entityById(remote, id)
-
-    if (entityJson(b) !== entityJson(l)) {
-      if (l !== undefined) result.push(l)
-      continue
-    }
-
-    if (entityJson(b) !== entityJson(r)) {
-      if (r !== undefined) {
-        const fallback = l ?? b
-        result.push(fallback ? preserveOptionalNfFields(r, fallback) : r)
-      } else if (entityJson(b) !== entityJson(l)) {
-        if (l !== undefined) result.push(l)
-      }
-      continue
-    }
-
-    if (l !== undefined) result.push(l)
+    const merged = mergeSingleNotaFiscal(entityById(base, id), entityById(local, id), entityById(remote, id))
+    if (merged !== undefined) result.push(merged)
   }
 
   return result

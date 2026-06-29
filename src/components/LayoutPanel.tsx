@@ -556,33 +556,44 @@ function useScrollToMapFocus(
   useEffect(() => {
     if (!focusScrollToken) return
 
-    const frame = window.requestAnimationFrame(() => {
-      if (focusStage) {
-        document.querySelector<HTMLElement>('.stage-section')?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        })
-        return
-      }
+    let innerFrame = 0
+    const outerFrame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        if (focusStage) {
+          document.querySelector<HTMLElement>('.stage-section')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
+          document.querySelector<HTMLElement>('.main-panel')?.scrollTo({
+            top: 0,
+            behavior: 'smooth',
+          })
+          return
+        }
 
-      if (!focusAddressId) return
-      const id = focusAddressId
-      const el = document.querySelector<HTMLElement>(`button[data-address-id="${id}"]`)
-      if (!el) return
+        if (!focusAddressId) return
+        const id = focusAddressId
+        const el = document.querySelector<HTMLElement>(`button[data-address-id="${id}"]`)
+        if (!el) return
 
-      const scrollParent = el.closest<HTMLElement>('.rua-grid-scroll')
-      if (scrollParent) {
-        const targetLeft =
-          el.offsetLeft - scrollParent.clientWidth / 2 + el.offsetWidth / 2
-        scrollParent.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
-      }
+        const scrollParent = el.closest<HTMLElement>('.rua-grid-scroll')
+        if (scrollParent) {
+          const targetLeft =
+            el.offsetLeft - scrollParent.clientWidth / 2 + el.offsetWidth / 2
+          scrollParent.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+        }
 
-      const camaraSection = el.closest<HTMLElement>('.camara-section')
-      camaraSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        const camaraSection = el.closest<HTMLElement>('.camara-section')
+        camaraSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+      })
     })
-    return () => window.cancelAnimationFrame(frame)
+
+    return () => {
+      window.cancelAnimationFrame(outerFrame)
+      if (innerFrame) window.cancelAnimationFrame(innerFrame)
+    }
   }, [focusAddressId, focusStage, focusScrollToken])
 }
 
