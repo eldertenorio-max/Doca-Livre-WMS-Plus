@@ -57,6 +57,12 @@ type Props = {
   onStageDrop?: () => void
   /** Endereço selecionado na lista (ex.: origem por voz) — destaca e rola até o quadrado no mapa. */
   focusAddressId?: AddressId | null
+  /** Rola até o stage (consulta / busca de NF). */
+  focusStage?: boolean
+  /** Incrementa para repetir scroll ao mesmo endereço. */
+  focusScrollToken?: number
+  /** Pulsa o quadrado focado após busca. */
+  pulseAddressId?: AddressId | null
 }
 
 function rowLabelWidth(cellSize: number, mobile: boolean): number {
@@ -231,6 +237,7 @@ function RuaGrid({
   paint,
   editStagePending,
   focusAddressId,
+  pulseAddressId,
 }: {
   camaraId: number
   config: RuaConfig
@@ -317,6 +324,7 @@ function RuaGrid({
                     if (editMoveOrigens?.has(addressId)) className += ' cell--selecionado'
                     else if (editMoveDestinos?.has(addressId)) className += ' cell--destaque-verde'
                     else if (focusAddressId === addressId) className += ' cell--selecionado'
+                    if (pulseAddressId === addressId) className += ' cell--busca-pulse'
                     else if (stagePending) className += ' cell--stage-pending'
                     else if (pending) className += editMode ? ' cell--destaque-verde' : ' cell--selecionado'
                     else if (confirmed) className += ' cell--confirmado'
@@ -574,11 +582,25 @@ function buildLegendItems(props: Props): LegendItem[] {
   return items
 }
 
-function useScrollToFocusAddress(focusAddressId: AddressId | null | undefined) {
+function useScrollToMapFocus(
+  focusAddressId: AddressId | null | undefined,
+  focusStage: boolean | undefined,
+  focusScrollToken: number | undefined,
+) {
   useEffect(() => {
-    if (!focusAddressId) return
-    const id = focusAddressId
+    if (!focusScrollToken) return
+
     const frame = window.requestAnimationFrame(() => {
+      if (focusStage) {
+        document.querySelector<HTMLElement>('.stage-section')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+        return
+      }
+
+      if (!focusAddressId) return
+      const id = focusAddressId
       const el = document.querySelector<HTMLElement>(`button[data-address-id="${id}"]`)
       if (!el) return
 
@@ -595,14 +617,14 @@ function useScrollToFocusAddress(focusAddressId: AddressId | null | undefined) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [focusAddressId])
+  }, [focusAddressId, focusStage, focusScrollToken])
 }
 
 export function LayoutPanel(props: Props) {
   const mobile = useIsMobile()
   const paintMode = props.paintMode ?? false
   const paint = useCellPaint(paintMode, props.onCellPaint, props.onCellClick)
-  useScrollToFocusAddress(props.focusAddressId)
+  useScrollToMapFocus(props.focusAddressId, props.focusStage, props.focusScrollToken)
 
   return (
     <div className={`layout-panel ${mobile ? 'layout-panel--mobile' : ''} ${paintMode ? 'layout-panel--paint' : ''}`}>

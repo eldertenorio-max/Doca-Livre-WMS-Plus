@@ -1912,6 +1912,112 @@
   text-shadow: 0 0 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.35);
 }
 
+.cell--busca-pulse {
+  animation: cell-busca-pulse 0.9s ease-in-out 3;
+  z-index: 5 !important;
+}
+
+@keyframes cell-busca-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent),
+      inset 0 0 0 100vmax color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent),
+      inset 0 0 0 100vmax color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+}
+
+.busca-encontrada-toast {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, #22c55e 35%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #22c55e 14%, var(--bg-elevated)),
+    var(--bg-elevated)
+  );
+  box-shadow:
+    0 8px 28px color-mix(in srgb, #22c55e 18%, transparent),
+    0 2px 8px color-mix(in srgb, #000 8%, transparent);
+  animation: busca-toast-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes busca-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.busca-encontrada-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #16a34a;
+  background: color-mix(in srgb, #22c55e 18%, transparent);
+}
+
+.busca-encontrada-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.busca-encontrada-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.busca-encontrada-text strong {
+  display: block;
+  font-size: 0.92rem;
+  margin-bottom: 2px;
+  color: var(--text);
+}
+
+.busca-encontrada-text p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.busca-encontrada-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--border) 50%, transparent);
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.busca-encontrada-close:hover {
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  color: var(--text);
+}
+
 .cell--porta,
 .cell--sem-nivel5,
 .cell--bloqueado {

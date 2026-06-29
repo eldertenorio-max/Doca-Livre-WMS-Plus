@@ -15,6 +15,7 @@ import { listarItensStage, itemNoStage } from './layout/stage'
 import { EntradaPendenteAlert } from './components/EntradaPendenteAlert'
 import { OcupadoAlert } from './components/OcupadoAlert'
 import { PaletesLimiteAlert } from './components/PaletesLimiteAlert'
+import { BuscaEncontradaToast } from './components/BuscaEncontradaToast'
 import { useEnderecamentoStore } from './hooks/useEnderecamentoStore'
 import { useTheme } from './hooks/useTheme'
 import { useSidebarMode } from './hooks/useSidebarMode'
@@ -65,6 +66,14 @@ import {
   vincularNotaCancelada,
 } from './lib/nfCanceladas'
 import { buscarEstoque, temFiltroConsulta, alternarDestaqueConsulta, CONSULTA_FILTROS_VAZIOS, type ConsultaEstoqueFiltros, type ConsultaEstoqueResultado } from './lib/consultaEstoque'
+import {
+  avisoConsultaEncontrada,
+  avisoNfEncontrada,
+  primeiroEnderecoConsulta,
+  primeiroEnderecoNf,
+  type BuscaEncontradaAviso,
+  type MapFocusTarget,
+} from './lib/focarMapaBusca'
 import {
   describeVoiceCommand,
   painelFiltrosPorDias,
@@ -262,6 +271,11 @@ export default function App() {
   const [saidaStageQtdInput, setSaidaStageQtdInput] = useState('')
   const [saidaStageConfirmados, setSaidaStageConfirmados] = useState<SaidaItemDraft[]>([])
   const [painelFiltros, setPainelFiltros] = useState<PainelFiltros>(() => loadPainelFiltros())
+  const [mapFocusAddressId, setMapFocusAddressId] = useState<AddressId | null>(null)
+  const [mapFocusStage, setMapFocusStage] = useState(false)
+  const [mapFocusScrollToken, setMapFocusScrollToken] = useState(0)
+  const [mapPulseAddressId, setMapPulseAddressId] = useState<AddressId | null>(null)
+  const [buscaEncontrada, setBuscaEncontrada] = useState<BuscaEncontradaAviso | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -282,6 +296,44 @@ export default function App() {
   useEffect(() => {
     storeVoicePrefs(voicePrefs)
   }, [voicePrefs])
+
+  const focarMapaBuscaEncontrado = useCallback(
+    (target: MapFocusTarget | null, aviso: BuscaEncontradaAviso) => {
+      if (sidebarMode === 'fullscreen') setSidebarMode('open')
+
+      setMapFocusScrollToken((t) => t + 1)
+      if (target?.type === 'address') {
+        setMapFocusAddressId(target.addressId)
+        setMapFocusStage(false)
+        setMapPulseAddressId(target.addressId)
+      } else if (target?.type === 'stage') {
+        setMapFocusAddressId(null)
+        setMapFocusStage(true)
+        setMapPulseAddressId(null)
+      } else {
+        setMapFocusAddressId(null)
+        setMapFocusStage(false)
+        setMapPulseAddressId(null)
+      }
+      setBuscaEncontrada(aviso)
+    },
+    [sidebarMode, setSidebarMode],
+  )
+
+  useEffect(() => {
+    if (!buscaEncontrada) return
+    const t = setTimeout(() => setBuscaEncontrada(null), 6000)
+    return () => clearTimeout(t)
+  }, [buscaEncontrada])
+
+  useEffect(() => {
+    if (!mapPulseAddressId && !mapFocusStage) return
+    const t = setTimeout(() => {
+      setMapPulseAddressId(null)
+      setMapFocusStage(false)
+    }, 3500)
+    return () => clearTimeout(t)
+  }, [mapPulseAddressId, mapFocusStage, mapFocusScrollToken])
 
   const emAndamentoIds = useMemo(
     () => state.notas.filter((n) => n.status === 'em_andamento').map((n) => n.id),
@@ -1415,6 +1467,7 @@ export default function App() {
     setSaidaOrigemEstoque(origem)
     setNfBuscaSaidaId(nf.id)
     limparEstadoSaida()
+    focarMapaBuscaEncontrado(primeiroEnderecoNf(nf), avisoNfEncontrada(nf, 'saida'))
   }
 
   function resolverDestinoSaida(nf: NotaFiscal): boolean {
@@ -1836,6 +1889,7 @@ export default function App() {
       return
     }
     iniciarEdicaoNf(nf)
+    focarMapaBuscaEncontrado(primeiroEnderecoNf(nf), avisoNfEncontrada(nf, 'movimentacao'))
   }
 
   function handleSelectItemEditar(index: number) {
@@ -2181,17 +2235,23 @@ export default function App() {
     }
     const resultados = buscarEstoque(state.notas, filtros)
     setConsultaResultados(resultados)
-    if (resultados.length === 0) {
-      const nfQ = filtros.nfNumero.trim()
-      if (nfQ) {
-        const nf = buscarNfPorNumero(state.notas, nfQ)
-        if (nf) {
-          setConsultaErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
-          return
-        }
-      }
-      setConsultaErro('Nenhum resultado encontrado com os filtros informados.')
+    if (resultados.length > 0) {
+      setConsultaErro(null)
+      focarMapaBuscaEncontrado(
+        primeiroEnderecoConsulta(resultados),
+        avisoConsultaEncontrada(resultados),
+      )
+      return
     }
+    const nfQ = filtros.nfNumero.trim()
+    if (nfQ) {
+      const nf = buscarNfPorNumero(state.notas, nfQ)
+      if (nf) {
+        setConsultaErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
+        return
+      }
+    }
+    setConsultaErro('Nenhum resultado encontrado com os filtros informados.')
   }
 
   function handleLimparConsulta() {
@@ -2775,6 +2835,9 @@ export default function App() {
       />
 
       <main className="main-panel">
+        {buscaEncontrada && (
+          <BuscaEncontradaToast aviso={buscaEncontrada} onClose={() => setBuscaEncontrada(null)} />
+        )}
         <LayoutPanel
           occupancy={displayOccupancy}
           pendingSelection={panelPendingSelection}
@@ -2790,7 +2853,7 @@ export default function App() {
           editAddresses={editMapAddresses}
           consultaAddresses={consultaAddresses.size > 0 ? consultaAddresses : undefined}
           notas={state.notas}
-          stageHighlighted={consultaStageHighlighted}
+          stageHighlighted={consultaStageHighlighted || mapFocusStage}
           onStageOpen={() => setStageModalOpen(true)}
           saidaAddresses={
             nfEditar ? undefined : saidaAddresses.size > 0 ? saidaAddresses : undefined
@@ -2817,9 +2880,10 @@ export default function App() {
           editStagePending={editStagePending}
           stageDropEnabled={editStagePending.size > 0}
           onStageDrop={() => void handleAplicarStageDrop()}
-          focusAddressId={
-            nfEditar && editItemIndex != null && !editMarcandoStage ? vozOrigemAddress : null
-          }
+          focusAddressId={vozOrigemAddress ?? mapFocusAddressId}
+          focusStage={!vozOrigemAddress && mapFocusStage}
+          focusScrollToken={mapFocusScrollToken}
+          pulseAddressId={mapPulseAddressId}
         />
       </main>
 
