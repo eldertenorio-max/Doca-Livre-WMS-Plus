@@ -36,7 +36,7 @@ type Props = {
   onBuscar: (numero: string) => void
   onSelectItem: (index: number) => void
   onAdicionarEnderecoDestino: (addressId: AddressId) => void
-  onSalvar: () => void | Promise<void>
+  onSalvar: () => boolean | Promise<boolean>
   onRemoverDoEstoque: (nfId: string, motivo: MotivoRemocaoEstoqueId) => void
   onCancelarEditar: () => void
   adicionarPosicoesAlvo: number | null
@@ -272,8 +272,8 @@ export function EditarPosicaoPanel({
                     type="button"
                     className="btn success full"
                     onClick={async () => {
-                      await onSalvar()
-                      setNumero('')
+                      const ok = await onSalvar()
+                      if (ok) setNumero('')
                     }}
                     disabled={pendingCount === 0 || salvando}
                   >
@@ -378,17 +378,17 @@ export function EditarPosicaoPanel({
                         origemSelecionada={vozOrigemAddress}
                         onDestinoFalado={onVozDestino}
                         onErro={onVozErro}
-                        erro={vozErro}
                         onLimparErro={onLimparVozErro}
                         onPrepareMic={onPrepareLocalSpeech}
                         onReleaseMic={onReleaseLocalSpeech}
                       />
+                      {vozErro && <p className="error movimentacao-erro">{vozErro}</p>}
                       <button
                         type="button"
                         className="btn success full"
                         onClick={async () => {
-                          await onSalvar()
-                          setNumero('')
+                          const ok = await onSalvar()
+                          if (ok) setNumero('')
                         }}
                         disabled={!distribuicaoCompleta || stagePendingCount > 0 || salvando}
                       >

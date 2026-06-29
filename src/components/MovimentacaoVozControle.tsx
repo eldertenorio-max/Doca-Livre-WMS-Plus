@@ -8,7 +8,6 @@ type Props = {
   /** Retorna true quando a distribuição ficou completa e pode ouvir "confirme". */
   onDestinoFalado: (transcript: string) => boolean
   onErro: (message: string) => void
-  erro: string | null
   onLimparErro: () => void
   onPrepareMic?: () => void
   onReleaseMic?: () => void
@@ -18,7 +17,6 @@ export function MovimentacaoVozControle({
   origemSelecionada,
   onDestinoFalado,
   onErro,
-  erro,
   onLimparErro,
   onPrepareMic,
   onReleaseMic,
@@ -136,7 +134,6 @@ export function MovimentacaoVozControle({
           </button>
         </>
       )}
-      {erro && <p className="error movimentacao-voz-erro">{erro}</p>}
     </div>
   )
 }

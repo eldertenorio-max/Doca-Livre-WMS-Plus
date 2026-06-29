@@ -1328,6 +1328,11 @@
   color: var(--btn-surface-active-fg);
 }
 
+.btn.success:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .btn.warning {
   background: #d29922;
   border-color: #d29922;

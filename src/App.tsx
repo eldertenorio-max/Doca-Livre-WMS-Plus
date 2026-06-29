@@ -1069,28 +1069,33 @@ export default function App() {
             if (mode === 'add') nextOrigens.add(addressId)
             else nextOrigens.delete(addressId)
 
-            setEditMoveDestinos((prevDestinos) => {
-              if (prevDestinos.size <= nextOrigens.size) return prevDestinos
-              return new Set([...prevDestinos].slice(0, nextOrigens.size))
-            })
+            let nextDestinos = editMoveDestinosRef.current
+            if (nextDestinos.size > nextOrigens.size) {
+              nextDestinos = new Set([...nextDestinos].slice(0, nextOrigens.size))
+              editMoveDestinosRef.current = nextDestinos
+              setEditMoveDestinos(nextDestinos)
+            }
 
+            editMoveOrigensRef.current = nextOrigens
             return nextOrigens
           })
           return
         }
 
-        if (editMoveOrigens.size === 0) return
-        if (occupancy.has(addressId)) return
+        if (editMoveOrigensRef.current.size === 0) return
+        if (occupancy.has(addressId) && !editMoveOrigensRef.current.has(addressId)) return
 
         setEditMoveDestinos((prev) => {
           const next = new Set(prev)
+          const origensSize = editMoveOrigensRef.current.size
           if (mode === 'add') {
             if (next.has(addressId)) return prev
-            if (next.size >= editMoveOrigens.size) return prev
+            if (next.size >= origensSize) return prev
             next.add(addressId)
           } else {
             next.delete(addressId)
           }
+          editMoveDestinosRef.current = next
           return next
         })
         return
@@ -2187,17 +2192,23 @@ export default function App() {
     }
   }
 
-  async function handleSalvarEditar() {
-    if (editSalvando) return
+  async function handleSalvarEditar(): Promise<boolean> {
+    if (editSalvando) return false
     const nfAtual = nfEditarId
       ? stateRef.current.notas.find((n) => n.id === nfEditarId) ?? null
       : null
-    if (!nfAtual) return
+    if (!nfAtual) {
+      setVozErro('Nota fiscal não encontrada. Busque a NF novamente.')
+      return false
+    }
 
     if (editItemIndex != null) {
       const stageItem = nfAtual.items.find((it) => it.index === editItemIndex)
       if (stageItem && itemNoStage(stageItem)) {
-        if (editPendingSelection.size === 0) return
+        if (editPendingSelection.size === 0) {
+          setVozErro('Marque ao menos um endereço de destino no armazém físico.')
+          return false
+        }
         const addresses = [...editPendingSelection]
         const currentItemIndex = editItemIndex
         const snapshot = stateRef.current
@@ -2221,38 +2232,73 @@ export default function App() {
         setState(nextState)
         setEditItemIndex(null)
         setEditSalvando(false)
+        setVozErro(null)
         void saveNow(nextState)
-        return
+        return true
       }
     }
 
-    if (editMoveOrigensRef.current.size === 0 || editMoveOrigensRef.current.size !== editMoveDestinosRef.current.size) return
+    const origensSet =
+      editMoveOrigens.size >= editMoveOrigensRef.current.size
+        ? editMoveOrigens
+        : editMoveOrigensRef.current
+    const destinosSet =
+      editMoveDestinos.size >= editMoveDestinosRef.current.size
+        ? editMoveDestinos
+        : editMoveDestinosRef.current
 
-    const origens = [...editMoveOrigensRef.current]
-    const destinos = [...editMoveDestinosRef.current]
-    const origOcc = occupancy.get(origens[0])
-    if (!origOcc || origOcc.nfId !== nfAtual.id) return
+    if (origensSet.size === 0 || origensSet.size !== destinosSet.size) {
+      setVozErro('Distribuição incompleta. Marque origens e destinos no mapa antes de confirmar.')
+      return false
+    }
+
+    const origens = [...origensSet]
+    const destinos = [...destinosSet]
+    const occMap = buildOccupancyMap(stateRef.current.notas)
+    const origOcc = occMap.get(origens[0]!)
+    if (!origOcc || origOcc.nfId !== nfAtual.id) {
+      setVozErro('Endereço de origem inválido ou não pertence a esta NF.')
+      return false
+    }
 
     const currentItemIndex = origOcc.itemIndex
     const item = nfAtual.items.find((it) => it.index === currentItemIndex)
-    if (!item || itemNoStage(item)) return
-
-    for (const orig of origens) {
-      const o = occupancy.get(orig)
-      if (!o || o.nfId !== nfAtual.id || o.itemIndex !== currentItemIndex) return
+    if (!item || itemNoStage(item)) {
+      setVozErro('Item inválido para reposicionamento no armazém.')
+      return false
     }
 
-    if (new Set(destinos).size !== destinos.length) return
+    for (const orig of origens) {
+      const o = occMap.get(orig)
+      if (!o || o.nfId !== nfAtual.id || o.itemIndex !== currentItemIndex) {
+        setVozErro('Um ou mais endereços de origem são inválidos para este item.')
+        return false
+      }
+    }
+
+    if (new Set(destinos).size !== destinos.length) {
+      setVozErro('Cada palete precisa de um destino diferente.')
+      return false
+    }
     for (const dest of destinos) {
-      if (origens.includes(dest)) return
-      if (occupancy.has(dest)) return
+      if (origens.includes(dest)) {
+        setVozErro('Origem e destino não podem ser o mesmo endereço.')
+        return false
+      }
+      if (occMap.has(dest) && !origensSet.has(dest)) {
+        setVozErro('Um ou mais endereços de destino já estão ocupados.')
+        return false
+      }
     }
 
     const moveMap = new Map(origens.map((orig, i) => [orig, destinos[i] as AddressId]))
     const addresses = item.allocatedAddresses.map((addr) => moveMap.get(addr) ?? addr)
 
     const original = editOriginalAddressesRef.current
-    if (!enderecosAlterados(original, addresses)) return
+    if (!enderecosAlterados(original, addresses)) {
+      setVozErro('Nenhuma alteração de endereço para salvar.')
+      return false
+    }
 
     const removedFromItem = item.allocatedAddresses.filter((a) => !addresses.includes(a))
     const snapshot = stateRef.current
@@ -2292,6 +2338,7 @@ export default function App() {
     setState(nextState)
     setEditSalvando(false)
     void saveNow(nextState)
+    return true
   }
 
   function handleIniciarAdicionarPosicoes(itemIndex: number, quantidade: number) {
