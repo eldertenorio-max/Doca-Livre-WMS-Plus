@@ -47,7 +47,7 @@ const ARMED_TIMEOUT_MS = 12000
 const CONVERSATION_TIMEOUT_MS = 45000
 const AUDIO_BUFFER_MS = 9000
 const SILENCE_AFTER_SPEECH_MS = 2400
-const POST_TTS_DELAY_MS = 650
+const POST_TTS_DELAY_MS = 900
 const REC_START_RETRY_DELAYS_MS = [0, 280, 650] as const
 
 function sleep(ms: number): Promise<void> {
@@ -583,6 +583,8 @@ export function useVoiceAssistant({
 
     if (armedRef.current || conversingRef.current) {
       const text = `${armedBufferRef.current} ${armedInterimRef.current}`.replace(/\s+/g, ' ').trim()
+      armedBufferRef.current = ''
+      armedInterimRef.current = ''
       if (text) {
         if (conversingRef.current && interactiveRef.current) {
           await runConversationUtterance(text)
@@ -590,6 +592,8 @@ export function useVoiceAssistant({
           dispatchCommand(text)
           scheduleRecognitionRestartRef.current()
         }
+      } else if (conversingRef.current && !ttsHoldRef.current) {
+        resumeConversationListeningRef.current()
       }
       return
     }
@@ -678,7 +682,9 @@ export function useVoiceAssistant({
         }
         clearSilenceTimer()
         void flushAfterSilence().finally(() => {
-          if (!runningRef.current || pausedForLocalSpeechRef.current) return
+          if (!runningRef.current || pausedForLocalSpeechRef.current || ttsHoldRef.current) return
+          // Modo conversa: runConversationUtterance reinicia o microfone sozinho.
+          if (conversingRef.current) return
           scheduleRecognitionRestartRef.current('soft')
         })
       }

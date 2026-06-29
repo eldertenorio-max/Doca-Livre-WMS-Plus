@@ -2826,9 +2826,7 @@ export default function App() {
           }
           break
         case 'desconhecido':
-          setVoiceFeedback(
-            `Não entendi "${cmd.raw}". Exemplos: abrir consulta, buscar nota 201077, confirmar movimentação.`,
-          )
+          setVoiceFeedback('Em que posso ajudar?')
           break
       }
     },

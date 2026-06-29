@@ -1,8 +1,7 @@
 import { parseVoiceCommand, type VoiceCommand } from './parseVoiceCommand'
 import { normalizeVoiceText } from './voiceNormalize'
 
-export const VOICE_CONVERSATION_GREETING =
-  'Em que posso ajudar? Diga consulta, entrada, saída, movimentação ou relatório.'
+export const VOICE_CONVERSATION_GREETING = 'Em que posso ajudar?'
 
 export type ConversationPending =
   | { kind: 'buscar_nota' }
@@ -39,7 +38,7 @@ function isHelpPhrase(norm: string): boolean {
 }
 
 function helpReply(): string {
-  return 'Posso abrir consulta, entrada, saída, movimentação, relatório ou histórico. Também busco notas fiscais e consulto itens. Diga o que precisa ou fale sair para encerrar.'
+  return 'Em que posso ajudar?'
 }
 
 function followUpAfterCommand(label: string): string {
@@ -289,10 +288,7 @@ export function processConversationTurn(
   }
 
   return {
-    reply:
-      cmd?.type === 'desconhecido'
-        ? `Não entendi "${cmd.raw}". ${helpReply()}`
-        : helpReply(),
+    reply: helpReply(),
     state,
     command: null,
     endSession: false,

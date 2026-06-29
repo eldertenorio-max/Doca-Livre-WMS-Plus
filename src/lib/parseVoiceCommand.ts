@@ -52,8 +52,9 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
     openExample: 'abrir painel',
     closeExample: 'fechar painel',
     openPatterns: [
-      /\b(abrir|mostrar|ver|ir para|ir ao)\s+(o\s+)?painel\b/,
+      /^painel$/,
       /\bpainel analitico\b/,
+      /\b(abrir|mostrar|ver|ir para|ir ao)\s+(o\s+)?painel\b/,
     ],
     closePatterns: [
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(do\s+)?(o\s+)?painel\b/,
@@ -338,6 +339,25 @@ function matchCloseSection(norm: string): VoiceCommand | null {
 }
 
 function matchOpenSection(norm: string): VoiceCommand | null {
+  const standalone: Record<string, SidebarSectionId> = {
+    painel: 'painel',
+    consulta: 'consulta',
+    entrada: 'entrada',
+    saida: 'saida',
+    historico: 'historico',
+    relatorio: 'relatorio',
+    movimentacao: 'editar',
+    reposicionar: 'editar',
+    mapa: 'imprimir',
+  }
+  const direct = standalone[norm]
+  if (direct) {
+    const entry = VOICE_SECTIONS.find((e) => e.section === direct)
+    if (entry) {
+      return { type: 'open_section', section: entry.section, label: entry.label }
+    }
+  }
+
   for (const entry of VOICE_SECTIONS) {
     if (entry.openPatterns.some((p) => p.test(norm))) {
       return { type: 'open_section', section: entry.section, label: entry.label }
