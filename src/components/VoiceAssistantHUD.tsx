@@ -80,7 +80,11 @@ export function VoiceAssistantHUD({
             )}
             {feedback && <p className="voice-assistant-hud-feedback">{feedback}</p>}
             {!liveText && !feedback && lastHint && (
-              <p className="voice-assistant-hud-hint muted">{lastHint}</p>
+              <p className="voice-assistant-hud-hint muted">
+                {lastHint === 'Pode falar…'
+                  ? 'Ouvindo… fale após o assistente terminar (ex.: abrir consulta).'
+                  : lastHint}
+              </p>
             )}
           </div>
           <button

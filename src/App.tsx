@@ -2939,6 +2939,7 @@ export default function App() {
           editAddresses={editMapAddresses}
           consultaAddresses={consultaAddresses.size > 0 ? consultaAddresses : undefined}
           notas={state.notas}
+          movimentos={state.movimentos}
           stageHighlighted={consultaStageHighlighted || mapFocusStage}
           onStageOpen={() => setStageModalOpen(true)}
           saidaAddresses={

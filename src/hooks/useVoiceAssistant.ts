@@ -47,6 +47,12 @@ const ARMED_TIMEOUT_MS = 12000
 const CONVERSATION_TIMEOUT_MS = 45000
 const AUDIO_BUFFER_MS = 9000
 const SILENCE_AFTER_SPEECH_MS = 2400
+const POST_TTS_DELAY_MS = 500
+const REC_START_RETRY_DELAYS_MS = [0, 280, 650] as const
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 function readIncrementalTranscript(ev: SpeechRecognitionResultEvent): {
   interim: string
@@ -265,12 +271,31 @@ export function useVoiceAssistant({
   }, [stopAudioCapture])
 
   const scheduleVoiceCaptureIfNeeded = useCallback(() => {
+    // MediaRecorder + SpeechRecognition no mesmo microfone quebra a escuta no Windows.
+    // Só grava áudio no modo passivo (antes da frase de ativação).
+    if (armedRef.current || conversingRef.current) {
+      stopAudioCapture()
+      return
+    }
     if (!requireVoiceMatchRef.current || voiceProfilesRef.current.length === 0) {
       stopAudioCapture()
       return
     }
     void startAudioCapture()
   }, [startAudioCapture, stopAudioCapture])
+
+  const tryStartRecognition = useCallback(async (rec: SpeechRecognitionInstance): Promise<boolean> => {
+    for (const delayMs of REC_START_RETRY_DELAYS_MS) {
+      if (delayMs > 0) await sleep(delayMs)
+      try {
+        rec.start()
+        return true
+      } catch {
+        /* Chrome/Edge às vezes rejeita start() logo após TTS ou abort() */
+      }
+    }
+    return false
+  }, [])
 
   const getRecentAudioBlob = useCallback((): Blob | null => {
     const chunks = audioChunksRef.current
@@ -415,10 +440,13 @@ export function useVoiceAssistant({
 
       conversingRef.current = true
       armedRef.current = true
+      stopAudioCapture()
       setPhase('conversando')
       setLastHint('Pode falar…')
       setLiveText('')
       resetConversationTimer()
+      await sleep(POST_TTS_DELAY_MS)
+      if (!runningRef.current) return
       resumeConversationListeningRef.current()
     },
     [clearSilenceTimer, endConversation, resetConversationTimer],
@@ -437,6 +465,7 @@ export function useVoiceAssistant({
       setLastHint('Iniciando conversa…')
 
       recRef.current?.abort()
+      stopAudioCapture()
 
       if (!skipGreeting && onConversationStartRef.current) {
         try {
@@ -450,6 +479,8 @@ export function useVoiceAssistant({
 
       setLastHint('Pode falar…')
       resetConversationTimer()
+      await sleep(POST_TTS_DELAY_MS)
+      if (!runningRef.current) return
       resumeConversationListeningRef.current()
     },
     [clearSilenceTimer, resetConversationTimer],
@@ -480,6 +511,8 @@ export function useVoiceAssistant({
         listeningBufferRef.current = ''
         return true
       }
+
+      stopAudioCapture()
 
       const remainder = stripWakePhrase(raw, wake)
       if (remainder) {
@@ -512,7 +545,7 @@ export function useVoiceAssistant({
       listeningBufferRef.current = ''
       return true
     },
-    [arm, dispatchCommand, resetConversationTimer, runConversationUtterance, startConversation, verifyRegisteredVoice],
+    [arm, dispatchCommand, resetConversationTimer, runConversationUtterance, startConversation, stopAudioCapture, verifyRegisteredVoice],
   )
 
   const flushAfterSilence = useCallback(async () => {
@@ -620,6 +653,7 @@ export function useVoiceAssistant({
     if (!runningRef.current || pausedForLocalSpeechRef.current) return
 
     restartingRef.current = true
+    stopAudioCapture()
     const oldRec = recRef.current
     recRef.current = null
     try {
@@ -631,20 +665,21 @@ export function useVoiceAssistant({
     const rec = createRecognitionInstance()
     if (!rec) {
       restartingRef.current = false
+      onErrorRef.current?.('Reconhecimento de voz indisponível neste navegador.')
       return
     }
     recRef.current = rec
     bindRecognitionHandlers(rec)
 
-    try {
-      rec.start()
-      scheduleVoiceCaptureIfNeeded()
-    } catch {
-      /* onend tenta de novo */
-    } finally {
+    void (async () => {
+      const started = await tryStartRecognition(rec)
       restartingRef.current = false
-    }
-  }, [bindRecognitionHandlers, scheduleVoiceCaptureIfNeeded])
+      if (!started && runningRef.current && (armedRef.current || conversingRef.current)) {
+        onErrorRef.current?.('Microfone ocupado. Tentando ouvir de novo…')
+        scheduleRecognitionRestartRef.current('soft')
+      }
+    })()
+  }, [bindRecognitionHandlers, stopAudioCapture, tryStartRecognition])
 
   useEffect(() => {
     resumeConversationListeningRef.current = resumeConversationListening
@@ -688,14 +723,15 @@ export function useVoiceAssistant({
         recRef.current = rec
         bindRecognitionHandlers(rec)
 
-        try {
-          rec.start()
-          scheduleVoiceCaptureIfNeeded()
-        } catch {
-          /* onend tenta de novo */
-        } finally {
+        void (async () => {
+          const started = await tryStartRecognition(rec)
           restartingRef.current = false
-        }
+          if (!started && runningRef.current) {
+            scheduleRecognitionRestartRef.current('soft')
+            return
+          }
+          scheduleVoiceCaptureIfNeeded()
+        })()
       }, delayMs)
     },
     [
@@ -705,6 +741,7 @@ export function useVoiceAssistant({
       clearRestartTimer,
       clearSilenceTimer,
       scheduleVoiceCaptureIfNeeded,
+      tryStartRecognition,
     ],
   )
 
@@ -773,12 +810,16 @@ export function useVoiceAssistant({
     setLastHint(null)
 
     try {
-      rec.start()
+      const started = await tryStartRecognition(rec)
+      if (!started) {
+        onErrorRef.current?.('Não foi possível iniciar o microfone. Verifique permissões.')
+        return
+      }
       scheduleVoiceCaptureIfNeeded()
     } catch {
       onErrorRef.current?.('Não foi possível iniciar o microfone. Verifique permissões.')
     }
-  }, [bindRecognitionHandlers, clearListeningBuffers, scheduleVoiceCaptureIfNeeded, stopAudioCapture])
+  }, [bindRecognitionHandlers, clearListeningBuffers, scheduleVoiceCaptureIfNeeded, stopAudioCapture, tryStartRecognition])
 
   const suspendForLocalSpeech = useCallback(() => {
     localSpeechHoldRef.current += 1

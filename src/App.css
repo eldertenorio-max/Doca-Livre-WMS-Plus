@@ -1903,10 +1903,194 @@
   font-size: 1.2rem;
 }
 
-.camara-header span {
+.camara-header span,
+.camara-header-tipo {
   color: var(--text-muted);
   font-size: 0.85rem;
 }
+
+.camara-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 2px;
+  padding: 0;
+  border: 1px solid var(--btn-surface-border);
+  border-radius: 999px;
+  background: var(--btn-surface-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.camara-info-btn:hover {
+  background: var(--btn-surface-hover-bg);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.camara-info-btn-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.camara-info-modal {
+  width: min(96vw, 1100px);
+  max-height: min(92vh, 900px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.camara-info-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.camara-info-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.camara-info-modal-tipo {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.camara-info-modal-sub {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+}
+
+.camara-info-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 18px 18px;
+}
+
+.camara-info-empty {
+  margin: 16px 0 0;
+  text-align: center;
+}
+
+.camara-info-nf-block {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.camara-info-nf-head {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.camara-info-nf-head h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.camara-info-nf-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.camara-info-nf-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.camara-info-nf-meta dt {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.camara-info-nf-meta dd {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.camara-info-table-wrap {
+  overflow: auto;
+  max-height: 320px;
+}
+
+.camara-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.camara-info-table th,
+.camara-info-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.camara-info-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-elevated);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.camara-info-table td:nth-child(3) {
+  white-space: normal;
+  min-width: 120px;
+  max-width: 220px;
+}
+
+.camara-info-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.layout-panel--mobile .camara-info-modal {
+  width: 100vw;
+  max-height: 100vh;
+  border-radius: 0;
+}
+
+.layout-panel--mobile .camara-info-table-wrap {
+  max-height: 240px;
+}
+
 
 .camara-stats {
   display: grid;

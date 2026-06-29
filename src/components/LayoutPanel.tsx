@@ -21,10 +21,11 @@ import {
 } from '../layout/camaras'
 import { portaCamaraUrl } from '../lib/portaCamaraAsset'
 import { codigoProdutoExibicao } from '../lib/codigoProduto'
-import type { AddressId, AddressOccupancy, NotaFiscal } from '../types'
+import type { AddressId, AddressOccupancy, MovimentoRegistro, NotaFiscal } from '../types'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { calcularResumoEstoqueArmazem } from '../lib/painelEstoqueArmazem'
 import { CamaraStatsCards } from './CamaraStatsCards'
+import { CamaraInfoModal } from './CamaraInfoModal'
 import { StageSection } from './StageSection'
 
 const CELL_GAP = 0
@@ -59,6 +60,7 @@ type Props = {
   paletesTotal?: number | null
   saidaMode?: boolean
   notas?: NotaFiscal[]
+  movimentos?: MovimentoRegistro[]
   stageHighlighted?: boolean
   onStageOpen?: () => void
   editStagePending?: Set<AddressId>
@@ -453,12 +455,14 @@ function CamaraSection({
   mobile,
   paint,
   resumoCamara,
+  onOpenInfo,
   ...props
 }: {
   cam: CamaraConfig
   mobile: boolean
   paint: PaintController
   resumoCamara: ReturnType<typeof calcularResumoEstoqueArmazem>['camaras'][number]
+  onOpenInfo: () => void
 } & Props) {
   const ref = useRef<HTMLElement>(null)
   const [cellSize, setCellSize] = useState(mobile ? MOBILE_MIN_CELL : MIN_CELL)
@@ -483,7 +487,25 @@ function CamaraSection({
     <section ref={ref} className="camara-section">
       <header className="camara-header">
         <h2>Câmara {cam.id}</h2>
-        <span>{cam.tipo}</span>
+        <span className="camara-header-tipo">{cam.tipo}</span>
+        <button
+          type="button"
+          className="camara-info-btn"
+          onClick={onOpenInfo}
+          aria-label={`Informações da câmara ${cam.id}`}
+          title="Ver notas fiscais e produtos armazenados"
+        >
+          <svg className="camara-info-btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path
+              d="M12 10v6M12 7h.01"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </header>
       <CamaraStatsCards resumo={resumoCamara} />
       <div className={`ruas-row ${mobile ? 'ruas-row--stacked' : ''}`}>
@@ -602,6 +624,7 @@ export function LayoutPanel(props: Props) {
   const paintMode = props.paintMode ?? false
   const paint = useCellPaint(paintMode, props.onCellPaint, props.onCellClick)
   useScrollToMapFocus(props.focusAddressId, props.focusStage, props.focusScrollToken)
+  const [infoCamaraId, setInfoCamaraId] = useState<number | null>(null)
 
   const resumoPorCamara = useMemo(() => {
     const map = new Map<number, ReturnType<typeof calcularResumoEstoqueArmazem>['camaras'][number]>()
@@ -653,6 +676,7 @@ export function LayoutPanel(props: Props) {
                 qtdNotas: 0,
               }
             }
+            onOpenInfo={() => setInfoCamaraId(cam.id)}
             {...props}
           />
         ))}
@@ -704,6 +728,16 @@ export function LayoutPanel(props: Props) {
         <p className="layout-hint">
           Saída: selecione um item na tabela para ver onde retirar no painel.
         </p>
+      )}
+
+      {infoCamaraId != null && (
+        <CamaraInfoModal
+          camaraId={infoCamaraId}
+          tipo={CAMARAS.find((c) => c.id === infoCamaraId)?.tipo ?? ''}
+          notas={props.notas ?? []}
+          movimentos={props.movimentos ?? []}
+          onClose={() => setInfoCamaraId(null)}
+        />
       )}
     </div>
   )

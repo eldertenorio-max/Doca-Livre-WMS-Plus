@@ -37,7 +37,9 @@ export function speakText(text: string): Promise<void> {
       resolve()
     }
 
-    utter.onend = finish
+    utter.onend = () => {
+      window.setTimeout(finish, 120)
+    }
     utter.onerror = finish
 
     window.speechSynthesis.speak(utter)
