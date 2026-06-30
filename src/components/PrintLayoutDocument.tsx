@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import {
   CAMARAS,
   NIVEIS,
@@ -313,7 +314,7 @@ export function PrintLayoutDocument({ camaraIds, occupancy }: Props) {
 
   if (pages.length === 0) return null
 
-  return (
+  return createPortal(
     <div className="print-document" aria-hidden>
       {pages.map(({ cam, rua }, i) => (
         <PrintPage
@@ -325,6 +326,7 @@ export function PrintLayoutDocument({ camaraIds, occupancy }: Props) {
           occupancy={occupancy}
         />
       ))}
-    </div>
+    </div>,
+    document.body,
   )
 }

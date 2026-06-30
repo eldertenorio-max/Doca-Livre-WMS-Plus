@@ -4688,13 +4688,27 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 @media print {
+  .app-shell,
+  .app-topbar,
+  .app-workspace,
+  .sidebar,
+  .main-panel,
+  .voice-assistant-hud,
+  .paletes-counter-float,
+  .busca-encontrada-toast,
+  .modal-backdrop,
+  .confirm-backdrop,
+  .alert-backdrop {
+    display: none !important;
+  }
+
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
 
   .print-document,
   .print-document * {
-    visibility: visible;
+    visibility: visible !important;
   }
 
   .print-document {
