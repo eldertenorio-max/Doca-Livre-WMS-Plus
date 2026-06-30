@@ -410,6 +410,12 @@ function RuaGrid({
                       if (edge) className += ` ${edge}`
                     }
 
+                    const showMark =
+                      pending ||
+                      stagePending ||
+                      editMoveOrigens?.has(addressId) ||
+                      editMoveDestinos?.has(addressId)
+
                     return (
                       <button
                         key={addressId}
@@ -429,6 +435,11 @@ function RuaGrid({
                         onPointerDown={(e) => paint.handlePointerDown(addressId, canInteract, pending, e)}
                         onPointerEnter={() => paint.handlePointerEnter(addressId, canInteract)}
                       >
+                        {showMark && (
+                          <span className="cell-mark" aria-hidden>
+                            ✓
+                          </span>
+                        )}
                         {occ && (
                           <span
                             className="cell-ocup-labels"

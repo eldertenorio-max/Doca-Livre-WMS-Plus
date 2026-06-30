@@ -1259,6 +1259,22 @@
   font-weight: 700;
 }
 
+.nf-itens-status--marcado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--cell-sel);
+  color: #0d3d1a;
+  font-weight: 800;
+  font-size: 0.72rem;
+  line-height: 1;
+  border: 2px solid var(--cell-destaque-borda);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.35);
+}
+
 .nf-itens-row--parcial {
   background: color-mix(in srgb, var(--warning) 8%, transparent);
 }
@@ -2761,6 +2777,32 @@
   position: relative;
   z-index: 1;
   text-shadow: 0 0 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+.cell-mark {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: max(0.62rem, calc(var(--cell-mark-size, 14px) * 0.55));
+  font-weight: 900;
+  line-height: 1;
+  color: #0d3d1a;
+  pointer-events: none;
+  text-shadow: 0 0 2px rgb(255 255 255 / 0.85);
+}
+
+.cell--selecionado .cell-mark,
+.cell--destaque-verde .cell-mark {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.cell--ocupado .cell-mark {
+  background: rgb(0 0 0 / 0.28);
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.65);
 }
 
 .cell--busca-pulse {

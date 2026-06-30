@@ -126,8 +126,23 @@ export function NfItensTable({
                   }}
                 >
                   <td className="nf-itens-col-status">
-                    <span className={`nf-itens-status nf-itens-status--${st}`}>
-                      {st === 'ok' ? '✓' : st === 'parcial' ? '◐' : '○'}
+                    <span
+                      className={`nf-itens-status ${
+                        isActive
+                          ? 'nf-itens-status--marcado'
+                          : `nf-itens-status--${st}`
+                      }`}
+                      aria-label={
+                        isActive
+                          ? 'Item selecionado'
+                          : st === 'ok'
+                            ? 'Endereçado'
+                            : st === 'parcial'
+                              ? 'Parcialmente endereçado'
+                              : 'Pendente'
+                      }
+                    >
+                      {isActive ? '✓' : st === 'ok' ? '✓' : st === 'parcial' ? '◐' : '○'}
                     </span>
                   </td>
                   <td className="nf-itens-col-codigo">{item.codigo || '—'}</td>
