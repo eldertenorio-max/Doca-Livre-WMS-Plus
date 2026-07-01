@@ -158,15 +158,17 @@ async function syncNfEnderecamentos(sb: ReturnType<typeof getSupabase>, nf: Nota
   const desiredByAddr = new Map(desired.map((d) => [d.address_id, d]))
   const desiredIds = new Set(desired.map((d) => d.address_id))
 
-  for (const row of existing ?? []) {
-    if (!desiredIds.has(row.address_id)) {
-      const { error } = await sb
-        .from('ultrafrio_enderecamentos')
-        .delete()
-        .eq('nf_id', nf.id)
-        .eq('address_id', row.address_id)
-      if (error) throw new Error(error.message)
-    }
+  const toDeleteIds = (existing ?? [])
+    .filter((row) => !desiredIds.has(row.address_id))
+    .map((row) => row.address_id)
+
+  if (toDeleteIds.length) {
+    const { error } = await sb
+      .from('ultrafrio_enderecamentos')
+      .delete()
+      .eq('nf_id', nf.id)
+      .in('address_id', toDeleteIds)
+    if (error) throw new Error(error.message)
   }
 
   const existingIds = new Set((existing ?? []).map((e) => e.address_id))

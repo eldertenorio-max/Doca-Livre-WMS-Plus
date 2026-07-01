@@ -4,6 +4,7 @@ import {
   loadLocalPersistedData,
   loadLocalSyncBase,
   localRepository,
+  clearLocalPersistedData,
   syncWriteLocalDraft,
   syncWriteLocalSyncBase,
 } from '../lib/repository/localRepository'
@@ -40,11 +41,12 @@ const emptyState: AppState = {
 }
 
 const SAVE_DEBOUNCE_MS = 400
-const SAVE_DEBOUNCE_SUPABASE_MS = 50
-const REMOTE_RELOAD_DEBOUNCE_MS = 200
+/** Supabase: salva no próximo frame (sem espera perceptível). */
+const SAVE_DEBOUNCE_SUPABASE_MS = 0
+const REMOTE_RELOAD_DEBOUNCE_MS = 500
 /** Ignora eco do próprio save no Realtime; não bloqueia updates de outros navegadores por muito tempo. */
-const IGNORE_REMOTE_AFTER_SAVE_MS = 1500
-const POLL_INTERVAL_MS = 2000
+const IGNORE_REMOTE_AFTER_SAVE_MS = 2500
+const POLL_INTERVAL_MS = 5000
 const PERSIST_RETRY_MS = 600
 const PERSIST_AUTO_RETRY_MS = 2500
 const PERSIST_AUTO_RETRY_MAX = 5
@@ -65,6 +67,12 @@ function formatPersistErrorMessage(e: unknown, supabaseMode: boolean): string {
     : 'Erro ao salvar na nuvem. Verifique a conexão com o Supabase.'
 }
 const PERSIST_MAX_ATTEMPTS = 3
+
+function writeLocalCache(repo: EnderecamentoRepository, data: PersistedData): void {
+  if (repo.mode === 'supabase') return
+  syncWriteLocalDraft(data)
+  syncWriteLocalSyncBase(data)
+}
 
 function pickRepository(): EnderecamentoRepository {
   return isSupabaseConfigured() ? getRepository() : localRepository
@@ -165,6 +173,7 @@ export function useEnderecamentoStore() {
   const autoRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const remoteReloadQueuedRef = useRef(false)
   const scheduleRemoteReloadRef = useRef<() => void>(() => {})
+  const persistCoalesceRef = useRef<AppState | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -198,8 +207,7 @@ export function useEnderecamentoStore() {
           activeNfId: next.activeNfId,
           activeItemIndex: next.activeItemIndex,
         })
-        syncWriteLocalDraft(dataToSave)
-        syncWriteLocalSyncBase(dataToSave)
+        writeLocalCache(repo, dataToSave)
         lastPersistedRef.current = dataToSave
         pendingSaveRef.current = null
         return dataToSave
@@ -208,11 +216,11 @@ export function useEnderecamentoStore() {
       let dataToSave = pickPersisted(next)
 
       if (lastPersistedRef.current) {
-        const remote = pickPersisted(await repo.loadData())
         const localPick = pickPersisted(next)
-        dataToSave = mergePersistedData(lastPersistedRef.current, localPick, remote)
+        const base = lastPersistedRef.current
+        dataToSave = mergePersistedData(base, localPick, base)
         dataToSave = protegerPersistedContraRegressao(localPick, dataToSave)
-        dataToSave = consolidarRemocoesLocais(lastPersistedRef.current, localPick, dataToSave)
+        dataToSave = consolidarRemocoesLocais(base, localPick, dataToSave)
       }
 
       dataToSave = normalizePersistedData(dataToSave)
@@ -235,8 +243,7 @@ export function useEnderecamentoStore() {
         activeNfId: next.activeNfId,
         activeItemIndex: next.activeItemIndex,
       })
-      syncWriteLocalDraft(dataToSave)
-      syncWriteLocalSyncBase(dataToSave)
+      writeLocalCache(repo, dataToSave)
 
       if (!persistedEquals(dataToSave, pickPersisted(next))) {
         const localPick = pickPersisted(next)
@@ -325,9 +332,16 @@ export function useEnderecamentoStore() {
 
   const persist = useCallback(
     (next: AppState): Promise<void> => {
+      persistCoalesceRef.current = next
       const job = persistChainRef.current
         .catch(() => {})
-        .then(() => persistInner(next))
+        .then(async () => {
+          while (persistCoalesceRef.current) {
+            const batch = persistCoalesceRef.current
+            persistCoalesceRef.current = null
+            await persistInner(batch)
+          }
+        })
       persistChainRef.current = job.catch(() => {})
       return job
     },
@@ -379,18 +393,21 @@ export function useEnderecamentoStore() {
     try {
       const remote = await repoRef.current.loadData()
       const { data, dadosReparados } = prepareLoadedDataWithRepair(remote)
-      const remoteMerged =
-        repoRef.current.mode === 'supabase'
-          ? mergeLoadedWithLocalDraft(data).data
-          : data
-      const remoteMergedNormalized = normalizePersistedData(remoteMerged)
+      const remoteMergedNormalized = normalizePersistedData(data)
       const base = lastPersistedRef.current
       const localNow = pickPersisted(stateRef.current)
       const trustRemote = base !== null && persistedEquals(localNow, base)
 
+      if (
+        trustRemote &&
+        contarEnderecosPersistidos(remoteMergedNormalized) <
+          contarEnderecosPersistidos(localNow)
+      ) {
+        return
+      }
+
       setState((prev) => {
         const local = pickPersisted(prev)
-        const draft = repoRef.current.mode === 'supabase' ? loadLocalPersistedData() : local
         const merged = trustRemote
           ? remoteMergedNormalized
           : base
@@ -398,8 +415,8 @@ export function useEnderecamentoStore() {
             : remoteMergedNormalized
         const protegido = trustRemote
           ? merged
-          : protegerPersistedContraRegressao(draft, merged)
-        const consolidado = consolidarRemocoesLocais(base, draft, protegido)
+          : protegerPersistedContraRegressao(local, merged)
+        const consolidado = consolidarRemocoesLocais(base, local, protegido)
         const normalized = normalizePersistedData(consolidado)
         lastPersistedRef.current = normalized
         const next = preserveUi(prev, normalized, { trustRemote })
@@ -410,8 +427,7 @@ export function useEnderecamentoStore() {
 
       const merged = lastPersistedRef.current
       if (merged) {
-        syncWriteLocalDraft(merged)
-        syncWriteLocalSyncBase(merged)
+        writeLocalCache(repoRef.current, merged)
       }
       const precisaSalvarReparo =
         dadosReparados ||
@@ -466,6 +482,10 @@ export function useEnderecamentoStore() {
     async function load() {
       await ensureSupabaseConfig()
 
+      if (isSupabaseConfigured()) {
+        clearLocalPersistedData()
+      }
+
       const repo = pickRepository()
       repoRef.current = repo
       setStorageMode(repo.mode)
@@ -475,11 +495,11 @@ export function useEnderecamentoStore() {
         const { data: remotePrepared, dadosReparados } = prepareLoadedDataWithRepair(remoteRaw)
         const mergedLoad =
           repo.mode === 'supabase'
-            ? mergeLoadedWithLocalDraft(remotePrepared)
-            : { data: remotePrepared, recoveredFromLocal: false }
+            ? { data: remotePrepared, recoveredFromLocal: false }
+            : mergeLoadedWithLocalDraft(remotePrepared)
         let data = normalizePersistedData(mergedLoad.data)
 
-        if (wouldWipePersistedStock(remotePrepared, data)) {
+        if (repo.mode !== 'supabase' && wouldWipePersistedStock(remotePrepared, data)) {
           data = normalizePersistedData(remotePrepared)
         }
 
@@ -487,8 +507,7 @@ export function useEnderecamentoStore() {
 
         if (!cancelled) {
           lastPersistedRef.current = data
-          syncWriteLocalDraft(data)
-          syncWriteLocalSyncBase(data)
+          writeLocalCache(repo, data)
           setState({ ...data, ...ui })
 
           if (mergedLoad.recoveredFromLocal && persistedRichness(data) > 0) {
@@ -518,7 +537,7 @@ export function useEnderecamentoStore() {
                 notasCanceladas: data.notasCanceladas,
               })
               lastPersistedRef.current = data
-              syncWriteLocalSyncBase(data)
+              writeLocalCache(repo, data)
               ignoreRemoteUntil.current = Date.now() + IGNORE_REMOTE_AFTER_SAVE_MS
               if (mergedLoad.recoveredFromLocal) {
                 setError('Estoque restaurado e salvo na nuvem com sucesso.')
@@ -587,7 +606,9 @@ export function useEnderecamentoStore() {
     if (skipSave.current || loading) return
 
     const persisted = pickPersisted(state)
-    syncWriteLocalDraft(persisted)
+    if (storageMode !== 'supabase') {
+      syncWriteLocalDraft(persisted)
+    }
 
     if (lastPersistedRef.current && persistedEquals(persisted, lastPersistedRef.current)) {
       return
@@ -610,7 +631,9 @@ export function useEnderecamentoStore() {
     const flushPendingSave = () => {
       if (skipSave.current || savingRef.current) return
       const pending = pendingSaveRef.current ?? stateRef.current
-      syncWriteLocalDraft(pickPersisted(pending))
+      if (storageMode !== 'supabase') {
+        syncWriteLocalDraft(pickPersisted(pending))
+      }
       repoRef.current.saveUiPrefs({
         activeNfId: pending.activeNfId,
         activeItemIndex: pending.activeItemIndex,
@@ -669,8 +692,7 @@ export function useEnderecamentoStore() {
       skipSave.current = true
       setState(nextState)
       lastPersistedRef.current = pickPersisted(nextState)
-      syncWriteLocalDraft(pickPersisted(nextState))
-      syncWriteLocalSyncBase(pickPersisted(nextState))
+      writeLocalCache(repoRef.current, pickPersisted(nextState))
       skipSave.current = false
 
       try {

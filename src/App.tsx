@@ -176,7 +176,7 @@ function mensagemNfSemEstoqueVisivel(nf: NotaFiscal, movimentos: MovimentoRegist
     (it) => it.allocatedAddresses.length > 0 && !nfTemEnderecosValidos({ ...nf, items: [it] }),
   )
   if (nfTemHistoricoEnderecos(nf, movimentos)) {
-    return (
+  return (
       `NF ${nf.numero} existe no sistema, mas os endereços sumiram do mapa. ` +
       'Recarregue a página (F5) ou suba o XML de novo na Entrada para restaurar.'
     )
@@ -1289,22 +1289,6 @@ export default function App() {
         } else {
           next.delete(addressId)
         }
-
-        setState((s) => ({
-          ...s,
-          notas: s.notas.map((nf) => {
-            if (nf.id !== nfAloc.id) return nf
-            return {
-              ...nf,
-              items: nf.items.map((it) =>
-                it.index === currentItemIndex
-                  ? { ...it, allocatedAddresses: [...next] }
-                  : it,
-              ),
-            }
-          }),
-        }))
-
         return next
       })
       return
