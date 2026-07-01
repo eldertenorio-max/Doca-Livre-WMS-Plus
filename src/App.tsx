@@ -2763,13 +2763,16 @@ export default function App() {
       movimentos: base.movimentos,
       notasCanceladas: base.notasCanceladas,
     }
-    setState(nextState)
-    await saveNow(nextState)
 
     if (nfEditarId === nfId) {
       setNfEditarId(null)
       setEditItemIndex(null)
       setEditPendingSelection(new Set())
+      setEditMoveOrigens(new Set())
+      setEditMoveDestinos(new Set())
+      setEditStagePending(new Set())
+      setEditNovasPosicoes(new Set())
+      setEditAdicionarPosicoesAlvo(null)
       setBuscaEditarErro(null)
     }
     if (nfBuscaSaidaId === nfId) {
@@ -2780,6 +2783,14 @@ export default function App() {
       setPendingSelection(new Set())
     }
     setDetailAddress(null)
+
+    setState(nextState)
+    setEditSalvando(true)
+    try {
+      await saveNow(nextState)
+    } finally {
+      setEditSalvando(false)
+    }
   }
 
   function handlePainelFiltrosChange(patch: Partial<PainelFiltros>) {

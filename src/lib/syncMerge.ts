@@ -306,3 +306,53 @@ export function mergePersistedData(
     emitentes: mergeEmitentes(base.emitentes, local.emitentes, remote.emitentes),
   }
 }
+
+/** NFs retiradas do estoque localmente (presentes na base, ausentes no estado atual). */
+export function nfIdsRemovidosDesde(base: PersistedData, local: PersistedData): Set<string> {
+  const localIds = new Set(local.notas.map((n) => n.id))
+  return new Set(base.notas.filter((n) => !localIds.has(n.id)).map((n) => n.id))
+}
+
+/**
+ * Garante que remoções locais de NF (ex.: aba Movimentação) não sejam revertidas
+ * pelo merge com a nuvem nem pela proteção contra regressão.
+ */
+export function consolidarRemocoesLocais(
+  base: PersistedData | null,
+  local: PersistedData,
+  candidate: PersistedData,
+): PersistedData {
+  if (!base) return candidate
+
+  const removidas = nfIdsRemovidosDesde(base, local)
+  if (removidas.size === 0) return candidate
+
+  const localMovById = new Map(local.movimentos.map((m) => [m.id, m]))
+  const movimentos = candidate.movimentos.map((m) => {
+    const localMov = localMovById.get(m.id)
+    if (localMov?.excluido) return localMov
+    if (m.nfId && removidas.has(m.nfId) && m.tipo === 'entrada' && !m.excluido) {
+      return {
+        ...m,
+        excluido: true,
+        excluidoEm: m.excluidoEm ?? new Date().toISOString(),
+        ...(localMov?.motivoRemocaoEstoque
+          ? { motivoRemocaoEstoque: localMov.motivoRemocaoEstoque }
+          : {}),
+      }
+    }
+    return m
+  })
+
+  for (const m of local.movimentos) {
+    if (!movimentos.some((x) => x.id === m.id)) {
+      movimentos.push(m)
+    }
+  }
+
+  return {
+    ...candidate,
+    notas: candidate.notas.filter((n) => !removidas.has(n.id)),
+    movimentos,
+  }
+}

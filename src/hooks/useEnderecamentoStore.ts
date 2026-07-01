@@ -8,7 +8,9 @@ import { normalizePersistedData, prepareLoadedDataWithRepair } from '../lib/pers
 import { contarEnderecosPersistidos } from '../lib/movimentos'
 import { mesclarEmitentesSugeridos, normalizarEmitente } from '../lib/emitentesRegistry'
 import {
+  consolidarRemocoesLocais,
   mergePersistedData,
+  nfIdsRemovidosDesde,
   persistedEquals,
   pickPersisted,
   protegerNotasContraRegressao,
@@ -167,8 +169,10 @@ export function useEnderecamentoStore() {
 
       if (lastPersistedRef.current) {
         const remote = pickPersisted(await repo.loadData())
-        dataToSave = mergePersistedData(lastPersistedRef.current, dataToSave, remote)
-        dataToSave = protegerPersistedContraRegressao(pickPersisted(next), dataToSave)
+        const localPick = pickPersisted(next)
+        dataToSave = mergePersistedData(lastPersistedRef.current, localPick, remote)
+        dataToSave = protegerPersistedContraRegressao(localPick, dataToSave)
+        dataToSave = consolidarRemocoesLocais(lastPersistedRef.current, localPick, dataToSave)
       }
 
       dataToSave = normalizePersistedData(dataToSave)
@@ -185,7 +189,13 @@ export function useEnderecamentoStore() {
 
       if (!persistedEquals(dataToSave, pickPersisted(next))) {
         const localPick = pickPersisted(next)
+        const removidas = lastPersistedRef.current
+          ? nfIdsRemovidosDesde(lastPersistedRef.current, localPick)
+          : new Set<string>()
+        const restaurariaRemovidas =
+          removidas.size > 0 && dataToSave.notas.some((n) => removidas.has(n.id))
         if (
+          !restaurariaRemovidas &&
           contarEnderecosPersistidos(dataToSave) >= contarEnderecosPersistidos(localPick)
         ) {
           applyPersistedToState(dataToSave, next)
@@ -332,7 +342,8 @@ export function useEnderecamentoStore() {
         const protegido = trustRemote
           ? merged
           : protegerPersistedContraRegressao(local, merged)
-        const normalized = normalizePersistedData(protegido)
+        const consolidado = consolidarRemocoesLocais(base, local, protegido)
+        const normalized = normalizePersistedData(consolidado)
         lastPersistedRef.current = normalized
         const next = preserveUi(prev, normalized, { trustRemote })
         if (persistedEquals(pickPersisted(prev), pickPersisted(next))) return prev

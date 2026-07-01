@@ -38,7 +38,7 @@ type Props = {
   onSelectItem: (index: number) => void
   onAdicionarEnderecoDestino: (addressId: AddressId) => void
   onSalvar: () => boolean | Promise<boolean>
-  onRemoverDoEstoque: (nfId: string, motivo: MotivoRemocaoEstoqueId) => void
+  onRemoverDoEstoque: (nfId: string, motivo: MotivoRemocaoEstoqueId) => void | Promise<void>
   onCancelarEditar: () => void
   adicionarPosicoesAlvo: number | null
   adicionarPosicoesSelecionadas: number
@@ -86,6 +86,7 @@ export function EditarPosicaoPanel({
   const [confirmarCancelar, setConfirmarCancelar] = useState(false)
   const [confirmarRemover, setConfirmarRemover] = useState(false)
   const [motivoRemocao, setMotivoRemocao] = useState<MotivoRemocaoEstoqueId | null>(null)
+  const [removendoEstoque, setRemovendoEstoque] = useState(false)
   const [modalAdicionar, setModalAdicionar] = useState(false)
   const [qtdPosicoesInput, setQtdPosicoesInput] = useState('')
   const [itemAdicionarIndex, setItemAdicionarIndex] = useState<number | null>(null)
@@ -509,15 +510,22 @@ export function EditarPosicaoPanel({
               <button
                 type="button"
                 className="btn btn-danger"
-                disabled={!motivoRemocao}
+                disabled={!motivoRemocao || removendoEstoque || salvando}
                 onClick={() => {
-                  if (!motivoRemocao) return
-                  onRemoverDoEstoque(nfBusca.id, motivoRemocao)
-                  fecharRemover()
-                  setNumero('')
+                  if (!motivoRemocao || !nfBusca) return
+                  void (async () => {
+                    setRemovendoEstoque(true)
+                    try {
+                      await onRemoverDoEstoque(nfBusca.id, motivoRemocao)
+                      fecharRemover()
+                      setNumero('')
+                    } finally {
+                      setRemovendoEstoque(false)
+                    }
+                  })()
                 }}
               >
-                Remover do estoque
+                {removendoEstoque || salvando ? 'Removendo…' : 'Remover do estoque'}
               </button>
             </div>
           </div>
