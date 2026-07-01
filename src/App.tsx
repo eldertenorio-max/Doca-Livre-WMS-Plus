@@ -96,6 +96,11 @@ import {
 } from './lib/voiceConversation'
 import { speakText, stopSpeaking } from './lib/voiceSpeech'
 import { getStoredVoicePrefs, storeVoicePrefs, type VoicePrefs } from './lib/voicePrefs'
+import {
+  clearSaidaDestinoPendenteId,
+  loadSaidaDestinoPendenteId,
+  saveSaidaDestinoPendenteId,
+} from './lib/saidaDestinoSession'
 import { loadUiSession, saveUiSession } from './lib/uiSession'
 import { prepareVoiceCommandText } from './lib/voiceNormalize'
 import { hasRegisteredVoices } from './lib/voiceProfile'
@@ -317,7 +322,6 @@ export default function App() {
   const lastEntradaClickRef = useRef<string | null>(null)
   const stateRef = useRef(state)
   const [stageModalOpen, setStageModalOpen] = useState(false)
-  const entradaDestinoRestauradoRef = useRef(false)
   const [entradaDestinoPendente, setEntradaDestinoPendente] = useState<{
     imported: NotaFiscal[]
     movimentos: MovimentoRegistro[]
@@ -366,16 +370,70 @@ export default function App() {
       openSection,
       activeNfId: state.activeNfId,
       activeItemIndex: state.activeItemIndex,
+      nfEditarId,
+      nfBuscaSaidaId,
+      saidaOrigemEstoque: nfBuscaSaidaId ? saidaOrigemEstoque : null,
+      consultaNfAdicionarId,
+      consultaAguardandoEndereco,
+      canceladaPendenteId,
     })
-  }, [loading, openSection, state.activeNfId, state.activeItemIndex])
+  }, [
+    loading,
+    openSection,
+    state.activeNfId,
+    state.activeItemIndex,
+    nfEditarId,
+    nfBuscaSaidaId,
+    saidaOrigemEstoque,
+    consultaNfAdicionarId,
+    consultaAguardandoEndereco,
+    canceladaPendenteId,
+  ])
 
+  const abasRestauradasRef = useRef(false)
   useEffect(() => {
-    if (loading || entradaDestinoRestauradoRef.current) return
-    entradaDestinoRestauradoRef.current = true
-    const pending = loadEntradaDestinoPendente()
-    if (!pending) return
-    setEntradaDestinoPendente(pending)
-    setOpenSection('entrada')
+    if (loading || abasRestauradasRef.current) return
+    abasRestauradasRef.current = true
+
+    const pendingEntrada = loadEntradaDestinoPendente()
+    if (pendingEntrada) {
+      setEntradaDestinoPendente(pendingEntrada)
+      setOpenSection('entrada')
+      return
+    }
+
+    const ui = loadUiSession()
+    if (ui.nfEditarId && stateRef.current.notas.some((n) => n.id === ui.nfEditarId)) {
+      setNfEditarId(ui.nfEditarId)
+    }
+    if (ui.nfBuscaSaidaId && stateRef.current.notas.some((n) => n.id === ui.nfBuscaSaidaId)) {
+      setNfBuscaSaidaId(ui.nfBuscaSaidaId)
+      if (ui.saidaOrigemEstoque) setSaidaOrigemEstoque(ui.saidaOrigemEstoque)
+    }
+    if (
+      ui.consultaNfAdicionarId &&
+      stateRef.current.notas.some((n) => n.id === ui.consultaNfAdicionarId)
+    ) {
+      setConsultaNfAdicionarId(ui.consultaNfAdicionarId)
+    }
+    if (ui.consultaAguardandoEndereco) setConsultaAguardandoEndereco(true)
+    if (
+      ui.canceladaPendenteId &&
+      stateRef.current.notasCanceladas.some((c) => c.id === ui.canceladaPendenteId)
+    ) {
+      setCanceladaPendenteId(ui.canceladaPendenteId)
+    }
+
+    const saidaPendenteId = loadSaidaDestinoPendenteId()
+    if (saidaPendenteId) {
+      const nf = stateRef.current.notas.find((n) => n.id === saidaPendenteId)
+      if (nf && nfTemEstoqueArmazem(nf) && nfTemEstoqueStage(nf)) {
+        setSaidaDestinoPendente(nf)
+        setOpenSection('saida')
+      } else {
+        clearSaidaDestinoPendenteId()
+      }
+    }
   }, [loading])
 
   useEffect(() => {
@@ -718,7 +776,7 @@ export default function App() {
             nf,
           )
           if (resultado) {
-            const nextState = { ...state, ...resultado.data }
+            const nextState = { ...stateRef.current, ...resultado.data }
             setState(nextState)
             movimentos = resultado.data.movimentos
             acumulado.splice(0, acumulado.length, ...resultado.data.notas)
@@ -812,16 +870,17 @@ export default function App() {
     clearError()
     try {
       const text = await file.text()
-      const parsed = parseCanceladaXml(text, state.notas)
-      const dup = mensagemNfCanceladaDuplicada(parsed, state.notasCanceladas)
+      const parsed = parseCanceladaXml(text, stateRef.current.notas)
+      const dup = mensagemNfCanceladaDuplicada(parsed, stateRef.current.notasCanceladas)
       if (dup) {
         setUploadCanceladaError(dup)
         return
       }
       const cancelada = notaFiscalToCancelada(parsed)
+      const snapshot = stateRef.current
       const nextState = {
-        ...state,
-        notasCanceladas: [cancelada, ...state.notasCanceladas],
+        ...snapshot,
+        notasCanceladas: [cancelada, ...snapshot.notasCanceladas],
       }
       setState(nextState)
       registrarEmitente(cancelada.emitente)
@@ -833,9 +892,10 @@ export default function App() {
   }
 
   function handleVincularCancelada(canceladaId: string, novaNfId: string) {
+    const snapshot = stateRef.current
     const nextState = {
-      ...state,
-      ...syncVinculosNotas(vincularNotaCancelada(state, canceladaId, novaNfId)),
+      ...snapshot,
+      ...syncVinculosNotas(vincularNotaCancelada(snapshot, canceladaId, novaNfId)),
     }
     setState(nextState)
     if (canceladaId === canceladaPendenteId) setCanceladaPendenteId(null)
@@ -843,17 +903,19 @@ export default function App() {
   }
 
   function handleDesvincularCancelada(canceladaId: string) {
+    const snapshot = stateRef.current
     const nextState = {
-      ...state,
-      ...syncVinculosNotas(desvincularNotaCancelada(state, canceladaId)),
+      ...snapshot,
+      ...syncVinculosNotas(desvincularNotaCancelada(snapshot, canceladaId)),
     }
     setState(nextState)
     void saveNow(nextState)
   }
 
   async function handleExcluirCancelada(canceladaId: string) {
-    const nextSlice = syncVinculosNotas(excluirNotaCancelada(state, canceladaId))
-    const nextState = { ...state, ...nextSlice }
+    const snapshot = stateRef.current
+    const nextSlice = syncVinculosNotas(excluirNotaCancelada(snapshot, canceladaId))
+    const nextState = { ...snapshot, ...nextSlice }
     setState(nextState)
     if (canceladaId === canceladaPendenteId) setCanceladaPendenteId(null)
     await saveNow(nextState)
@@ -1360,7 +1422,7 @@ export default function App() {
   }
 
   function handleUpdateItemCampos(itemIndex: number, patch: EntradaItemCampos) {
-    if (!state.activeNfId) return
+    if (!stateRef.current.activeNfId) return
     setState((s) => ({
       ...s,
       notas: s.notas.map((nf) => {
@@ -1371,10 +1433,13 @@ export default function App() {
         }
       }),
     }))
+    queueMicrotask(() => {
+      void saveNow(stateRef.current)
+    })
   }
 
   function handleUpdateItemQuantidade(itemIndex: number, quantidade: string) {
-    if (!state.activeNfId) return
+    if (!stateRef.current.activeNfId) return
     setState((s) => ({
       ...s,
       notas: s.notas.map((nf) => {
@@ -1387,6 +1452,9 @@ export default function App() {
         }
       }),
     }))
+    queueMicrotask(() => {
+      void saveNow(stateRef.current)
+    })
   }
 
   function handleUpdateItemPaletes(itemIndex: number, value: string) {
@@ -1476,12 +1544,13 @@ export default function App() {
     const result = desmembrarNfeItem(activeNf, itemIndex)
     if (!result) return
 
-    const notas = state.notas.map((nf) =>
+    const snapshot = stateRef.current
+    const notas = snapshot.notas.map((nf) =>
       nf.id !== activeNf.id ? nf : { ...nf, items: result.items },
     )
     const updatedNf = notas.find((n) => n.id === activeNf.id)!
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
       activeItemIndex: result.newItemIndex,
     }
@@ -1499,14 +1568,15 @@ export default function App() {
       })
       return
     }
-    const notas = state.notas.map((n) =>
+    const snapshot = stateRef.current
+    const notas = snapshot.notas.map((n) =>
       n.id === activeNf.id ? { ...n, status: 'concluida' as const } : n,
     )
     const updatedNf = notas.find((n) => n.id === activeNf.id)!
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
-      movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
+      movimentos: upsertMovimentoEntrada(snapshot.movimentos, updatedNf),
       activeItemIndex: null,
     }
     setState(nextState)
@@ -1532,27 +1602,28 @@ export default function App() {
     setManualNfError(null)
 
     const applyManual = async () => {
-      let nextState = state
+      const snapshot = stateRef.current
+      let nextState = snapshot
 
       if (result.kind === 'existing') {
-        if (!state.notas.some((n) => n.id === result.nfId)) {
+        if (!snapshot.notas.some((n) => n.id === result.nfId)) {
           setManualNfError('Nota fiscal não encontrada.')
           return
         }
         nextState = {
-          ...state,
+          ...snapshot,
           activeNfId: result.nfId,
           activeItemIndex: result.itemIndex,
         }
       } else {
-        const added = adicionarNotaManual(state, result.input)
+        const added = adicionarNotaManual(snapshot, result.input)
         if ('error' in added) {
           setManualNfError(added.error)
           return
         }
         registrarEmitente(result.input.emitente ?? '')
         nextState = {
-          ...state,
+          ...snapshot,
           notas: added.notas,
           movimentos: added.movimentos,
           activeNfId: added.nf.id,
@@ -1594,28 +1665,29 @@ export default function App() {
   }
 
   async function handleCancelarEntrada(nfId: string) {
+    const snapshot = stateRef.current
     const base = removerNfDoEstoque(
       {
-        notas: state.notas,
-        movimentos: state.movimentos,
-        notasCanceladas: state.notasCanceladas,
-        emitentes: state.emitentes,
+        notas: snapshot.notas,
+        movimentos: snapshot.movimentos,
+        notasCanceladas: snapshot.notasCanceladas,
+        emitentes: snapshot.emitentes,
       },
       nfId,
     )
 
-    const wasActive = state.activeNfId === nfId
+    const wasActive = snapshot.activeNfId === nfId
     const nextNf = wasActive
       ? base.notas.find((n) => n.status === 'em_andamento') ?? null
-      : base.notas.find((n) => n.id === state.activeNfId) ?? null
+      : base.notas.find((n) => n.id === snapshot.activeNfId) ?? null
 
     const nextState = {
-      ...state,
+      ...snapshot,
       notas: base.notas,
       movimentos: base.movimentos,
       notasCanceladas: base.notasCanceladas,
-      activeNfId: wasActive ? nextNf?.id ?? null : state.activeNfId,
-      activeItemIndex: wasActive ? nextNf?.items[0]?.index ?? null : state.activeItemIndex,
+      activeNfId: wasActive ? nextNf?.id ?? null : snapshot.activeNfId,
+      activeItemIndex: wasActive ? nextNf?.items[0]?.index ?? null : snapshot.activeItemIndex,
     }
     setState(nextState)
     setPendingSelection(new Set())
@@ -1632,7 +1704,8 @@ export default function App() {
     if (!activeNf || state.activeItemIndex == null) return
     const currentItemIndex = state.activeItemIndex
     setPendingSelection(new Set())
-    const notas = state.notas.map((nf) => {
+    const snapshot = stateRef.current
+    const notas = snapshot.notas.map((nf) => {
       if (nf.id !== activeNf.id) return nf
       return {
         ...nf,
@@ -1643,9 +1716,9 @@ export default function App() {
     })
     const updatedNf = notas.find((n) => n.id === activeNf.id)!
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
-      movimentos: upsertMovimentoEntrada(state.movimentos, updatedNf),
+      movimentos: upsertMovimentoEntrada(snapshot.movimentos, updatedNf),
     }
     setState(nextState)
     await saveNow(nextState)
@@ -1679,6 +1752,7 @@ export default function App() {
     const temArmazem = nfTemEstoqueArmazem(nf)
     const temStage = nfTemEstoqueStage(nf)
     if (temArmazem && temStage) {
+      saveSaidaDestinoPendenteId(nf.id)
       setSaidaDestinoPendente(nf)
       return false
     }
@@ -1943,12 +2017,13 @@ export default function App() {
           }
         : undefined,
     )
+    const snapshot = stateRef.current
     const nextState = {
-      ...state,
-      notas: state.notas.map((n) =>
+      ...snapshot,
+      notas: snapshot.notas.map((n) =>
         n.id === nfBuscaSaida.id ? aplicarSaidaPaletes(n, saidaPaletesConfirmados) : n,
       ),
-      movimentos: [mov, ...state.movimentos],
+      movimentos: [mov, ...snapshot.movimentos],
     }
     setState(nextState)
     await saveNow(nextState)
@@ -2031,12 +2106,13 @@ export default function App() {
       ...movBase,
       itens: snapshotSaidaStage(nfBuscaSaida, saidaStageConfirmados),
     }
+    const snapshot = stateRef.current
     const nextState = {
-      ...state,
-      notas: state.notas.map((n) =>
+      ...snapshot,
+      notas: snapshot.notas.map((n) =>
         n.id === nfBuscaSaida.id ? aplicarSaidaStage(n, saidaStageConfirmados) : n,
       ),
-      movimentos: [mov, ...state.movimentos],
+      movimentos: [mov, ...snapshot.movimentos],
     }
     setState(nextState)
     await saveNow(nextState)
@@ -2324,16 +2400,17 @@ export default function App() {
     if (!nfEditar || editItemIndex == null || editStagePending.size === 0) return
     const currentItemIndex = editItemIndex
     const addresses = [...editStagePending]
-    const notas = state.notas.map((nf) =>
+    const snapshot = stateRef.current
+    const notas = snapshot.notas.map((nf) =>
       nf.id === nfEditar.id ? moverEnderecosParaStage(nf, currentItemIndex, addresses) : nf,
     )
     const updatedNf = notas.find((n) => n.id === nfEditar.id)!
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
       movimentos: [
         criarMovimentoMovimentacao(updatedNf, currentItemIndex, addresses),
-        ...state.movimentos,
+        ...snapshot.movimentos,
       ],
     }
     setState(nextState)
@@ -2395,9 +2472,12 @@ export default function App() {
         setEditPendingSelection(new Set())
         editOriginalAddressesRef.current = new Set(addresses)
         setState(nextState)
-        setEditSalvando(false)
         setVozErro(null)
-        void saveNow(nextState)
+        try {
+          await saveNow(nextState)
+        } finally {
+          setEditSalvando(false)
+        }
         avancarParaProximoItemEditar(updatedNf, currentItemIndex)
         return true
       }
@@ -2505,8 +2585,11 @@ export default function App() {
     setVozErro(null)
     editOriginalAddressesRef.current = new Set(addresses)
     setState(nextState)
-    setEditSalvando(false)
-    void saveNow(nextState)
+    try {
+      await saveNow(nextState)
+    } finally {
+      setEditSalvando(false)
+    }
     avancarParaProximoItemEditar(updatedNf, currentItemIndex)
     return true
   }
@@ -2545,18 +2628,19 @@ export default function App() {
     const item = nfEditar.items.find((it) => it.index === editItemIndex)
     if (!item || itemNoStage(item)) return
 
+    const snapshot = stateRef.current
     const novos = [...editNovasPosicoes]
-    const notas = state.notas.map((nf) =>
+    const notas = snapshot.notas.map((nf) =>
       nf.id === nfEditar.id ? adicionarPosicoesItemArmazem(nf, editItemIndex, novos) : nf,
     )
     const updatedNf = notas.find((n) => n.id === nfEditar.id)!
     const updatedItem = updatedNf.items.find((it) => it.index === editItemIndex)!
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
       movimentos: [
         criarMovimentoMovimentacao(updatedNf, editItemIndex, updatedItem.allocatedAddresses),
-        ...state.movimentos,
+        ...snapshot.movimentos,
       ],
     }
 
@@ -2567,8 +2651,11 @@ export default function App() {
     setEditMoveOrigens(new Set())
     setEditMoveDestinos(new Set())
     setState(nextState)
-    setEditSalvando(false)
-    await saveNow(nextState)
+    try {
+      await saveNow(nextState)
+    } finally {
+      setEditSalvando(false)
+    }
   }
 
   function handleCancelarEditar() {
@@ -2657,11 +2744,12 @@ export default function App() {
     nota: NotaFiscal,
     newItemIndex: number,
   ) {
-    const notas = state.notas.map((n) => (n.id === nfId ? nota : n))
+    const snapshot = stateRef.current
+    const notas = snapshot.notas.map((n) => (n.id === nfId ? nota : n))
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
-      movimentos: upsertMovimentoEntrada(state.movimentos, nota),
+      movimentos: upsertMovimentoEntrada(snapshot.movimentos, nota),
       activeNfId: nfId,
       activeItemIndex: newItemIndex,
     }
@@ -2719,15 +2807,16 @@ export default function App() {
       return
     }
 
+    const snapshot = stateRef.current
     let notas: NotaFiscal[]
-    let movimentos = state.movimentos
-    let activeNfId = state.activeNfId
-    let activeItemIndex = state.activeItemIndex
+    let movimentos = snapshot.movimentos
+    let activeNfId = snapshot.activeNfId
+    let activeItemIndex = snapshot.activeItemIndex
     let consultaNfId = consultaNfAdicionarId
     let mensagem: string
 
     if (result.acao === 'remover_nf') {
-      notas = state.notas.filter((n) => n.id !== nf.id)
+      notas = snapshot.notas.filter((n) => n.id !== nf.id)
       movimentos = removerMovimentoEntradaAtivo(movimentos, nf.id)
       if (activeNfId === nf.id) {
         activeNfId = null
@@ -2737,8 +2826,8 @@ export default function App() {
       mensagem = `NF ${nf.numero} removida das entradas em andamento.`
     } else {
       const nota = result.nota
-      notas = state.notas.map((n) => (n.id === nf.id ? nota : n))
-      movimentos = upsertMovimentoEntrada(state.movimentos, nota)
+      notas = snapshot.notas.map((n) => (n.id === nf.id ? nota : n))
+      movimentos = upsertMovimentoEntrada(movimentos, nota)
 
       if (nota.status === 'concluida') {
         if (activeNfId === nf.id) {
@@ -2757,7 +2846,7 @@ export default function App() {
     notas = sanitizarNotasEntrada(notas)
 
     const nextState = {
-      ...state,
+      ...snapshot,
       notas,
       movimentos,
       activeNfId,
@@ -2766,7 +2855,7 @@ export default function App() {
     setState(nextState)
     setConsultaNfAdicionarId(consultaNfId)
     setSelectedEntradaIds((prev) => prev.filter((id) => id !== nf.id))
-    if (activeNfId !== state.activeNfId || activeItemIndex !== state.activeItemIndex) {
+    if (activeNfId !== snapshot.activeNfId || activeItemIndex !== snapshot.activeItemIndex) {
       setPendingSelection(new Set())
     }
     setConsultaResultados((prev) =>
@@ -2779,19 +2868,20 @@ export default function App() {
   }
 
   async function handleRemoverDoEstoque(nfId: string, motivo: MotivoRemocaoEstoqueId) {
+    const snapshot = stateRef.current
     const base = removerNfDoEstoque(
       {
-        notas: state.notas,
-        movimentos: state.movimentos,
-        notasCanceladas: state.notasCanceladas,
-        emitentes: state.emitentes,
+        notas: snapshot.notas,
+        movimentos: snapshot.movimentos,
+        notasCanceladas: snapshot.notasCanceladas,
+        emitentes: snapshot.emitentes,
       },
       nfId,
       { motivoRemocaoEstoque: motivo },
     )
 
     const nextState = {
-      ...state,
+      ...snapshot,
       notas: base.notas,
       movimentos: base.movimentos,
       notasCanceladas: base.notasCanceladas,
@@ -2812,7 +2902,7 @@ export default function App() {
       setNfBuscaSaidaId(null)
       limparEstadoSaida()
     }
-    if (state.activeNfId === nfId) {
+    if (snapshot.activeNfId === nfId) {
       setPendingSelection(new Set())
     }
     setDetailAddress(null)
@@ -3534,10 +3624,14 @@ export default function App() {
           ]}
           onConfirm={(opcao) => {
             const nf = saidaDestinoPendente
+            clearSaidaDestinoPendenteId()
             setSaidaDestinoPendente(null)
             aplicarBuscaSaida(nf, opcao === 'stage' ? 'stage' : 'armazem')
           }}
-          onCancel={() => setSaidaDestinoPendente(null)}
+          onCancel={() => {
+            clearSaidaDestinoPendenteId()
+            setSaidaDestinoPendente(null)
+          }}
         />
       )}
 

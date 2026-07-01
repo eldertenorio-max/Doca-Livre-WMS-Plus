@@ -6,12 +6,24 @@ export type UiSessionPrefs = {
   activeNfId: string | null
   activeItemIndex: number | null
   openSection: SidebarSectionId | null
+  nfEditarId: string | null
+  nfBuscaSaidaId: string | null
+  saidaOrigemEstoque: 'armazem' | 'stage' | null
+  consultaNfAdicionarId: string | null
+  consultaAguardandoEndereco: boolean
+  canceladaPendenteId: string | null
 }
 
 const EMPTY_UI: UiSessionPrefs = {
   activeNfId: null,
   activeItemIndex: null,
   openSection: null,
+  nfEditarId: null,
+  nfBuscaSaidaId: null,
+  saidaOrigemEstoque: null,
+  consultaNfAdicionarId: null,
+  consultaAguardandoEndereco: false,
+  canceladaPendenteId: null,
 }
 
 export function loadUiSession(): UiSessionPrefs {
@@ -24,6 +36,15 @@ export function loadUiSession(): UiSessionPrefs {
       activeNfId: parsed.activeNfId ?? null,
       activeItemIndex: parsed.activeItemIndex ?? null,
       openSection: parsed.openSection ?? null,
+      nfEditarId: parsed.nfEditarId ?? null,
+      nfBuscaSaidaId: parsed.nfBuscaSaidaId ?? null,
+      saidaOrigemEstoque:
+        parsed.saidaOrigemEstoque === 'armazem' || parsed.saidaOrigemEstoque === 'stage'
+          ? parsed.saidaOrigemEstoque
+          : null,
+      consultaNfAdicionarId: parsed.consultaNfAdicionarId ?? null,
+      consultaAguardandoEndereco: parsed.consultaAguardandoEndereco === true,
+      canceladaPendenteId: parsed.canceladaPendenteId ?? null,
     }
   } catch {
     return { ...EMPTY_UI }

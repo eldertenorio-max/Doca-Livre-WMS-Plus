@@ -346,21 +346,26 @@ export function useEnderecamentoStore() {
     try {
       const remote = await repoRef.current.loadData()
       const { data, dadosReparados } = prepareLoadedDataWithRepair(remote)
+      const remoteMerged =
+        repoRef.current.mode === 'supabase'
+          ? normalizePersistedData(mergeLoadedWithLocalDraft(data))
+          : data
       const base = lastPersistedRef.current
       const localNow = pickPersisted(stateRef.current)
       const trustRemote = base !== null && persistedEquals(localNow, base)
 
       setState((prev) => {
         const local = pickPersisted(prev)
+        const draft = repoRef.current.mode === 'supabase' ? loadLocalPersistedData() : local
         const merged = trustRemote
-          ? data
+          ? remoteMerged
           : base
-            ? mergePersistedData(base, local, data)
-            : data
+            ? mergePersistedData(base, local, remoteMerged)
+            : remoteMerged
         const protegido = trustRemote
           ? merged
-          : protegerPersistedContraRegressao(local, merged)
-        const consolidado = consolidarRemocoesLocais(base, local, protegido)
+          : protegerPersistedContraRegressao(draft, merged)
+        const consolidado = consolidarRemocoesLocais(base, draft, protegido)
         const normalized = normalizePersistedData(consolidado)
         lastPersistedRef.current = normalized
         const next = preserveUi(prev, normalized, { trustRemote })
@@ -370,7 +375,11 @@ export function useEnderecamentoStore() {
       setError(null)
 
       const merged = lastPersistedRef.current
-      const precisaSalvarReparo = dadosReparados || (merged && !persistedEquals(merged, data))
+      if (merged) {
+        syncWriteLocalDraft(merged)
+        syncWriteLocalSyncBase(merged)
+      }
+      const precisaSalvarReparo = dadosReparados || (merged && !persistedEquals(merged, remoteMerged))
 
       if (precisaSalvarReparo && merged) {
         skipSave.current = true
