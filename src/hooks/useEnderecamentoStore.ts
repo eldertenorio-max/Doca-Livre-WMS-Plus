@@ -125,8 +125,6 @@ export function useEnderecamentoStore() {
   const autoRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const remoteReloadQueuedRef = useRef(false)
   const scheduleRemoteReloadRef = useRef<() => void>(() => {})
-  const [syncingRemote, setSyncingRemote] = useState(false)
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -317,7 +315,6 @@ export function useEnderecamentoStore() {
     }
 
     skipSave.current = true
-    setSyncingRemote(true)
     try {
       const remote = await repoRef.current.loadData()
       const { data, dadosReparados } = prepareLoadedDataWithRepair(remote)
@@ -342,7 +339,6 @@ export function useEnderecamentoStore() {
         return next
       })
       setError(null)
-      setLastSyncedAt(Date.now())
 
       const merged = lastPersistedRef.current
       const precisaSalvarReparo = dadosReparados || (merged && !persistedEquals(merged, data))
@@ -373,7 +369,6 @@ export function useEnderecamentoStore() {
           : 'Erro ao sincronizar com a nuvem.',
       )
     } finally {
-      setSyncingRemote(false)
       setTimeout(() => {
         skipSave.current = false
       }, 200)
@@ -414,7 +409,6 @@ export function useEnderecamentoStore() {
           lastPersistedRef.current = data
           setState({ ...data, ...ui })
           setError(null)
-          setLastSyncedAt(Date.now())
 
           if (repo.mode === 'supabase' && dadosReparados) {
             skipSave.current = true
@@ -556,10 +550,7 @@ export function useEnderecamentoStore() {
     registrarEmitente,
     loading,
     saving,
-    syncingRemote,
-    lastSyncedAt,
     error,
     clearError: () => setError(null),
-    storageMode,
   }
 }

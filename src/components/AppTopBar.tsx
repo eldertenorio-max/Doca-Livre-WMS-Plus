@@ -16,8 +16,6 @@ type Props = {
   theme: Theme
   onToggleTheme: () => void
   saving: boolean
-  syncingRemote?: boolean
-  cloudSync?: boolean
   persistError: string | null
   mapLegend: LayoutLegendProps
   contaUsuarios: ContaUsuario[]
@@ -49,8 +47,6 @@ export function AppTopBar({
   theme,
   onToggleTheme,
   saving,
-  syncingRemote = false,
-  cloudSync = false,
   persistError,
   mapLegend,
   contaUsuarios,
@@ -163,10 +159,7 @@ export function AppTopBar({
             <div className="app-topbar-user-text">
               <strong>{usuarioAtivo?.nome ?? 'Doca Livre'}</strong>
               <span>Estoque / NF-e</span>
-              {syncingRemote && cloudSync && (
-                <em className="app-topbar-syncing">Sincronizando…</em>
-              )}
-              {saving && !syncingRemote && <em className="app-topbar-saving">Salvando…</em>}
+              {saving && <em className="app-topbar-saving">Salvando…</em>}
               {persistError && <em className="app-topbar-error">{persistError}</em>}
             </div>
             <span className="app-topbar-avatar" aria-hidden>
