@@ -10,6 +10,7 @@ type Props = {
   notasCount: number
   enderecosCount: number
   onRecuperar: () => Promise<boolean>
+  onImportarBackup: (file: File) => Promise<boolean>
   onExportarBackup: () => void
 }
 
@@ -17,9 +18,11 @@ export function RecuperacaoEstoqueBanner({
   notasCount,
   enderecosCount,
   onRecuperar,
+  onImportarBackup,
   onExportarBackup,
 }: Props) {
   const [recuperando, setRecuperando] = useState(false)
+  const [importando, setImportando] = useState(false)
 
   const backupLocal = useMemo(() => {
     const best = pickBestPersistedCandidate(loadAllLocalBackupCandidates())
@@ -69,6 +72,22 @@ export function RecuperacaoEstoqueBanner({
         <button type="button" className="btn" onClick={onExportarBackup}>
           Exportar backup (.json)
         </button>
+        <label className="btn recuperacao-estoque-banner__import">
+          {importando ? 'Importando…' : 'Importar backup (.json)'}
+          <input
+            type="file"
+            accept="application/json,.json"
+            disabled={importando || recuperando}
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              setImportando(true)
+              void onImportarBackup(file).finally(() => setImportando(false))
+            }}
+          />
+        </label>
       </div>
 
       <details className="recuperacao-estoque-banner__details">

@@ -230,6 +230,7 @@ export default function App() {
     saveNow,
     registrarEmitente,
     recuperarDoNavegador,
+    importarBackupArquivo,
     loading,
     saving,
     error,
@@ -3290,6 +3291,7 @@ export default function App() {
           notasCount={state.notas.length}
           enderecosCount={enderecosPersistidos}
           onRecuperar={recuperarDoNavegador}
+          onImportarBackup={importarBackupArquivo}
           onExportarBackup={exportarBackupNavegador}
         />
       )}

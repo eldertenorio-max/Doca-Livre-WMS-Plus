@@ -413,12 +413,18 @@ export const supabaseRepository: EnderecamentoRepository = {
     const notaIds = new Set(notas.map((n) => n.id))
     const keepIds = notas.map((n) => n.id)
 
+    async function countRows(table: string): Promise<number> {
+      const { count, error } = await sb.from(table).select('*', { count: 'exact', head: true })
+      if (error) throw new Error(error.message)
+      return count ?? 0
+    }
+
     if (keepIds.length === 0) {
-      const { data: existing } = await sb.from('ultrafrio_notas_fiscais').select('id')
-      const allIds = ((existing ?? []) as { id: string }[]).map((r) => r.id)
-      if (allIds.length) {
-        const { error } = await sb.from('ultrafrio_notas_fiscais').delete().in('id', allIds)
-        if (error) throw new Error(error.message)
+      const existingCount = await countRows('ultrafrio_notas_fiscais')
+      if (existingCount > 0) {
+        throw new Error(
+          'Bloqueado: tentativa de apagar todo o estoque no Supabase. Recupere pelo backup antes de sincronizar.',
+        )
       }
     } else {
       const { data: existing } = await sb.from('ultrafrio_notas_fiscais').select('id')
@@ -444,7 +450,14 @@ export const supabaseRepository: EnderecamentoRepository = {
     const toDelMov = ((existingMov ?? []) as { id: string }[])
       .map((r) => r.id)
       .filter((id) => !keepMov.includes(id))
-    if (toDelMov.length) {
+    if (keepMov.length === 0) {
+      const movCount = await countRows('ultrafrio_movimentos')
+      if (movCount > 0) {
+        throw new Error(
+          'Bloqueado: tentativa de apagar todo o histórico no Supabase. Recupere pelo backup antes de sincronizar.',
+        )
+      }
+    } else if (toDelMov.length) {
       const { error } = await sb.from('ultrafrio_movimentos').delete().in('id', toDelMov)
       if (error) throw new Error(error.message)
     }

@@ -655,6 +655,42 @@ export function useEnderecamentoStore() {
     }))
   }, [])
 
+  const aplicarBackupRecuperado = useCallback(
+    async (best: PersistedData, origem: string): Promise<boolean> => {
+      if (persistedRichness(best) === 0) {
+        setError('Arquivo de backup vazio — nada para restaurar.')
+        return false
+      }
+
+      const normalized = normalizePersistedData(prepareLoadedDataWithRepair(best).data)
+      const ui = repoRef.current.loadUiPrefs()
+      const nextState: AppState = { ...normalized, ...ui }
+
+      skipSave.current = true
+      setState(nextState)
+      lastPersistedRef.current = pickPersisted(nextState)
+      syncWriteLocalDraft(pickPersisted(nextState))
+      syncWriteLocalSyncBase(pickPersisted(nextState))
+      skipSave.current = false
+
+      try {
+        await saveNow(nextState)
+        setError(
+          `${origem}: ${nextState.notas.length} NF(s), ${contarEnderecosPersistidos(pickPersisted(nextState))} posição(ões) restauradas e salvas na nuvem.`,
+        )
+        return true
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? `${origem}, mas falhou ao salvar na nuvem: ${e.message}`
+            : `${origem}, mas falhou ao salvar na nuvem.`,
+        )
+        return false
+      }
+    },
+    [saveNow],
+  )
+
   const recuperarDoNavegador = useCallback(async (): Promise<boolean> => {
     const empty: PersistedData = {
       notas: [],
@@ -669,33 +705,32 @@ export function useEnderecamentoStore() {
       )
       return false
     }
+    return aplicarBackupRecuperado(best, 'Estoque recuperado do navegador')
+  }, [aplicarBackupRecuperado])
 
-    const normalized = normalizePersistedData(prepareLoadedDataWithRepair(best).data)
-    const ui = repoRef.current.loadUiPrefs()
-    const nextState: AppState = { ...normalized, ...ui }
-
-    skipSave.current = true
-    setState(nextState)
-    lastPersistedRef.current = pickPersisted(nextState)
-    syncWriteLocalDraft(pickPersisted(nextState))
-    syncWriteLocalSyncBase(pickPersisted(nextState))
-    skipSave.current = false
-
-    try {
-      await saveNow(nextState)
-      setError(
-        `Estoque recuperado: ${nextState.notas.length} NF(s), ${contarEnderecosPersistidos(pickPersisted(nextState))} posição(ões) restauradas e salvas na nuvem.`,
-      )
-      return true
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? `Backup local encontrado, mas falhou ao salvar na nuvem: ${e.message}`
-          : 'Backup local encontrado, mas falhou ao salvar na nuvem.',
-      )
-      return false
-    }
-  }, [saveNow])
+  const importarBackupArquivo = useCallback(
+    async (file: File): Promise<boolean> => {
+      try {
+        const raw = await file.text()
+        const parsed = JSON.parse(raw) as Partial<PersistedData>
+        const backup: PersistedData = {
+          notas: parsed.notas ?? [],
+          movimentos: parsed.movimentos ?? [],
+          notasCanceladas: parsed.notasCanceladas ?? [],
+          emitentes: parsed.emitentes ?? [],
+        }
+        return aplicarBackupRecuperado(backup, 'Backup importado')
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? `Arquivo de backup inválido: ${e.message}`
+            : 'Arquivo de backup inválido.',
+        )
+        return false
+      }
+    },
+    [aplicarBackupRecuperado],
+  )
 
   return {
     state,
@@ -703,6 +738,7 @@ export function useEnderecamentoStore() {
     saveNow,
     registrarEmitente,
     recuperarDoNavegador,
+    importarBackupArquivo,
     loading,
     saving,
     error,

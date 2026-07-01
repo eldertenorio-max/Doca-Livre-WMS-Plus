@@ -7488,6 +7488,11 @@ html.scroll-locked .sidebar.sidebar--wide {
   margin: 12px 0;
 }
 
+.recuperacao-estoque-banner__import {
+  cursor: pointer;
+  margin: 0;
+}
+
 .recuperacao-estoque-banner__details {
   font-size: 0.85rem;
 }
