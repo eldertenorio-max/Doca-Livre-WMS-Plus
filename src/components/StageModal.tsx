@@ -30,19 +30,27 @@ export function StageModal({ itens, onClose }: Props) {
           <ul className="stage-modal-list">
             {itens.map((it) => (
               <li key={`${it.nfId}-${it.itemIndex}`} className="stage-modal-item">
-                <div className="stage-modal-item-head">
-                  <strong>NF {it.nfNumero}</strong>
-                  <span className="muted">{it.emitente}</span>
+                <div className="stage-modal-item-top">
+                  <div className="stage-modal-item-nf">
+                    <strong>NF {it.nfNumero}</strong>
+                    <span className="muted stage-modal-emit">{it.emitente}</span>
+                  </div>
+                  <span className="stage-modal-qtd">
+                    {formatQuantidadeNfe(it.quantidade)}
+                    <span className="stage-modal-qtd-un">{it.unidade}</span>
+                  </span>
                 </div>
                 <p className="stage-modal-item-prod">
                   <span className="stage-modal-cod">{it.codigo}</span>
-                  <span>{it.descricao}</span>
+                  <span className="stage-modal-desc">{it.descricao}</span>
                 </p>
-                <p className="muted stage-modal-item-meta">
-                  {formatQuantidadeNfe(it.quantidade)} {it.unidade}
-                  {it.lote && <> · lote {it.lote}</>}
-                  {it.up && <> · UP {it.up}</>}
-                </p>
+                {(it.lote || it.up) && (
+                  <p className="muted stage-modal-item-meta">
+                    {it.lote && <>Lote {it.lote}</>}
+                    {it.lote && it.up && <> · </>}
+                    {it.up && <>UP {it.up}</>}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
