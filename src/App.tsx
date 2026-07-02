@@ -123,6 +123,7 @@ import {
   documentoSaidaFromNota,
   notasDisponiveisParaSaida,
   resolverReferenciasSaida,
+  saidaXmlCorrespondeNf,
   sugerirOrigemSaida,
   vincularSaidaXmlOrigem,
 } from './lib/saidaXml'
@@ -1791,11 +1792,11 @@ export default function App() {
       const referencias = resolverReferenciasSaida(state.notas, refs)
       const comEstoque = referencias.filter((r) => r.nf)
 
-      // Uma única NF referenciada com estoque: já vincula e segue o fluxo.
+      // Uma única NF referenciada com estoque: já vincula e segue o fluxo
+      // (aceita estoque físico ou stage).
       if (comEstoque.length === 1) {
         const nf = comEstoque[0].nf!
-        const vinculo = vincularSaidaXmlOrigem(nf, doc)
-        if (vinculo.itensExibicao.length > 0) {
+        if (saidaXmlCorrespondeNf(nf, doc)) {
           setSaidaOrigemSelecionadaId(nf.id)
           resolverDestinoSaida(nf)
         }
@@ -1827,8 +1828,7 @@ export default function App() {
       setBuscaErro('NF de origem não encontrada no estoque.')
       return
     }
-    const vinculo = vincularSaidaXmlOrigem(nf, saidaXmlDoc)
-    if (vinculo.itensExibicao.length === 0) {
+    if (!saidaXmlCorrespondeNf(nf, saidaXmlDoc)) {
       setBuscaErro(`Nenhum item do XML encontrado com estoque na NF ${nf.numero}.`)
       return
     }
@@ -1844,8 +1844,7 @@ export default function App() {
       setBuscaErro('Selecione a NF de origem.')
       return
     }
-    const vinculo = vincularSaidaXmlOrigem(nf, saidaXmlDoc)
-    if (vinculo.itensExibicao.length === 0) {
+    if (!saidaXmlCorrespondeNf(nf, saidaXmlDoc)) {
       setBuscaErro('Nenhum item do XML encontrado com estoque na NF selecionada.')
       setNfBuscaSaidaId(null)
       return

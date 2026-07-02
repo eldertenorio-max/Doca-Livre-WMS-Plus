@@ -1,5 +1,6 @@
 import { nfTemEnderecos } from './movimentos'
 import { nfTemEstoqueStage } from './stageEstoque'
+import { itemNoStage } from '../layout/stage'
 import { quantidadeEstoqueItem, unidadeEstoqueItem } from './nfeUnidades'
 import type { NfeItem, NotaFiscal, SaidaXmlDocumento } from '../types'
 
@@ -84,6 +85,21 @@ export function resolverReferenciasSaida(
   }
 
   return referencias
+}
+
+/**
+ * Verifica se a NF possui estoque (físico OU stage) com código correspondente
+ * a algum item do XML de saída. Usado para liberar o fluxo de saída também
+ * quando a mercadoria referenciada está no stage.
+ */
+export function saidaXmlCorrespondeNf(nf: NotaFiscal, doc: SaidaXmlDocumento): boolean {
+  const xmlCods = quantidadesXmlPorCodigo(doc)
+  if (xmlCods.size === 0) return false
+  return nf.items.some((it) => {
+    const cod = normCodigo(it.codigo)
+    if (!cod || !xmlCods.has(cod)) return false
+    return it.allocatedAddresses.length > 0 || itemNoStage(it)
+  })
 }
 
 export function sugerirOrigemSaida(
