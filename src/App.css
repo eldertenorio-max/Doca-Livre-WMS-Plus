@@ -5885,6 +5885,10 @@ html.scroll-locked .sidebar.sidebar--wide {
   align-items: end;
 }
 
+.saida-stage-calculo {
+  margin: 10px 0 4px;
+}
+
 .saida-item-campo {
   display: flex;
   flex-direction: column;

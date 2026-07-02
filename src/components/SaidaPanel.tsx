@@ -2,10 +2,11 @@ import { useEffect, useState, type ChangeEvent } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import type { AddressId, JustificativaSaidaId, NfeItem, NotaFiscal, SaidaXmlDocumento } from '../types'
 import type { SaidaLimitesPorItem, SaidaPaleteDraft } from '../lib/saidaParcial'
+import { calcularSaidaStageItem, parseQuantidadeSaida } from '../lib/saidaParcial'
 import { nfTemEnderecos } from '../lib/movimentos'
 import { itemNoStage } from '../layout/stage'
-import { quantidadeEstoqueItem } from '../lib/nfeUnidades'
-import { formatQuantidadeNfe } from '../lib/formatNfeItem'
+import { quantidadeEstoqueItem, unidadeEstoqueItem } from '../lib/nfeUnidades'
+import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 import type { SaidaItemDraft } from '../lib/saidaParcial'
 import type { SaidaReferencia } from '../lib/saidaXml'
 import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
@@ -436,33 +437,92 @@ export function SaidaPanel({
                 })}
               </ul>
 
-              {stageItemIndex != null && (
-                <div className="item-actions saida-stage-form">
-                  <label className="nf-itens-campo">
-                    <span>Quantidade de saída</span>
-                    <input
-                      type="text"
-                      className="input-nf"
-                      value={stageQtdInput}
-                      onChange={(e) => onStageQtdChange(e.target.value)}
-                    />
-                  </label>
-                  {selecaoErro && <p className="error">{selecaoErro}</p>}
-                  <button type="button" className="btn primary full" onClick={onConfirmarItemStage}>
-                    Confirmar item
-                  </button>
-                </div>
-              )}
+              {stageItemIndex != null && (() => {
+                const itemStage = nfBusca.items.find((it) => it.index === stageItemIndex)
+                const qtdSaida = parseQuantidadeSaida(stageQtdInput)
+                const calcStage =
+                  itemStage && qtdSaida != null && qtdSaida > 0
+                    ? calcularSaidaStageItem(nfBusca, itemStage, qtdSaida)
+                    : null
+                const unidadeStage = itemStage ? unidadeEstoqueItem(itemStage) : ''
+                return (
+                  <div className="item-actions saida-stage-form">
+                    <label className="nf-itens-campo">
+                      <span>Quantidade de saída</span>
+                      <input
+                        type="text"
+                        className="input-nf"
+                        value={stageQtdInput}
+                        onChange={(e) => onStageQtdChange(e.target.value)}
+                      />
+                    </label>
+                    <div className="saida-item-calculo-grid saida-stage-calculo">
+                      <div className="saida-item-campo saida-item-campo--calc">
+                        <span className="muted">Saindo</span>
+                        <strong className={calcStage ? 'saida-valor--saindo' : undefined}>
+                          {calcStage
+                            ? `${formatQuantidadeNfe(calcStage.quantidadeSaida)} ${unidadeStage}`
+                            : '—'}
+                        </strong>
+                      </div>
+                      <div className="saida-item-campo saida-item-campo--calc">
+                        <span className="muted">P. bruto saindo</span>
+                        <strong>
+                          {calcStage?.pesoBrutoSaida != null
+                            ? `${formatPesoBruto(calcStage.pesoBrutoSaida)} kg`
+                            : '—'}
+                        </strong>
+                      </div>
+                      <div className="saida-item-campo saida-item-campo--calc">
+                        <span className="muted">P. líquido saindo</span>
+                        <strong>
+                          {calcStage?.pesoLiquidoSaida != null
+                            ? `${formatPesoBruto(calcStage.pesoLiquidoSaida)} kg`
+                            : '—'}
+                        </strong>
+                      </div>
+                      <div className="saida-item-campo saida-item-campo--calc">
+                        <span className="muted">V. total saindo</span>
+                        <strong className={calcStage?.valorTotalSaida ? 'saida-valor--saindo' : undefined}>
+                          {calcStage?.valorTotalSaida != null
+                            ? formatValorNfe(calcStage.valorTotalSaida)
+                            : '—'}
+                        </strong>
+                      </div>
+                      <div className="saida-item-campo saida-item-campo--calc">
+                        <span className="muted">Sobra</span>
+                        <strong className="saida-valor--sobra">
+                          {calcStage
+                            ? `${formatQuantidadeNfe(calcStage.quantidadeSobra)} ${unidadeStage}`
+                            : '—'}
+                        </strong>
+                      </div>
+                    </div>
+                    {selecaoErro && <p className="error">{selecaoErro}</p>}
+                    <button type="button" className="btn primary full" onClick={onConfirmarItemStage}>
+                      Confirmar item
+                    </button>
+                  </div>
+                )
+              })()}
 
               {stageConfirmados.length > 0 && (
                 <ul className="saida-stage-confirmados">
                   {stageConfirmados.map((s) => {
                     const item = nfBusca.items.find((it) => it.index === s.itemIndex)
                     if (!item) return null
+                    const calc = calcularSaidaStageItem(nfBusca, item, s.quantidadeSaida)
                     return (
                       <li key={s.itemIndex}>
                         <span>
-                          {item.codigo} — {formatQuantidadeNfe(s.quantidadeSaida)} {item.unidade}
+                          {item.codigo} — {formatQuantidadeNfe(s.quantidadeSaida)}{' '}
+                          {unidadeEstoqueItem(item)}
+                          {calc?.pesoBrutoSaida != null && (
+                            <span className="muted"> · {formatPesoBruto(calc.pesoBrutoSaida)} kg</span>
+                          )}
+                          {calc?.valorTotalSaida != null && (
+                            <span className="muted"> · {formatValorNfe(calc.valorTotalSaida)}</span>
+                          )}
                         </span>
                         <button
                           type="button"

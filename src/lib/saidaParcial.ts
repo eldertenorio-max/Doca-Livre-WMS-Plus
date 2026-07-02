@@ -167,7 +167,9 @@ export function calcularSaidaPalete(
   if (quantidadeCaixas > disponivel + 1e-9) return null
 
   const quantidadeSobra = qtdItem - jaSaido - quantidadeCaixas
-  const r = ratio(quantidadeCaixas, qtdItem)
+  // Peso e valor totais correspondem ao estoque completo do item; ratear pela
+  // quantidade completa (não pelo limite do XML) para não superestimar o peso.
+  const r = ratio(quantidadeCaixas, quantidadeEstoqueItem(item))
   const pesoBrutoTotal = pesoBrutoTotalItem(nf, item)
   const pesoLiquidoTotal = pesoLiquidoTotalItem(nf, item)
   const capPalete = caixasPorPalete(item)
@@ -189,6 +191,43 @@ export function calcularSaidaPalete(
         ? { valorTotalSaida: item.valorUnitario * quantidadeCaixas }
         : {}),
     liberaPalete,
+  }
+}
+
+export type SaidaStageCalculo = {
+  quantidadeSaida: number
+  quantidadeSobra: number
+  unidade: string
+  pesoBrutoSaida?: number
+  pesoLiquidoSaida?: number
+  valorTotalSaida?: number
+}
+
+/** Calcula peso/valor proporcionais para saída de um item que está no stage. */
+export function calcularSaidaStageItem(
+  nf: NotaFiscal,
+  item: NfeItem,
+  quantidadeSaida: number,
+): SaidaStageCalculo | null {
+  if (quantidadeSaida <= 0) return null
+  const qtdItem = quantidadeEstoqueItem(item)
+  if (quantidadeSaida > qtdItem + 1e-9) return null
+
+  const r = ratio(quantidadeSaida, qtdItem)
+  const pesoBrutoTotal = pesoBrutoTotalItem(nf, item)
+  const pesoLiquidoTotal = pesoLiquidoTotalItem(nf, item)
+
+  return {
+    quantidadeSaida,
+    quantidadeSobra: Math.max(0, qtdItem - quantidadeSaida),
+    unidade: unidadeEstoqueItem(item),
+    ...(pesoBrutoTotal != null ? { pesoBrutoSaida: pesoBrutoTotal * r } : {}),
+    ...(pesoLiquidoTotal != null ? { pesoLiquidoSaida: pesoLiquidoTotal * r } : {}),
+    ...(item.valorTotal != null
+      ? { valorTotalSaida: item.valorTotal * r }
+      : item.valorUnitario != null
+        ? { valorTotalSaida: item.valorUnitario * quantidadeSaida }
+        : {}),
   }
 }
 
