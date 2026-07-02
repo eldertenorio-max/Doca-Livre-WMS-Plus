@@ -122,6 +122,7 @@ import { splitMovimentacaoVozTranscript } from './lib/movimentacaoVoz'
 import {
   documentoSaidaFromNota,
   notasDisponiveisParaSaida,
+  resolverReferenciasSaida,
   sugerirOrigemSaida,
   vincularSaidaXmlOrigem,
 } from './lib/saidaXml'
@@ -142,7 +143,7 @@ import type { ModoMovimentacao } from './components/EditarPosicaoPanel'
 import type { EntradaItemCampos } from './lib/entradaCampos'
 import { quantidadeEstoqueItem } from './lib/nfeUnidades'
 import type { SaidaItemDraft } from './lib/saidaParcial'
-import type { AddressId, AddressOccupancy, JustificativaSaidaId, LocalizacaoEstoque, MotivoRemocaoEstoqueId, MovimentoRegistro, NotaFiscal, SaidaXmlDocumento } from './types'
+import type { AddressId, AddressOccupancy, AppState, JustificativaSaidaId, LocalizacaoEstoque, MotivoRemocaoEstoqueId, MovimentoRegistro, NotaFiscal, SaidaXmlDocumento } from './types'
 import {
   defaultPainelFiltros,
   type PainelFiltros,
@@ -269,6 +270,7 @@ export default function App() {
   const [saidaSelecaoErro, setSaidaSelecaoErro] = useState<string | null>(null)
   const [saidaModoBusca, setSaidaModoBusca] = useState<SaidaModoBusca>('numero')
   const [saidaXmlDoc, setSaidaXmlDoc] = useState<SaidaXmlDocumento | null>(null)
+  const [saidaRefChaves, setSaidaRefChaves] = useState<string[]>([])
   const [saidaOrigemSelecionadaId, setSaidaOrigemSelecionadaId] = useState('')
   const [saidaUploadXmlErro, setSaidaUploadXmlErro] = useState<string | null>(null)
   const [buscaErro, setBuscaErro] = useState<string | null>(null)
@@ -574,6 +576,10 @@ export default function App() {
   }, [nfBuscaSaida, saidaVinculo, saidaOrigemEstoque])
   const saidaLimitesPorItem = saidaVinculo?.limitesPorItem
   const saidaVinculoAvisos = saidaVinculo?.avisos ?? []
+  const saidaReferencias = useMemo(
+    () => resolverReferenciasSaida(state.notas, saidaRefChaves),
+    [state.notas, saidaRefChaves],
+  )
   const nfEditar = nfEditarId ? state.notas.find((n) => n.id === nfEditarId) ?? null : null
 
   const activeEntradaItem = useMemo(() => {
@@ -1760,6 +1766,7 @@ export default function App() {
     setSaidaUploadXmlErro(null)
     if (modo === 'numero') {
       setSaidaXmlDoc(null)
+      setSaidaRefChaves([])
       setSaidaOrigemSelecionadaId('')
       setNfBuscaSaidaId(null)
       limparEstadoSaida()
@@ -1775,21 +1782,58 @@ export default function App() {
       const refs = parseNfeReferenciaChaves(text)
       const parsed = parseNfeXml(text)
       const doc = documentoSaidaFromNota(parsed)
-      const sugerida = sugerirOrigemSaida(state.notas, doc, refs)
       setSaidaXmlDoc(doc)
       setSaidaModoBusca('xml')
-      if (sugerida) {
-        setSaidaOrigemSelecionadaId(sugerida.id)
-        setNfBuscaSaidaId(sugerida.id)
-      } else {
-        setSaidaOrigemSelecionadaId('')
-        setNfBuscaSaidaId(null)
+      setSaidaRefChaves(refs)
+      setSaidaOrigemSelecionadaId('')
+      setNfBuscaSaidaId(null)
+
+      const referencias = resolverReferenciasSaida(state.notas, refs)
+      const comEstoque = referencias.filter((r) => r.nf)
+
+      // Uma única NF referenciada com estoque: já vincula e segue o fluxo.
+      if (comEstoque.length === 1) {
+        const nf = comEstoque[0].nf!
+        const vinculo = vincularSaidaXmlOrigem(nf, doc)
+        if (vinculo.itensExibicao.length > 0) {
+          setSaidaOrigemSelecionadaId(nf.id)
+          resolverDestinoSaida(nf)
+        }
+        return
       }
+
+      // Sem referências no XML: mantém sugestão automática por código (fallback).
+      if (refs.length === 0) {
+        const sugerida = sugerirOrigemSaida(state.notas, doc, refs)
+        if (sugerida) {
+          setSaidaOrigemSelecionadaId(sugerida.id)
+          setNfBuscaSaidaId(sugerida.id)
+        }
+      }
+      // Múltiplas referências com estoque: lista aparece para o usuário escolher.
     } catch (e) {
       setSaidaUploadXmlErro(e instanceof Error ? e.message : 'Erro ao ler XML.')
       setSaidaXmlDoc(null)
+      setSaidaRefChaves([])
       setNfBuscaSaidaId(null)
     }
+  }
+
+  function handleSelecionarReferenciaSaida(nfId: string) {
+    setBuscaErro(null)
+    if (!saidaXmlDoc) return
+    const nf = state.notas.find((n) => n.id === nfId)
+    if (!nf) {
+      setBuscaErro('NF de origem não encontrada no estoque.')
+      return
+    }
+    const vinculo = vincularSaidaXmlOrigem(nf, saidaXmlDoc)
+    if (vinculo.itensExibicao.length === 0) {
+      setBuscaErro(`Nenhum item do XML encontrado com estoque na NF ${nf.numero}.`)
+      return
+    }
+    setSaidaOrigemSelecionadaId(nf.id)
+    resolverDestinoSaida(nf)
   }
 
   function handleVincularOrigemSaida() {
@@ -2011,11 +2055,24 @@ export default function App() {
     }
     setState(nextState)
     await saveNow(nextState)
+    finalizarSaidaResetUI(nextState)
+  }
+
+  /** Após finalizar uma saída, volta para a lista de NFs referenciadas se ainda houver pendências. */
+  function finalizarSaidaResetUI(nextState: AppState) {
     setNfBuscaSaidaId(null)
-    setSaidaXmlDoc(null)
     setSaidaOrigemSelecionadaId('')
     setSaidaUploadXmlErro(null)
     limparEstadoSaida()
+
+    const aindaTemReferencias =
+      saidaRefChaves.length > 0 &&
+      resolverReferenciasSaida(nextState.notas, saidaRefChaves).some((r) => r.nf)
+
+    if (!aindaTemReferencias) {
+      setSaidaXmlDoc(null)
+      setSaidaRefChaves([])
+    }
   }
 
   function handleSelectItemStage(index: number) {
@@ -2100,20 +2157,13 @@ export default function App() {
     }
     setState(nextState)
     await saveNow(nextState)
-    setNfBuscaSaidaId(null)
-    setSaidaXmlDoc(null)
-    setSaidaOrigemSelecionadaId('')
-    setSaidaUploadXmlErro(null)
-    limparEstadoSaida()
+    finalizarSaidaResetUI(nextState)
   }
 
   function handleCancelarSaida() {
-    setNfBuscaSaidaId(null)
-    setSaidaXmlDoc(null)
-    setSaidaOrigemSelecionadaId('')
-    setSaidaUploadXmlErro(null)
-    limparEstadoSaida()
     setBuscaErro(null)
+    // Em XML com várias referências, cancelar volta para a lista de NFs pendentes.
+    finalizarSaidaResetUI(state)
   }
 
   function limparEstadoMapaEditar() {
@@ -3299,6 +3349,8 @@ export default function App() {
           onModoBuscaChange: handleModoBuscaSaidaChange,
           nfBusca: nfBuscaSaida,
           saidaXml: saidaXmlDoc,
+          referencias: saidaReferencias,
+          onSelecionarReferencia: handleSelecionarReferenciaSaida,
           notasOrigem: notasOrigemSaida,
           origemSelecionadaId: saidaOrigemSelecionadaId,
           onOrigemSelecionadaChange: setSaidaOrigemSelecionadaId,

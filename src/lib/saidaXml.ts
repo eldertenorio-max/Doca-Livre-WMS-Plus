@@ -45,6 +45,47 @@ export function notasDisponiveisParaSaida(notas: NotaFiscal[]): NotaFiscal[] {
     .sort((a, b) => b.numero.localeCompare(a.numero))
 }
 
+/** Extrai o número da NF (nNF) da chave de acesso de 44 dígitos. */
+export function numeroFromChave(chave: string): string {
+  const digits = chave.replace(/\D/g, '')
+  if (digits.length < 34) return ''
+  const nNF = digits.slice(25, 34).replace(/^0+/, '')
+  return nNF || digits.slice(25, 34)
+}
+
+export type SaidaReferencia = {
+  chave: string
+  numero: string
+  /** NF de entrada correspondente com estoque no sistema, ou null se indisponível. */
+  nf: NotaFiscal | null
+}
+
+/**
+ * Resolve as NFs de entrada referenciadas (NFref) pelo XML de saída,
+ * indicando quais estão com estoque disponível para dar saída.
+ */
+export function resolverReferenciasSaida(
+  notas: NotaFiscal[],
+  refChaves: string[],
+): SaidaReferencia[] {
+  const comEstoque = notasDisponiveisParaSaida(notas)
+  const vistos = new Set<string>()
+  const referencias: SaidaReferencia[] = []
+
+  for (const ch of refChaves) {
+    const chNorm = ch.replace(/^NFe/, '').replace(/\D/g, '')
+    if (!chNorm || vistos.has(chNorm)) continue
+    vistos.add(chNorm)
+    const nf =
+      comEstoque.find(
+        (n) => n.chave === chNorm || (chNorm.length >= 8 && n.chave.endsWith(chNorm)),
+      ) ?? null
+    referencias.push({ chave: chNorm, numero: numeroFromChave(chNorm), nf })
+  }
+
+  return referencias
+}
+
 export function sugerirOrigemSaida(
   notas: NotaFiscal[],
   doc: SaidaXmlDocumento,

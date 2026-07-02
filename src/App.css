@@ -5040,6 +5040,75 @@ html.scroll-locked .sidebar.sidebar--wide {
   cursor: not-allowed;
 }
 
+.saida-referencias {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saida-referencias-titulo {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.saida-referencias-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.saida-referencia-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.88rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.saida-referencia-btn:hover {
+  border-color: var(--accent, #d29922);
+  background: color-mix(in srgb, var(--accent, #d29922) 8%, transparent);
+}
+
+.saida-referencia-num {
+  font-weight: 700;
+}
+
+.saida-referencia-emit {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saida-referencia-acao {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--accent, #d29922);
+  white-space: nowrap;
+}
+
+.saida-referencia-indisponivel {
+  display: block;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
 .saida-vinculo-origem {
   margin-top: 12px;
   display: flex;

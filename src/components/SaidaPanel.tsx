@@ -7,6 +7,7 @@ import { itemNoStage } from '../layout/stage'
 import { quantidadeEstoqueItem } from '../lib/nfeUnidades'
 import { formatQuantidadeNfe } from '../lib/formatNfeItem'
 import type { SaidaItemDraft } from '../lib/saidaParcial'
+import type { SaidaReferencia } from '../lib/saidaXml'
 import { JUSTIFICATIVAS_SAIDA } from '../lib/justificativaSaida'
 import { NfResumoGrid } from './NfResumoGrid'
 import { NfLocalizacaoBadge } from './NfLocalizacaoBadge'
@@ -23,6 +24,8 @@ type Props = {
   onModoBuscaChange: (modo: SaidaModoBusca) => void
   nfBusca: NotaFiscal | null
   saidaXml: SaidaXmlDocumento | null
+  referencias: SaidaReferencia[]
+  onSelecionarReferencia: (nfId: string) => void
   notasOrigem: NotaFiscal[]
   origemSelecionadaId: string
   onOrigemSelecionadaChange: (nfId: string) => void
@@ -70,6 +73,8 @@ export function SaidaPanel({
   onModoBuscaChange,
   nfBusca,
   saidaXml,
+  referencias,
+  onSelecionarReferencia,
   notasOrigem,
   origemSelecionadaId,
   onOrigemSelecionadaChange,
@@ -134,6 +139,7 @@ export function SaidaPanel({
       ? stageConfirmados.length > 0 && justificativa != null
       : paletesConfirmados.length > 0 && justificativa != null
   const aguardandoVinculo = modoBusca === 'xml' && saidaXml != null && nfBusca == null
+  const refsComEstoque = referencias.filter((r) => r.nf != null)
   const itensComEstoque =
     origemEstoque === 'stage'
       ? itensSaida.filter(itemNoStage)
@@ -236,9 +242,51 @@ export function SaidaPanel({
             )}
           </dl>
 
+          {aguardandoVinculo && referencias.length > 0 && (
+            <div className="saida-referencias">
+              <p className="saida-referencias-titulo">
+                Este XML referencia {referencias.length}{' '}
+                {referencias.length === 1 ? 'nota fiscal' : 'notas fiscais'}.{' '}
+                {refsComEstoque.length > 0 ? (
+                  <>
+                    Você tem <strong>{refsComEstoque.length}</strong> para dar saída:
+                  </>
+                ) : (
+                  'Nenhuma delas está com estoque no sistema.'
+                )}
+              </p>
+              <ul className="saida-referencias-lista">
+                {referencias.map((ref) => (
+                  <li key={ref.chave}>
+                    {ref.nf ? (
+                      <button
+                        type="button"
+                        className="saida-referencia-btn"
+                        onClick={() => onSelecionarReferencia(ref.nf!.id)}
+                        disabled={modoPalete}
+                      >
+                        <span className="saida-referencia-num">NF {ref.numero}</span>
+                        <span className="muted saida-referencia-emit"> · {ref.nf.emitente || '—'}</span>
+                        <span className="saida-referencia-acao">Dar saída ›</span>
+                      </button>
+                    ) : (
+                      <span className="saida-referencia-indisponivel muted">
+                        NF {ref.numero} — sem estoque no sistema
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {aguardandoVinculo && (
             <div className="saida-vinculo-origem">
-              <p className="muted saida-vinculo-intro">Vincule à NF de origem no estoque:</p>
+              <p className="muted saida-vinculo-intro">
+                {referencias.length > 0
+                  ? 'Ou escolha manualmente a NF de origem no estoque:'
+                  : 'Vincule à NF de origem no estoque:'}
+              </p>
               {notasOrigem.length === 0 ? (
                 <p className="error">Nenhuma NF com estoque endereçado no sistema.</p>
               ) : (
