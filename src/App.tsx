@@ -227,7 +227,7 @@ export default function App() {
     saveNow,
     registrarEmitente,
     loading,
-    saving,
+    savingImportante,
     error,
     clearError,
   } = useEnderecamentoStore()
@@ -359,7 +359,7 @@ export default function App() {
       emitentes: atual.emitentes,
     })
     if (!reparado) return
-    void saveNow({ ...atual, ...data })
+    void saveNow({ ...atual, ...data }, { indicar: false })
   }, [loading, saveNow])
 
   useEffect(() => {
@@ -1424,7 +1424,7 @@ export default function App() {
       }),
     }))
     queueMicrotask(() => {
-      void saveNow(stateRef.current)
+      void saveNow(stateRef.current, { indicar: false })
     })
   }
 
@@ -1443,7 +1443,7 @@ export default function App() {
       }),
     }))
     queueMicrotask(() => {
-      void saveNow(stateRef.current)
+      void saveNow(stateRef.current, { indicar: false })
     })
   }
 
@@ -1500,7 +1500,7 @@ export default function App() {
       }
 
       queueMicrotask(() => {
-        void saveNow(stateRef.current)
+        void saveNow(stateRef.current, { indicar: false })
       })
 
       return next
@@ -3278,12 +3278,19 @@ export default function App() {
 
   return (
     <div className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}>
+      {savingImportante && (
+        <div className="salvando-overlay" role="status" aria-live="polite">
+          <div className="salvando-overlay-card">
+            <span className="salvando-overlay-spinner" aria-hidden />
+            <span className="salvando-overlay-texto">Salvando…</span>
+          </div>
+        </div>
+      )}
       <AppTopBar
         sidebarMode={sidebarMode}
         onSidebarModeChange={setSidebarMode}
         theme={theme}
         onToggleTheme={toggleTheme}
-        saving={saving}
         persistError={error}
         mapLegend={{
           allocateMode: panelAllocateMode,

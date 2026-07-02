@@ -15,7 +15,6 @@ type Props = {
   onSidebarModeChange: (mode: SidebarMode) => void
   theme: Theme
   onToggleTheme: () => void
-  saving: boolean
   persistError: string | null
   mapLegend: LayoutLegendProps
   contaUsuarios: ContaUsuario[]
@@ -46,7 +45,6 @@ export function AppTopBar({
   onSidebarModeChange,
   theme,
   onToggleTheme,
-  saving,
   persistError,
   mapLegend,
   contaUsuarios,
@@ -159,7 +157,6 @@ export function AppTopBar({
             <div className="app-topbar-user-text">
               <strong>{usuarioAtivo?.nome ?? 'Doca Livre'}</strong>
               <span>Estoque / NF-e</span>
-              {saving && <em className="app-topbar-saving">Salvando…</em>}
               {persistError && <em className="app-topbar-error">{persistError}</em>}
             </div>
             <span className="app-topbar-avatar" aria-hidden>

@@ -160,6 +160,8 @@ export function useEnderecamentoStore() {
   const [state, setState] = useState<AppState>(emptyState)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingImportante, setSavingImportante] = useState(false)
+  const savingImportanteCountRef = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [storageMode, setStorageMode] = useState<StorageMode>(getStorageMode())
   const skipSave = useRef(true)
@@ -351,13 +353,25 @@ export function useEnderecamentoStore() {
   )
 
   const saveNow = useCallback(
-    async (next: AppState) => {
+    async (next: AppState, opts?: { indicar?: boolean }) => {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current)
         saveTimer.current = null
       }
       pendingSaveRef.current = null
-      await persist(next)
+      const indicar = opts?.indicar ?? true
+      if (indicar) {
+        savingImportanteCountRef.current += 1
+        setSavingImportante(true)
+      }
+      try {
+        await persist(next)
+      } finally {
+        if (indicar) {
+          savingImportanteCountRef.current = Math.max(0, savingImportanteCountRef.current - 1)
+          if (savingImportanteCountRef.current === 0) setSavingImportante(false)
+        }
+      }
     },
     [persist],
   )
@@ -765,6 +779,7 @@ export function useEnderecamentoStore() {
     importarBackupArquivo,
     loading,
     saving,
+    savingImportante,
     error,
     clearError: () => setError(null),
   }
