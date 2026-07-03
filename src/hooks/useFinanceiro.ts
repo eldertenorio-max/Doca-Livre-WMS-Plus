@@ -78,6 +78,7 @@ export function useFinanceiro(notas: NotaFiscal[]) {
     (updater: (prev: FinanceiroData) => FinanceiroData) => {
       setData((prev) => {
         const next = updater(prev)
+        dataRef.current = next
         if (saveTimer.current) clearTimeout(saveTimer.current)
         saveTimer.current = setTimeout(() => void persist(next), 300)
         return next

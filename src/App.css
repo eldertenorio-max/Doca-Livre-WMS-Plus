@@ -8082,6 +8082,42 @@ html.scroll-locked .sidebar.sidebar--wide {
   margin-top: 8px;
 }
 
+.fin-block-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fin-block-title h4 {
+  margin-bottom: 2px;
+}
+
+.fin-count {
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--accent, #f5c518);
+  color: #111;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fin-empty {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.16));
+  border-radius: 8px;
+}
+
+.fin-input-help {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .fin-fieldset {
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   border-radius: 8px;

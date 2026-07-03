@@ -197,6 +197,7 @@ function TabelaCobrancaSection({
   }
 
   function handleExcluir(id: string) {
+    if (data.contratos.some((c) => c.tabelaId === id)) return
     onUpdate((prev) => ({
       ...prev,
       tabelas: prev.tabelas.filter((t) => t.id !== id),
@@ -243,34 +244,59 @@ function TabelaCobrancaSection({
         </div>
       </div>
 
-      {data.tabelas.length > 0 && (
-        <div className="sidebar-block">
-          <h4>Tabelas cadastradas ({data.tabelas.length})</h4>
-          <ul className="fin-lista">
-            {data.tabelas.map((t) => (
-              <li key={t.id} className="fin-lista-item">
-                <div className="fin-lista-main">
-                  <strong>{t.nome}</strong>
-                  <span className="muted fin-lista-detalhe">
-                    Posição {formatMoedaFinanceiro(t.custoPosicaoPalete)} · Kilo{' '}
-                    {formatMoedaFinanceiro(t.custoPorKilo)} · Entrada{' '}
-                    {formatMoedaFinanceiro(t.custoEntrada)} · Saída{' '}
-                    {formatMoedaFinanceiro(t.custoSaida)}
-                  </span>
-                </div>
-                <div className="fin-lista-btns">
-                  <button type="button" className="btn btn-sm" onClick={() => loadEdit(t)}>
-                    Editar
-                  </button>
-                  <button type="button" className="btn btn-sm btn-danger" onClick={() => handleExcluir(t.id)}>
-                    Excluir
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+      <div className="sidebar-block fin-tabelas-cadastradas">
+        <div className="fin-block-title">
+          <div>
+            <h4>Tabelas cadastradas</h4>
+            <p className="muted">As tabelas salvas aqui aparecem no cadastro de contrato.</p>
+          </div>
+          <span className="fin-count">{data.tabelas.length}</span>
         </div>
-      )}
+
+        {data.tabelas.length === 0 ? (
+          <p className="muted fin-empty">
+            Nenhuma tabela cadastrada ainda. Preencha os valores acima e clique em Cadastrar tabela.
+          </p>
+        ) : (
+          <ul className="fin-lista">
+            {data.tabelas.map((t) => {
+              const contratosVinculados = data.contratos.filter((c) => c.tabelaId === t.id).length
+              return (
+                <li key={t.id} className="fin-lista-item">
+                  <div className="fin-lista-main">
+                    <strong>{t.nome}</strong>
+                    <span className="muted fin-lista-detalhe">
+                      Posição {formatMoedaFinanceiro(t.custoPosicaoPalete)} · Kilo{' '}
+                      {formatMoedaFinanceiro(t.custoPorKilo)} · Entrada{' '}
+                      {formatMoedaFinanceiro(t.custoEntrada)} · Saída{' '}
+                      {formatMoedaFinanceiro(t.custoSaida)}
+                    </span>
+                    {contratosVinculados > 0 && (
+                      <span className="muted fin-lista-detalhe">
+                        Em uso em {contratosVinculados} contrato{contratosVinculados > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <div className="fin-lista-btns">
+                    <button type="button" className="btn btn-sm" onClick={() => loadEdit(t)}>
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleExcluir(t.id)}
+                      disabled={contratosVinculados > 0}
+                      title={contratosVinculados > 0 ? 'Remova ou altere os contratos antes de excluir esta tabela.' : undefined}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
@@ -298,6 +324,7 @@ function ContratoSection({
   const [cobSaida, setCobSaida] = useState(false)
   const [kiloPorDia, setKiloPorDia] = useState(false)
   const [obs, setObs] = useState('')
+  const podeSalvar = Boolean(cnpj.trim() && razao.trim() && tabelaId)
 
   function resetForm() {
     setEditId(null)
@@ -340,13 +367,13 @@ function ContratoSection({
   function handleSalvar() {
     const cnpjNorm = normalizarCnpj(cnpj) || cnpj.trim()
     const razaoTrim = razao.trim()
-    if (!cnpjNorm || !razaoTrim) return
+    if (!cnpjNorm || !razaoTrim || !tabelaId) return
 
     const contrato: ContratoCliente = {
       id: editId ?? newId('ctr'),
       cnpj: cnpjNorm,
       razaoSocial: razaoTrim,
-      tabelaId: tabelaId || null,
+      tabelaId,
       ciclo,
       regraTempo,
       cobrarPosicaoPalete: cobPosicao,
@@ -433,14 +460,26 @@ function ContratoSection({
 
         <label className="nf-itens-campo">
           <span>Tabela de cobrança</span>
-          <select className="input-nf" value={tabelaId} onChange={(e) => setTabelaId(e.target.value)}>
-            <option value="">Nenhuma (definir depois)</option>
+          <select
+            className="input-nf"
+            value={tabelaId}
+            onChange={(e) => setTabelaId(e.target.value)}
+            disabled={data.tabelas.length === 0}
+          >
+            <option value="">
+              {data.tabelas.length === 0 ? 'Cadastre uma tabela primeiro' : 'Selecione uma tabela'}
+            </option>
             {data.tabelas.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.nome}
               </option>
             ))}
           </select>
+          <span className="muted fin-input-help">
+            {data.tabelas.length === 0
+              ? 'Crie a tabela na aba Tabela de cobrança para poder vincular ao contrato.'
+              : 'O contrato usará os valores da tabela escolhida para calcular a cobrança.'}
+          </span>
         </label>
 
         <div className="fin-grid-2">
@@ -501,7 +540,7 @@ function ContratoSection({
         </label>
 
         <div className="fin-actions">
-          <button type="button" className="btn primary" onClick={handleSalvar} disabled={!cnpj.trim() || !razao.trim()}>
+          <button type="button" className="btn primary" onClick={handleSalvar} disabled={!podeSalvar}>
             {editId ? 'Atualizar contrato' : 'Cadastrar contrato'}
           </button>
           {editId && (
