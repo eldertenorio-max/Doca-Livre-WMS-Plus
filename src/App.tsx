@@ -28,7 +28,6 @@ import { allItemsAllocated } from './lib/repository'
 import { adicionarNotaManual } from './lib/manualNf'
 import { desmembrarNfeItem, patchNfeItemQuantidade } from './lib/desmembrarItem'
 import {
-  itemEnderecamentoCompleto,
   parsePaletesInput,
   paletesLimiteItem,
   podeAdicionarEndereco,
@@ -40,7 +39,7 @@ import {
   validarItemManualInput,
   type ItemManualInput,
 } from './lib/adicionarItemNf'
-import { contarItensSemEndereco, nfEntradaIncompleta } from './lib/entradaPendente'
+import { contarItensSemEndereco, nfEntradaIncompleta, proximoItemEntradaPendente } from './lib/entradaPendente'
 import {
   clearEntradaDestinoPendente,
   loadEntradaDestinoPendente,
@@ -1397,21 +1396,24 @@ export default function App() {
     const notasFinais = stateRef.current.notas.map((n) =>
       n.id === updatedNf.id ? updatedNf : n,
     )
-    const nextItem = updatedNf.items.find(
-      (it) => it.index !== currentItemIndex && !itemEnderecamentoCompleto(it),
-    )
+    const nextItem = proximoItemEntradaPendente(updatedNf, currentItemIndex)
+    const nextActiveIndex = consultaAguardandoEndereco ? null : nextItem?.index ?? null
     const nextState = {
       ...stateRef.current,
       notas: notasFinais,
       movimentos: upsertMovimentoEntrada(stateRef.current.movimentos, updatedNf),
-      activeItemIndex: consultaAguardandoEndereco ? null : nextItem?.index ?? null,
+      activeItemIndex: nextActiveIndex,
       activeNfId:
         consultaAguardandoEndereco && updatedNf.status === 'concluida'
           ? null
           : stateRef.current.activeNfId,
     }
     setState(nextState)
-    setPendingSelection(new Set())
+    if (nextActiveIndex != null) {
+      syncPendingFromItem(updatedNf, nextActiveIndex)
+    } else {
+      setPendingSelection(new Set())
+    }
     if (consultaAguardandoEndereco) {
       setConsultaAguardandoEndereco(false)
       setConsultaItemAdicionadoMsg(`Posições confirmadas na NF ${nfNumero}.`)
