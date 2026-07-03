@@ -70,6 +70,7 @@ export function SaidaItemSubpainel({
     quantidadeBaseSaida(item, limitesPorItem) - caixasJaSaidasItem(item.index, paletesConfirmados)
   const maxCaixasExibicao = Math.max(0, maxCaixas)
   const semSaldo = maxCaixas <= 1e-9 && paletesDisponiveis > 0
+  const maxPaletesInput = confirmadosItem.length + paletesDisponiveis
 
   const paleteAtivoDoItem =
     paleteAtivo && item.allocatedAddresses.includes(paleteAtivo) ? paleteAtivo : null
@@ -93,8 +94,9 @@ export function SaidaItemSubpainel({
 
   const qtdInputValida = useMemo(() => {
     const n = Number(qtdPaletesInput.trim().replace(',', '.'))
-    return Number.isFinite(n) && n > 0 && Math.floor(n) === n
-  }, [qtdPaletesInput])
+    if (!Number.isFinite(n) || n <= 0 || Math.floor(n) !== n) return false
+    return confirmadosItem.length > 0 ? n > confirmadosItem.length : true
+  }, [qtdPaletesInput, confirmadosItem.length])
 
   const selecaoCompleta =
     isActive && qtdPaletesAlvo != null && paletesSelecionadosIds.length === qtdPaletesAlvo
@@ -108,11 +110,11 @@ export function SaidaItemSubpainel({
       <div className="saida-item-calculo-grid">
         {isActive && !emSelecaoMapa && !emConfirmacaoCaixas && (
           <label className="saida-item-campo">
-            <span>Qtd. paletes</span>
+            <span>{confirmadosItem.length > 0 ? 'Qtd. total de paletes' : 'Qtd. paletes'}</span>
             <input
               type="number"
               min={1}
-              max={paletesDisponiveis}
+              max={maxPaletesInput}
               step={1}
               className="input-nf input-nf--compact"
               value={qtdPaletesInput}

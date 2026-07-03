@@ -1930,21 +1930,34 @@ export default function App() {
     if (!item) return
 
     const disponivel = paletesDisponiveisItem(item, saidaPaletesConfirmados)
+    const confirmadosNoItem = saidaPaletesConfirmados.filter((p) => p.itemIndex === item.index).length
     const semSaldoRestante = sobraItem(item, saidaPaletesConfirmados, saidaLimitesPorItem) <= 1e-9
-    const qtd =
+    const qtdSolicitada =
       semSaldoRestante && !saidaQtdPaletesInput.trim()
-        ? disponivel
+        ? confirmadosNoItem + disponivel
         : parsePaletesInput(saidaQtdPaletesInput)
-    if (qtd == null || qtd <= 0) {
+    if (qtdSolicitada == null || qtdSolicitada <= 0) {
       setSaidaSelecaoErro('Informe uma quantidade válida de paletes.')
       return
     }
+    const qtd = confirmadosNoItem > 0 ? qtdSolicitada - confirmadosNoItem : qtdSolicitada
+    if (qtd <= 0) {
+      setSaidaSelecaoErro(
+        `Você já confirmou ${confirmadosNoItem} palete(s). Informe um total maior para selecionar mais.`,
+      )
+      return
+    }
     if (qtd > disponivel) {
-      setSaidaSelecaoErro(`Máximo de ${disponivel} palete(s) disponível(is) neste item.`)
+      const totalDisponivel = confirmadosNoItem + disponivel
+      setSaidaSelecaoErro(
+        confirmadosNoItem > 0
+          ? `Máximo de ${totalDisponivel} palete(s) no total neste item (${disponivel} restante(s)).`
+          : `Máximo de ${disponivel} palete(s) disponível(is) neste item.`,
+      )
       return
     }
     if (semSaldoRestante && !saidaQtdPaletesInput.trim()) {
-      setSaidaQtdPaletesInput(String(disponivel))
+      setSaidaQtdPaletesInput(String(confirmadosNoItem + disponivel))
     }
     setSaidaQtdPaletesAlvo(qtd)
     setSaidaModoPalete(true)
