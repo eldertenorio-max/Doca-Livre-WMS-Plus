@@ -8161,3 +8161,98 @@ html.scroll-locked .sidebar.sidebar--wide {
   }
 }
 
+/* ─── Banner de instalação PWA (mobile) ─── */
+.pwa-install-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #0f1b2d;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  animation: pwa-slide-up 0.28s ease-out;
+}
+
+@keyframes pwa-slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.pwa-install-icon {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.pwa-install-icon img {
+  border-radius: 9px;
+}
+
+.pwa-install-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pwa-install-text strong {
+  font-size: 0.92rem;
+}
+
+.pwa-install-text span {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.35;
+}
+
+.pwa-install-ios-help {
+  margin-top: 4px;
+}
+
+.pwa-ios-share {
+  font-weight: 700;
+  color: #4ea1ff;
+}
+
+.pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pwa-install-btn {
+  white-space: nowrap;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+}
+
+.pwa-install-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.pwa-install-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+

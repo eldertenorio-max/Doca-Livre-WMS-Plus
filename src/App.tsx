@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { AppSidebar } from './components/AppSidebar'
 import { AppTopBar } from './components/AppTopBar'
+import { PwaInstallBanner } from './components/PwaInstallBanner'
 import { VoiceAssistantHUD } from './components/VoiceAssistantHUD'
 import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
@@ -3283,6 +3284,7 @@ export default function App() {
 
   return (
     <div className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}>
+      <PwaInstallBanner />
       {savingImportante && (
         <div className="salvando-overlay" role="status" aria-live="polite">
           <div className="salvando-overlay-card">
