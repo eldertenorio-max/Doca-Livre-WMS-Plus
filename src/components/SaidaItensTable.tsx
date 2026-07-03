@@ -98,7 +98,7 @@ export function SaidaItensTable({
             const temSaida = sobra < qtdItem - 1e-9
             const isActive = activeItemIndex === item.index
             const paletesLivres = paletesDisponiveisItem(item, paletesConfirmados)
-            const semSaldoPosicoes = qtdItem <= 1e-9 && paletesLivres > 0
+            const semSaldoPosicoes = esgotado && paletesLivres > 0
             const selecionavel = !esgotado || semSaldoPosicoes
             const selecionadosItem = paletesSelecionadosIds.filter((a) =>
               item.allocatedAddresses.includes(a),

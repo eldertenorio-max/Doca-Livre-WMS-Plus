@@ -1929,15 +1929,22 @@ export default function App() {
     const item = nfBuscaSaida.items.find((it) => it.index === saidaItemIndex)
     if (!item) return
 
-    const qtd = parsePaletesInput(saidaQtdPaletesInput)
+    const disponivel = paletesDisponiveisItem(item, saidaPaletesConfirmados)
+    const semSaldoRestante = sobraItem(item, saidaPaletesConfirmados, saidaLimitesPorItem) <= 1e-9
+    const qtd =
+      semSaldoRestante && !saidaQtdPaletesInput.trim()
+        ? disponivel
+        : parsePaletesInput(saidaQtdPaletesInput)
     if (qtd == null || qtd <= 0) {
       setSaidaSelecaoErro('Informe uma quantidade válida de paletes.')
       return
     }
-    const disponivel = paletesDisponiveisItem(item, saidaPaletesConfirmados)
     if (qtd > disponivel) {
       setSaidaSelecaoErro(`Máximo de ${disponivel} palete(s) disponível(is) neste item.`)
       return
+    }
+    if (semSaldoRestante && !saidaQtdPaletesInput.trim()) {
+      setSaidaQtdPaletesInput(String(disponivel))
     }
     setSaidaQtdPaletesAlvo(qtd)
     setSaidaModoPalete(true)
@@ -1960,7 +1967,9 @@ export default function App() {
     setSaidaSelecaoConcluida(true)
     setSaidaPaleteAtivo(fila[0] ?? null)
     const item = nfBuscaSaida?.items.find((it) => it.index === saidaItemIndex)
-    setSaidaCaixasPalete(item && quantidadeEstoqueItem(item) <= 1e-9 ? '0' : '')
+    setSaidaCaixasPalete(
+      item && sobraItem(item, saidaPaletesConfirmados, saidaLimitesPorItem) <= 1e-9 ? '0' : '',
+    )
     setSaidaSelecaoErro(null)
   }
 
@@ -1980,8 +1989,7 @@ export default function App() {
     if (!item) return
 
     const caixas = parseQuantidadeSaida(saidaCaixasPalete)
-    const qtdItem = quantidadeEstoqueItem(item)
-    const semSaldo = qtdItem <= 1e-9
+    const semSaldo = sobraItem(item, saidaPaletesConfirmados, saidaLimitesPorItem) <= 1e-9
     if (caixas == null || caixas < 0) {
       setSaidaSelecaoErro('Informe uma quantidade válida de caixas.')
       return
@@ -2017,8 +2025,9 @@ export default function App() {
         (a) => !next.some((p) => p.addressId === a),
       )
       if (restantes.length > 0) {
+        const semSaldoAposConfirmar = sobraItem(item, next, saidaLimitesPorItem) <= 1e-9
         setSaidaPaleteAtivo(restantes[0])
-        setSaidaCaixasPalete(semSaldo ? '0' : '')
+        setSaidaCaixasPalete(semSaldoAposConfirmar ? '0' : '')
       } else {
         setSaidaPaleteAtivo(null)
         setSaidaSelecaoConcluida(false)
@@ -2037,7 +2046,6 @@ export default function App() {
       }
       return next
     })
-    setSaidaCaixasPalete(semSaldo ? '0' : '')
     setSaidaSelecaoErro(null)
   }
 

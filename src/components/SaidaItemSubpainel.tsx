@@ -13,7 +13,7 @@ import {
   type SaidaPaleteDraft,
 } from '../lib/saidaParcial'
 import { formatAddressLabel } from '../layout/camaras'
-import { unidadeEstoqueItem, quantidadeEstoqueItem } from '../lib/nfeUnidades'
+import { unidadeEstoqueItem } from '../lib/nfeUnidades'
 import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 
 type Props = {
@@ -65,9 +65,11 @@ export function SaidaItemSubpainel({
 }: Props) {
   const confirmadosItem = paletesConfirmados.filter((p) => p.itemIndex === item.index)
   const paletesDisponiveis = paletesDisponiveisItem(item, paletesConfirmados)
-  const qtdEstoque = quantidadeEstoqueItem(item)
-  const semSaldo = qtdEstoque <= 1e-9 && item.allocatedAddresses.length > 0
   const totais = totaisSaidaItem(nf, item, paletesConfirmados, limitesPorItem)
+  const maxCaixas =
+    quantidadeBaseSaida(item, limitesPorItem) - caixasJaSaidasItem(item.index, paletesConfirmados)
+  const maxCaixasExibicao = Math.max(0, maxCaixas)
+  const semSaldo = maxCaixas <= 1e-9 && paletesDisponiveis > 0
 
   const paleteAtivoDoItem =
     paleteAtivo && item.allocatedAddresses.includes(paleteAtivo) ? paleteAtivo : null
@@ -88,9 +90,6 @@ export function SaidaItemSubpainel({
       sobra: calcPreview.quantidadeSobra,
     }
   }, [totais, calcPreview])
-
-  const maxCaixas =
-    quantidadeBaseSaida(item, limitesPorItem) - caixasJaSaidasItem(item.index, paletesConfirmados)
 
   const qtdInputValida = useMemo(() => {
     const n = Number(qtdPaletesInput.trim().replace(',', '.'))
@@ -126,7 +125,7 @@ export function SaidaItemSubpainel({
         <div className="saida-item-campo saida-item-campo--calc">
           <span className="muted">Caixas disponíveis</span>
           <strong className="saida-valor--disponivel">
-            {formatQuantidadeNfe(Math.max(0, maxCaixas))} {unidadeEstoqueItem(item)}
+            {formatQuantidadeNfe(maxCaixasExibicao)} {unidadeEstoqueItem(item)}
           </strong>
         </div>
         <div className="saida-item-campo saida-item-campo--calc">
@@ -244,7 +243,7 @@ export function SaidaItemSubpainel({
             Palete: <strong>{formatAddressLabel(paleteAtivoDoItem)}</strong>
             <span className="muted">
               {' '}
-              · até {formatQuantidadeNfe(maxCaixas)} {unidadeEstoqueItem(item)}
+              · até {formatQuantidadeNfe(maxCaixasExibicao)} {unidadeEstoqueItem(item)}
               {item.allocatedAddresses.length > 1 && (
                 <> ({formatQuantidadeNfe(caixasPorPalete(item))} por palete)</>
               )}
@@ -255,9 +254,9 @@ export function SaidaItemSubpainel({
             <input
               type="number"
               min={0}
-              max={maxCaixas}
+              max={maxCaixasExibicao}
               step="any"
-              className={`input-nf input-nf--compact${caixas != null && caixas > maxCaixas ? ' input-nf--error' : ''}`}
+              className={`input-nf input-nf--compact${caixas != null && caixas > maxCaixasExibicao ? ' input-nf--error' : ''}`}
               value={caixasInput}
               onChange={(e) => onCaixasChange(e.target.value)}
               placeholder="0"
