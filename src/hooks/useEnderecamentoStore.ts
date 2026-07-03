@@ -52,8 +52,8 @@ const POLL_INTERVAL_MS = 1500
 const PERSIST_RETRY_MS = 600
 const PERSIST_AUTO_RETRY_MS = 2500
 const PERSIST_AUTO_RETRY_MAX = 5
-/** Só exibe o aviso "Salvando…" se o save demorar mais que isto (evita piscar em saves rápidos). */
-const SAVING_INDICATOR_DELAY_MS = 700
+/** Tempo mínimo que o aviso "Salvando…" fica visível em ações importantes (para dar feedback claro e rápido). */
+const SAVING_INDICATOR_MIN_MS = 450
 
 function formatPersistErrorMessage(e: unknown, supabaseMode: boolean): string {
   if (!supabaseMode) {
@@ -164,7 +164,8 @@ export function useEnderecamentoStore() {
   const [saving, setSaving] = useState(false)
   const [savingImportante, setSavingImportante] = useState(false)
   const savingImportanteCountRef = useRef(0)
-  const savingIndicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savingIndicatorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savingIndicatorShownAtRef = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [storageMode, setStorageMode] = useState<StorageMode>(getStorageMode())
   const skipSave = useRef(true)
@@ -364,14 +365,16 @@ export function useEnderecamentoStore() {
       pendingSaveRef.current = null
       const indicar = opts?.indicar ?? true
       if (indicar) {
-        savingImportanteCountRef.current += 1
-        // Só mostra o aviso se o save demorar; saves rápidos não fazem o overlay piscar.
-        if (!savingIndicatorTimerRef.current) {
-          savingIndicatorTimerRef.current = setTimeout(() => {
-            savingIndicatorTimerRef.current = null
-            if (savingImportanteCountRef.current > 0) setSavingImportante(true)
-          }, SAVING_INDICATOR_DELAY_MS)
+        // Ações importantes: mostra o aviso na hora.
+        if (savingIndicatorHideTimerRef.current) {
+          clearTimeout(savingIndicatorHideTimerRef.current)
+          savingIndicatorHideTimerRef.current = null
         }
+        if (savingImportanteCountRef.current === 0) {
+          savingIndicatorShownAtRef.current = Date.now()
+        }
+        savingImportanteCountRef.current += 1
+        setSavingImportante(true)
       }
       try {
         await persist(next)
@@ -379,11 +382,16 @@ export function useEnderecamentoStore() {
         if (indicar) {
           savingImportanteCountRef.current = Math.max(0, savingImportanteCountRef.current - 1)
           if (savingImportanteCountRef.current === 0) {
-            if (savingIndicatorTimerRef.current) {
-              clearTimeout(savingIndicatorTimerRef.current)
-              savingIndicatorTimerRef.current = null
+            // Garante um tempo mínimo visível para o feedback ser perceptível, mas some rápido.
+            const restante = SAVING_INDICATOR_MIN_MS - (Date.now() - savingIndicatorShownAtRef.current)
+            if (restante > 0) {
+              savingIndicatorHideTimerRef.current = setTimeout(() => {
+                savingIndicatorHideTimerRef.current = null
+                if (savingImportanteCountRef.current === 0) setSavingImportante(false)
+              }, restante)
+            } else {
+              setSavingImportante(false)
             }
-            setSavingImportante(false)
           }
         }
       }
