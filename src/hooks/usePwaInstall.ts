@@ -36,6 +36,12 @@ function isAndroidChrome(): boolean {
   return /android/i.test(ua) && /chrome/i.test(ua) && !/edga|opr|samsungbrowser|firefox/i.test(ua)
 }
 
+function isDesktopChrome(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  return !/android|iphone|ipad|ipod/i.test(ua) && /chrome/i.test(ua) && !/edg|opr|firefox/i.test(ua)
+}
+
 export type PwaInstallState = {
   /** Pode disparar o prompt nativo do Chrome/Android. */
   canInstall: boolean
@@ -43,6 +49,8 @@ export type PwaInstallState = {
   isIosSafari: boolean
   /** Chrome/Android pode reinstalar pelo prompt nativo ou pelo menu do navegador. */
   isAndroidChrome: boolean
+  /** Chrome no computador pode reinstalar pelo prompt nativo, barra de endereço ou menu. */
+  isDesktopChrome: boolean
   /** App já instalado / rodando em modo standalone. */
   installed: boolean
   /** Usuário dispensou o banner nesta sessão/dispositivo. */
@@ -124,6 +132,7 @@ export function usePwaInstall(): PwaInstallState {
     canInstall: deferred != null && !installed,
     isIosSafari: isIos() && isSafari() && !installed,
     isAndroidChrome: isAndroidChrome() && !installed,
+    isDesktopChrome: isDesktopChrome() && !installed,
     installed,
     dismissed,
     promptInstall,

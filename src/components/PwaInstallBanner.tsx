@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import { usePwaInstall } from '../hooks/usePwaInstall'
-import { useIsMobile } from '../hooks/useIsMobile'
 
 export function PwaInstallBanner() {
-  const mobile = useIsMobile()
-  const { canInstall, isIosSafari, isAndroidChrome, installed, dismissed, promptInstall, dismiss } =
+  const { canInstall, isIosSafari, isAndroidChrome, isDesktopChrome, installed, dismissed, promptInstall, dismiss } =
     usePwaInstall()
   const [showHelp, setShowHelp] = useState(false)
 
-  if (!mobile || installed || dismissed) return null
-  if (!canInstall && !isIosSafari && !isAndroidChrome) return null
+  if (installed || dismissed) return null
+  if (!canInstall && !isIosSafari && !isAndroidChrome && !isDesktopChrome) return null
 
   return (
     <div className="pwa-install-banner" role="dialog" aria-label="Instalar aplicativo">
@@ -29,6 +27,12 @@ export function PwaInstallBanner() {
           <span className="pwa-install-ios-help">
             Se a opção não aparecer, feche e abra o Chrome, toque nos 3 pontos e escolha
             “Instalar app” ou “Adicionar à tela inicial”.
+          </span>
+        )}
+        {showHelp && isDesktopChrome && !canInstall && (
+          <span className="pwa-install-ios-help">
+            Se a opção não aparecer, feche e abra o Chrome, clique no ícone de instalação na
+            barra de endereço ou vá em ⋮ &gt; Transmitir, salvar e compartilhar &gt; Instalar página como app.
           </span>
         )}
       </div>

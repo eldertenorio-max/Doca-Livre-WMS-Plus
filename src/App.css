@@ -8427,7 +8427,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   }
 }
 
-/* ─── Banner de instalação PWA (mobile) ─── */
+/* ─── Banner de instalação PWA ─── */
 .pwa-install-banner {
   position: fixed;
   left: 12px;
@@ -8444,6 +8444,15 @@ html.scroll-locked .sidebar.sidebar--wide {
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   animation: pwa-slide-up 0.28s ease-out;
+}
+
+@media (min-width: 901px) {
+  .pwa-install-banner {
+    left: auto;
+    right: 18px;
+    bottom: 18px;
+    width: min(460px, calc(100vw - 36px));
+  }
 }
 
 @keyframes pwa-slide-up {
