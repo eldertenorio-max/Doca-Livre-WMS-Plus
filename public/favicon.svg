@@ -1,9 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ultrafrio">
-  <rect width="512" height="512" fill="#0f1419"/>
-  <g transform="translate(38 48) scale(0.41)">
-    <polygon fill="#003879" points="703.89 0 703.89 340.61 605.1 395.06 605.1 510.91 800.86 396.36 800.86 61.21 703.89 0"/>
-    <polygon fill="#004ecf" points="506.31 0 506.31 340.61 605.1 395.06 605.1 510.91 409.35 396.36 409.35 61.21 506.31 0"/>
-    <polygon fill="#004ecf" points="297.78 84.91 160.75 221.94 297.78 358.97 297.78 84.91"/>
-    <polygon fill="#003879" points="912.43 358.97 1049.45 221.94 912.43 84.91 912.43 358.97"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Doca Livre WMS">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="104" fill="#ffffff"/>
+  <rect x="34" y="74" width="444" height="364" rx="54" fill="#ffffff" stroke="#eef1f4" stroke-width="6" filter="url(#shadow)"/>
+
+  <g transform="translate(54 126)">
+    <g transform="translate(0 28)">
+      <path d="M0 0h118" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M0 150h118" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M0 0v72" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M0 150v-72" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M150 0H58" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M150 150H58" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M150 0v72" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M150 150v-72" stroke="#050505" stroke-width="18" stroke-linecap="round"/>
+      <path d="M31 75h56" stroke="#f9db00" stroke-width="28" stroke-linecap="round"/>
+      <path d="M29 75l38-32v64z" fill="#f9db00"/>
+      <path d="M121 75H65" stroke="#f9db00" stroke-width="28" stroke-linecap="round"/>
+      <path d="M123 75L85 43v64z" fill="#f9db00"/>
+    </g>
+
+    <text x="194" y="92" fill="#f9db00" font-family="Arial Black, Arial, sans-serif" font-size="64" font-weight="900" letter-spacing="1">DOCA</text>
+    <text x="198" y="162" fill="#050505" font-family="Arial, sans-serif" font-size="46" font-weight="500" letter-spacing="14">LIVRE</text>
+    <text x="200" y="216" fill="#050505" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="900" letter-spacing="7">WMS</text>
   </g>
 </svg>

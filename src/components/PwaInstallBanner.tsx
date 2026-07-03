@@ -16,7 +16,7 @@ export function PwaInstallBanner() {
         <img src="/icon-192.png" alt="" width={40} height={40} />
       </div>
       <div className="pwa-install-text">
-        <strong>Instalar o Ultrafrio</strong>
+        <strong>Instalar o Doca Livre</strong>
         <span>Adicione o app à tela inicial para abrir mais rápido e em tela cheia.</span>
         {isIosSafari && showIosHelp && (
           <span className="pwa-install-ios-help">

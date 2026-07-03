@@ -1,12 +1,12 @@
 {
-  "name": "Ultrafrio — Endereçamento NF",
-  "short_name": "Ultrafrio",
-  "description": "Painel de endereçamento de estoque Ultrafrio",
+  "name": "Doca Livre WMS",
+  "short_name": "Doca Livre",
+  "description": "Painel WMS de endereçamento de estoque Doca Livre",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0f1419",
-  "theme_color": "#003879",
+  "background_color": "#ffffff",
+  "theme_color": "#f9db00",
   "lang": "pt-BR",
   "icons": [
     {
