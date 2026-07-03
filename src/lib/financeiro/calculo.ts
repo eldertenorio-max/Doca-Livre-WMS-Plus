@@ -61,6 +61,11 @@ export function formatarCnpj(cnpj: string): string {
 }
 
 function parseDate(iso: string): Date {
+  const dateOnly = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnly) {
+    const [, y, m, d] = dateOnly
+    return new Date(Number(y), Number(m) - 1, Number(d))
+  }
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? new Date() : d
 }
@@ -114,6 +119,7 @@ function totalCaixasNf(nf: NotaFiscal): number {
 }
 
 function dataEntradaNf(nf: NotaFiscal, movimentos: MovimentoRegistro[]): string {
+  if (nf.dataArmazenagem) return nf.dataArmazenagem
   const mov = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id)
   return mov?.createdAt ?? nf.createdAt
 }

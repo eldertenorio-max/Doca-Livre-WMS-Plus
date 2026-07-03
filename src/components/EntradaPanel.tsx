@@ -17,6 +17,7 @@ type Props = {
   onCadastrarManual: () => void
   onSelectNf: (id: string, event?: MouseEvent) => void
   onSelectItem: (index: number) => void
+  onUpdateNfDataArmazenagem: (nfId: string, data: string) => void
   onUpdateItemCampos: (itemIndex: number, patch: EntradaItemCampos) => void
   onUpdateItemQuantidade: (itemIndex: number, quantidade: string) => void
   onUpdateItemPaletes: (itemIndex: number, paletes: string) => void
@@ -41,6 +42,7 @@ export function EntradaPanel({
   onCadastrarManual,
   onSelectNf,
   onSelectItem,
+  onUpdateNfDataArmazenagem,
   onUpdateItemCampos,
   onUpdateItemQuantidade,
   onUpdateItemPaletes,
@@ -155,6 +157,17 @@ export function EntradaPanel({
               <dl className="meta-list meta-list--nf">
                 <div><dt>Emitente</dt><dd>{activeNf.emitente || '—'}</dd></div>
                 <div><dt>Emissão</dt><dd>{formatDate(activeNf.dataEmissao)}</dd></div>
+                <div>
+                  <dt>Data de armazenagem</dt>
+                  <dd>
+                    <input
+                      type="date"
+                      className="input-nf input-nf--compact nf-data-armazenagem-input"
+                      value={dateInputValue(activeNf.dataArmazenagem ?? activeNf.createdAt)}
+                      onChange={(e) => onUpdateNfDataArmazenagem(activeNf.id, e.target.value)}
+                    />
+                  </dd>
+                </div>
                 {activeNf.serie && (
                   <div><dt>Série</dt><dd>{activeNf.serie}</dd></div>
                 )}
@@ -314,4 +327,12 @@ function formatDate(raw: string): string {
   const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return raw.slice(0, 10)
   return d.toLocaleString('pt-BR')
+}
+
+function dateInputValue(raw: string | undefined): string {
+  if (!raw) return new Date().toISOString().slice(0, 10)
+  const match = raw.match(/^\d{4}-\d{2}-\d{2}/)
+  if (match) return match[0]
+  const d = new Date(raw)
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
 }

@@ -1443,6 +1443,20 @@ export default function App() {
     })
   }
 
+  function handleUpdateNfDataArmazenagem(nfId: string, dataArmazenagem: string) {
+    if (!dataArmazenagem) return
+    setState((s) => {
+      const next = {
+        ...s,
+        notas: s.notas.map((nf) => (nf.id === nfId ? { ...nf, dataArmazenagem } : nf)),
+      }
+      queueMicrotask(() => {
+        void saveNow(next, { indicar: false })
+      })
+      return next
+    })
+  }
+
   function handleUpdateItemQuantidade(itemIndex: number, quantidade: string) {
     if (!stateRef.current.activeNfId) return
     setState((s) => {
@@ -3380,6 +3394,7 @@ export default function App() {
           onUpload: handleUpload,
           onSelectNf: handleSelectNf,
           onSelectItem: handleSelectItem,
+          onUpdateNfDataArmazenagem: handleUpdateNfDataArmazenagem,
           onUpdateItemCampos: handleUpdateItemCampos,
           onUpdateItemQuantidade: handleUpdateItemQuantidade,
           onUpdateItemPaletes: handleUpdateItemPaletes,
@@ -3560,6 +3575,7 @@ export default function App() {
           error: financeiro.error,
           onUpdate: financeiro.updateData,
           onSaveNow: financeiro.saveNow,
+          onUpdateNotaDataArmazenagem: handleUpdateNfDataArmazenagem,
         }}
       />
 

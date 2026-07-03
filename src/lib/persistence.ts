@@ -16,7 +16,10 @@ function normalizarStatusNotas(notas: NotaFiscal[]): NotaFiscal[] {
   // Não concluir entradas automaticamente: a conclusão deve ocorrer só por ação
   // explícita (confirmar item / finalizar entrada). Assim, escolher "stage" no
   // destino do item não some com o painel da entrada em andamento.
-  return sanitizarNotasEntrada(notas)
+  return sanitizarNotasEntrada(notas).map((nf) => ({
+    ...nf,
+    dataArmazenagem: nf.dataArmazenagem ?? nf.createdAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+  }))
 }
 
 export function normalizePersistedData(data: PersistedData): PersistedData {

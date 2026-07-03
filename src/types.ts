@@ -33,6 +33,8 @@ export type NotaFiscal = {
   /** CNPJ (ou CPF) do emitente da NF — usado para vincular ao cliente no Financeiro. */
   emitenteCnpj?: string
   dataEmissao: string
+  /** Data a partir da qual a armazenagem começa a ser cobrada. */
+  dataArmazenagem?: string
   items: NfeItem[]
   status: 'em_andamento' | 'concluida'
   createdAt: string

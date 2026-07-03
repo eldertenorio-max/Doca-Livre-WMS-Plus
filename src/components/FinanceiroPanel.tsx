@@ -31,6 +31,7 @@ type Props = {
   error: string | null
   onUpdate: (updater: (prev: FinanceiroData) => FinanceiroData) => void
   onSaveNow: () => Promise<void>
+  onUpdateNotaDataArmazenagem: (nfId: string, data: string) => void
 }
 
 const SUBABAS: { id: SubAba; label: string }[] = [
@@ -49,6 +50,14 @@ function newId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
+function dateInputValue(raw: string | undefined): string {
+  if (!raw) return new Date().toISOString().slice(0, 10)
+  const match = raw.match(/^\d{4}-\d{2}-\d{2}/)
+  if (match) return match[0]
+  const d = new Date(raw)
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
+}
+
 export function FinanceiroPanel({
   data,
   notas,
@@ -58,6 +67,7 @@ export function FinanceiroPanel({
   error,
   onUpdate,
   onSaveNow,
+  onUpdateNotaDataArmazenagem,
 }: Props) {
   const [subAba, setSubAba] = useState<SubAba>('tabela')
   const [clienteSelecionado, setClienteSelecionado] = useState<string | null>(null)
@@ -125,6 +135,7 @@ export function FinanceiroPanel({
           data={data}
           notas={notas}
           movimentos={movimentos}
+          onUpdateNotaDataArmazenagem={onUpdateNotaDataArmazenagem}
           onSelectCliente={(cnpj) => {
             setClienteSelecionado(cnpj)
             setSubAba('clientes')
@@ -786,11 +797,13 @@ function DataEntradaSection({
   data,
   notas,
   movimentos,
+  onUpdateNotaDataArmazenagem,
   onSelectCliente,
 }: {
   data: FinanceiroData
   notas: NotaFiscal[]
   movimentos: MovimentoRegistro[]
+  onUpdateNotaDataArmazenagem: Props['onUpdateNotaDataArmazenagem']
   onSelectCliente: (cnpj: string) => void
 }) {
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -799,6 +812,8 @@ function DataEntradaSection({
     () => notas.map((nf) => resumirNfArmazenada(nf, movimentos)),
     [notas, movimentos],
   )
+
+  const notasById = useMemo(() => new Map(notas.map((nf) => [nf.id, nf])), [notas])
 
   const filtrados = useMemo(() => {
     if (!filtroCliente) return resumos
@@ -859,8 +874,17 @@ function DataEntradaSection({
                 </div>
                 <div className="fin-entrada-grid">
                   <div>
-                    <span className="muted">Entrada</span>
-                    <strong>{formatarDataHoraBr(nf.dataEntrada)}</strong>
+                    <span className="muted">Data de armazenagem</span>
+                    <input
+                      type="date"
+                      className="input-nf input-nf--compact fin-data-armazenagem-input"
+                      value={dateInputValue(notasById.get(nf.nfId)?.dataArmazenagem ?? nf.dataEntrada)}
+                      onChange={(e) => onUpdateNotaDataArmazenagem(nf.nfId, e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <span className="muted">Entrada registrada</span>
+                    <strong>{formatarDataHoraBr(notasById.get(nf.nfId)?.createdAt ?? nf.dataEntrada)}</strong>
                   </div>
                   <div>
                     <span className="muted">Saída</span>

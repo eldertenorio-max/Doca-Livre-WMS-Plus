@@ -40,6 +40,7 @@ export function criarNotaManual(input: ManualNfInput): NotaFiscal {
     chave: '',
     emitente: input.emitente?.trim() || 'Cadastro manual',
     dataEmissao: new Date().toISOString(),
+    dataArmazenagem: new Date().toISOString().slice(0, 10),
     items,
     status: 'em_andamento',
     createdAt: new Date().toISOString(),

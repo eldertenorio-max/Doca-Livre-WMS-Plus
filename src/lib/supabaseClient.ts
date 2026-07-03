@@ -56,6 +56,7 @@ type NfRow = {
   emitente: string
   emitente_cnpj?: string | null
   data_emissao: string
+  data_armazenagem?: string | null
   status: 'em_andamento' | 'concluida'
   created_at: string
   peso_bruto?: number | null

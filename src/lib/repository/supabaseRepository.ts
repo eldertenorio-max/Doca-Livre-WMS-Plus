@@ -14,6 +14,7 @@ const uiPrefsMemory: Pick<AppState, 'activeNfId' | 'activeItemIndex'> = {
 /** Quando o Supabase ainda não tem as colunas comerciais/entrada, salva só o básico. */
 let omitNfCommercialFields = false
 let omitNfCnpjField = false
+let omitNfDataArmazenagemField = false
 let omitItemExtendedFields = false
 let omitItemLocalizacaoField = false
 
@@ -31,7 +32,11 @@ function nfUpsertRow(nf: NotaFiscal) {
     data_emissao: nf.dataEmissao,
     status: nf.status,
   }
-  const row = omitNfCnpjField ? base : { ...base, emitente_cnpj: nf.emitenteCnpj ?? null }
+  const row = {
+    ...base,
+    ...(omitNfCnpjField ? {} : { emitente_cnpj: nf.emitenteCnpj ?? null }),
+    ...(omitNfDataArmazenagemField ? {} : { data_armazenagem: nf.dataArmazenagem ?? nf.createdAt?.slice(0, 10) ?? null }),
+  }
   if (omitNfCommercialFields) return row
   return {
     ...row,
@@ -77,6 +82,10 @@ async function upsertNf(
   let result = await sb.from('ultrafrio_notas_fiscais').upsert(nfUpsertRow(nf))
   if (result.error && missingColumnError(result.error.message) && !omitNfCnpjField) {
     omitNfCnpjField = true
+    result = await sb.from('ultrafrio_notas_fiscais').upsert(nfUpsertRow(nf))
+  }
+  if (result.error && missingColumnError(result.error.message) && !omitNfDataArmazenagemField) {
+    omitNfDataArmazenagemField = true
     result = await sb.from('ultrafrio_notas_fiscais').upsert(nfUpsertRow(nf))
   }
   if (result.error && missingColumnError(result.error.message) && !omitNfCommercialFields) {
@@ -221,6 +230,7 @@ function mapNotas(
     emitente: nf.emitente,
     ...(nf.emitente_cnpj ? { emitenteCnpj: nf.emitente_cnpj } : {}),
     dataEmissao: nf.data_emissao,
+    ...(nf.data_armazenagem ? { dataArmazenagem: nf.data_armazenagem } : {}),
     status: nf.status,
     createdAt: nf.created_at,
     ...(nf.peso_bruto != null ? { pesoBruto: Number(nf.peso_bruto) } : {}),
@@ -403,6 +413,7 @@ export const supabaseRepository: EnderecamentoRepository = {
   async saveData({ notas, movimentos, notasCanceladas }, opts) {
     omitNfCommercialFields = false
     omitNfCnpjField = false
+    omitNfDataArmazenagemField = false
     omitItemExtendedFields = false
     omitItemLocalizacaoField = false
 

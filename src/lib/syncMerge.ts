@@ -86,6 +86,7 @@ function preserveOptionalNfFields(nf: NotaFiscal, fallback: NotaFiscal): NotaFis
     pesoLiquido: nf.pesoLiquido ?? fallback.pesoLiquido,
     valorTotalNota: nf.valorTotalNota ?? fallback.valorTotalNota,
     quantidadeVolume: nf.quantidadeVolume ?? fallback.quantidadeVolume,
+    dataArmazenagem: nf.dataArmazenagem ?? fallback.dataArmazenagem,
     nfCanceladaOrigemId: nf.nfCanceladaOrigemId ?? fallback.nfCanceladaOrigemId,
     nfCanceladaOrigemNumero: nf.nfCanceladaOrigemNumero ?? fallback.nfCanceladaOrigemNumero,
     items,
