@@ -7766,12 +7766,25 @@ html.scroll-locked .sidebar.sidebar--wide {
     gap: 8px;
   }
 
+  .app-topbar-left {
+    flex: 1 1 auto;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .app-topbar-brand {
+    flex: 1 1 auto;
+    gap: 8px;
+    max-width: 100%;
+  }
+
   .app-topbar-logo {
     height: 28px;
-    max-width: min(160px, 38vw);
+    max-width: min(132px, 34vw);
   }
 
   .app-topbar-wms {
+    flex: 0 0 auto;
     gap: 5px;
   }
 
@@ -7780,6 +7793,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   }
 
   .app-topbar-wms-light {
+    display: none;
     padding: 2px 6px;
     font-size: 0.52rem;
   }
@@ -7799,7 +7813,34 @@ html.scroll-locked .sidebar.sidebar--wide {
   }
 
   .app-topbar-right {
-    gap: 6px;
+    gap: 4px;
+  }
+
+  .app-topbar-user {
+    gap: 0;
+    padding: 2px;
+  }
+
+  .app-topbar .theme-toggle {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .app-topbar .theme-toggle-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .app-topbar-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .app-topbar .sidebar-layout-control--horizontal {
+    display: none;
   }
 
   .main-panel {
@@ -8180,6 +8221,28 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 @media (max-width: 480px) {
+  .app-topbar {
+    padding-right: 6px;
+  }
+
+  .app-topbar-menu {
+    width: 34px;
+    height: 34px;
+  }
+
+  .app-topbar-logo {
+    height: 26px;
+    max-width: min(116px, 32vw);
+  }
+
+  .app-topbar-brand {
+    gap: 7px;
+  }
+
+  .app-topbar-wms-main {
+    font-size: 0.98rem;
+  }
+
   .fin-grid-2,
   .fin-check-grid {
     grid-template-columns: 1fr;
