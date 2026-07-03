@@ -1318,13 +1318,16 @@ export default function App() {
   }
 
   async function handleConfirmItem() {
-    if (!activeNf || state.activeItemIndex == null) return
-    const currentItemIndex = state.activeItemIndex
-    const item = activeNf.items.find((it) => it.index === currentItemIndex)
+    const snapshot = stateRef.current
+    if (!snapshot.activeNfId || snapshot.activeItemIndex == null) return
+    const nf = snapshot.notas.find((n) => n.id === snapshot.activeNfId)
+    if (!nf) return
+    const currentItemIndex = snapshot.activeItemIndex
+    const item = nf.items.find((it) => it.index === currentItemIndex)
     if (!item) return
 
     if (item.localizacao === 'stage') {
-      await confirmEntradaItemStage(activeNf.id, currentItemIndex)
+      await confirmEntradaItemStage(nf.id, currentItemIndex)
       return
     }
 
@@ -1335,19 +1338,19 @@ export default function App() {
       return
     }
 
-    const notas = state.notas.map((nf) => {
-      if (nf.id !== activeNf.id) {
+    const notas = snapshot.notas.map((nfRow) => {
+      if (nfRow.id !== nf.id) {
         return {
-          ...nf,
-          items: nf.items.map((it) => ({
+          ...nfRow,
+          items: nfRow.items.map((it) => ({
             ...it,
             allocatedAddresses: it.allocatedAddresses.filter((a) => !addresses.includes(a)),
           })),
         }
       }
       return {
-        ...nf,
-        items: nf.items.map((it) => {
+        ...nfRow,
+        items: nfRow.items.map((it) => {
           if (it.index !== currentItemIndex) {
             return {
               ...it,
@@ -1358,8 +1361,8 @@ export default function App() {
         }),
       }
     })
-    let updatedNf = notas.find((n) => n.id === activeNf.id)!
-    await applyEntradaItemConfirmado(updatedNf, currentItemIndex, activeNf.numero)
+    let updatedNf = notas.find((n) => n.id === nf.id)!
+    await applyEntradaItemConfirmado(updatedNf, currentItemIndex, nf.numero)
   }
 
   async function confirmEntradaItemStage(nfId: string, currentItemIndex: number) {
@@ -1421,37 +1424,43 @@ export default function App() {
 
   function handleUpdateItemCampos(itemIndex: number, patch: EntradaItemCampos) {
     if (!stateRef.current.activeNfId) return
-    setState((s) => ({
-      ...s,
-      notas: s.notas.map((nf) => {
-        if (nf.id !== s.activeNfId) return nf
-        return {
-          ...nf,
-          items: nf.items.map((it) => (it.index === itemIndex ? { ...it, ...patch } : it)),
-        }
-      }),
-    }))
-    queueMicrotask(() => {
-      void saveNow(stateRef.current, { indicar: false })
+    setState((s) => {
+      const next = {
+        ...s,
+        notas: s.notas.map((nf) => {
+          if (nf.id !== s.activeNfId) return nf
+          return {
+            ...nf,
+            items: nf.items.map((it) => (it.index === itemIndex ? { ...it, ...patch } : it)),
+          }
+        }),
+      }
+      queueMicrotask(() => {
+        void saveNow(next, { indicar: false })
+      })
+      return next
     })
   }
 
   function handleUpdateItemQuantidade(itemIndex: number, quantidade: string) {
     if (!stateRef.current.activeNfId) return
-    setState((s) => ({
-      ...s,
-      notas: s.notas.map((nf) => {
-        if (nf.id !== s.activeNfId) return nf
-        return {
-          ...nf,
-          items: nf.items.map((it) =>
-            it.index === itemIndex ? patchNfeItemQuantidade(it, quantidade) : it,
-          ),
-        }
-      }),
-    }))
-    queueMicrotask(() => {
-      void saveNow(stateRef.current, { indicar: false })
+    setState((s) => {
+      const next = {
+        ...s,
+        notas: s.notas.map((nf) => {
+          if (nf.id !== s.activeNfId) return nf
+          return {
+            ...nf,
+            items: nf.items.map((it) =>
+              it.index === itemIndex ? patchNfeItemQuantidade(it, quantidade) : it,
+            ),
+          }
+        }),
+      }
+      queueMicrotask(() => {
+        void saveNow(next, { indicar: false })
+      })
+      return next
     })
   }
 
@@ -1508,7 +1517,7 @@ export default function App() {
       }
 
       queueMicrotask(() => {
-        void saveNow(stateRef.current, { indicar: false })
+        void saveNow(next, { indicar: false })
       })
 
       return next

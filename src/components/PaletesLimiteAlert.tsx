@@ -18,7 +18,7 @@ export function PaletesLimiteAlert({ kind, onClose }: Props) {
           : 'Limite de endereços'
   const message =
     kind === 'sem_paletes'
-      ? 'Informe a quantidade de paletes do item antes de selecionar endereços no painel.'
+      ? 'Preencha o campo Paletes deste item (não confundir com Qtd.) antes de marcar posições no mapa.'
       : kind === 'incompleto'
         ? 'Selecione todos os endereços correspondentes aos paletes do item antes de confirmar.'
         : kind === 'posicoes_adicionar'

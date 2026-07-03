@@ -74,7 +74,12 @@ function PaletesItemInput({
       className="input-nf input-nf--compact"
       value={draft}
       disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        const next = e.target.value
+        setDraft(next)
+        // Grava na hora — antes só gravava no blur e o mapa/Salvar não enxergavam o valor.
+        onCommit(itemIndex, next)
+      }}
       onBlur={(e) => onCommit(itemIndex, e.target.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
@@ -130,7 +135,9 @@ export function NfItensTable({
               ? 'Confirma o item no stage e minimiza a linha'
               : podeSalvar
                 ? 'Confirma os endereços do item e minimiza a linha'
-                : 'Selecione os endereços no mapa antes de salvar'
+                : paletesRestantes != null && paletesRestantes > 0
+                  ? `Faltam ${paletesRestantes} posição(ões) no mapa`
+                  : 'Informe Paletes e marque as posições no mapa antes de salvar'
 
             return (
               <Fragment key={item.index}>
@@ -345,6 +352,12 @@ export function NfItensTable({
                             className="btn btn-sm primary nf-itens-salvar"
                             disabled={!podeSalvar}
                             title={salvarTitulo}
+                            onMouseDown={(e) => {
+                              stopRowActivate(e)
+                              if (document.activeElement instanceof HTMLElement) {
+                                document.activeElement.blur()
+                              }
+                            }}
                             onClick={(e) => {
                               stopRowActivate(e)
                               onConfirmItem()
