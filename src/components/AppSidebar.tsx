@@ -12,7 +12,7 @@ import { RelatorioPanel } from './RelatorioPanel'
 import { SaidaPanel } from './SaidaPanel'
 import { useSidebarExpand } from '../hooks/useSidebarExpand'
 import type { SidebarMode } from '../lib/sidebarMode'
-import { type ComponentProps } from 'react'
+import { type ComponentProps, type CSSProperties, type PointerEvent, useMemo, useState } from 'react'
 
 type Props = {
   sidebarMode: SidebarMode
@@ -31,6 +31,35 @@ type Props = {
   cadastroVoz: ComponentProps<typeof CadastroVozPanel>
   financeiro: ComponentProps<typeof FinanceiroPanel>
   onBeforeLeaveEntrada?: (proceed: () => void) => void
+}
+
+const SIDEBAR_MOBILE_WIDTH_KEY = 'ultrafrio-sidebar-mobile-width'
+const SIDEBAR_MOBILE_MIN_WIDTH = 72
+const SIDEBAR_MOBILE_EDGE_GAP = 24
+
+function readStoredMobileWidth(): number | null {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_MOBILE_WIDTH_KEY)
+    if (!raw) return null
+    const n = Number(raw)
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+
+function storeMobileWidth(width: number) {
+  try {
+    localStorage.setItem(SIDEBAR_MOBILE_WIDTH_KEY, String(Math.round(width)))
+  } catch {
+    /* ignore */
+  }
+}
+
+function clampMobileSidebarWidth(width: number): number {
+  const viewportWidth = typeof window === 'undefined' ? 420 : window.innerWidth
+  const max = Math.max(SIDEBAR_MOBILE_MIN_WIDTH, viewportWidth - SIDEBAR_MOBILE_EDGE_GAP)
+  return Math.min(Math.max(width, SIDEBAR_MOBILE_MIN_WIDTH), max)
 }
 
 export function AppSidebar({
@@ -79,6 +108,51 @@ export function AppSidebar({
 
   const wide = expanded
   const pinnedOpen = sidebarMode === 'open' || sidebarMode === 'fullscreen'
+  const [mobileWidth, setMobileWidth] = useState<number | null>(() => readStoredMobileWidth())
+  const sidebarStyle = useMemo(
+    () =>
+      mobileWidth == null
+        ? undefined
+        : ({ '--sidebar-w-mobile': `${mobileWidth}px` } as CSSProperties),
+    [mobileWidth],
+  )
+
+  function handleResizePointerDown(e: PointerEvent<HTMLButtonElement>) {
+    if (sidebarMode === 'fullscreen') return
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    const body = document.body
+    const prevUserSelect = body.style.userSelect
+    const prevCursor = body.style.cursor
+    body.style.userSelect = 'none'
+    body.style.cursor = 'ew-resize'
+
+    const applyWidth = (clientX: number) => {
+      const next = clampMobileSidebarWidth(clientX)
+      setMobileWidth(next)
+      storeMobileWidth(next)
+    }
+
+    applyWidth(e.clientX)
+
+    const handleMove = (ev: globalThis.PointerEvent) => {
+      applyWidth(ev.clientX)
+    }
+
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+      window.removeEventListener('pointercancel', handleUp)
+      body.style.userSelect = prevUserSelect
+      body.style.cursor = prevCursor
+    }
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    window.addEventListener('pointercancel', handleUp)
+  }
 
   return (
     <aside
@@ -92,9 +166,19 @@ export function AppSidebar({
         .filter(Boolean)
         .join(' ')}
       title={!pinnedOpen && !expanded ? 'Passe o mouse para abrir o menu' : undefined}
+      style={sidebarStyle}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
+      {wide && sidebarMode !== 'fullscreen' && (
+        <button
+          type="button"
+          className="sidebar-resize-handle"
+          aria-label="Arrastar para ajustar largura do menu"
+          title="Arraste para ajustar a largura do menu"
+          onPointerDown={handleResizePointerDown}
+        />
+      )}
       <div className="sidebar-layout">
       <div className="sidebar-body">
       <CollapsibleSidebarSection

@@ -586,6 +586,10 @@
   cursor: default;
 }
 
+.sidebar-resize-handle {
+  display: none;
+}
+
 .sidebar-layout {
   display: flex;
   flex-direction: column;
@@ -7889,6 +7893,43 @@ html.scroll-locked .sidebar.sidebar--wide {
 
   .sidebar {
     max-height: 100%;
+  }
+
+  .sidebar.sidebar--wide:not(.sidebar--mode-fullscreen) {
+    width: var(--sidebar-w-mobile, var(--sidebar-w));
+    max-width: calc(100vw - 24px);
+  }
+
+  .sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -10px;
+    z-index: 90;
+    display: block;
+    width: 20px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  .sidebar-resize-handle::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 9px;
+    width: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand-yellow, #f9db00) 72%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, #000 16%, transparent);
+    opacity: 0.72;
+  }
+
+  .sidebar-resize-handle:active::before {
+    opacity: 1;
   }
 
   .sidebar-section-inner {
