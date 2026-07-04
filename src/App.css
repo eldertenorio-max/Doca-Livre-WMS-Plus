@@ -8353,16 +8353,16 @@ html.scroll-locked .sidebar.sidebar--wide {
 
 .fin-entrada-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
-  gap: 14px;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) minmax(135px, 160px);
+  gap: 12px;
+  align-items: start;
   margin-top: 8px;
 }
 
 .fin-entrada-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 18px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px 16px;
   align-content: start;
 }
 
@@ -8371,7 +8371,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  min-height: 58px;
+  min-height: 50px;
   justify-content: flex-start;
 }
 
@@ -8379,7 +8379,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   font-size: 0.84rem;
   display: flex;
   align-items: center;
-  min-height: 35px;
+  min-height: 28px;
   line-height: 1.2;
 }
 
@@ -8392,10 +8392,10 @@ html.scroll-locked .sidebar.sidebar--wide {
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  min-height: 62px;
-  padding: 10px 12px;
+  min-height: 50px;
+  padding: 8px 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 10px;
+  border-radius: 9px;
   background:
     linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.88)),
     #162033;
@@ -8403,7 +8403,7 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .fin-valor-cobrar-card span {
-  font-size: 0.66rem;
+  font-size: 0.58rem;
   font-weight: 700;
   color: rgba(226, 232, 240, 0.78);
   text-transform: uppercase;
@@ -8411,7 +8411,7 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .fin-valor-cobrar-card strong {
-  font-size: 1rem;
+  font-size: 0.86rem;
   color: #f8fafc;
 }
 
