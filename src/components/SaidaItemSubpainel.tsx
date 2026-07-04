@@ -104,6 +104,7 @@ export function SaidaItemSubpainel({
   const emSelecaoMapa =
     isActive && modoPalete && qtdPaletesAlvo != null && !selecaoConcluida
   const emConfirmacaoCaixas = isActive && selecaoConcluida && paleteAtivoDoItem != null
+  const paletesEmConfirmacao = Math.max(1, paletesSelecionadosIds.length)
 
   return (
     <div className="saida-item-subpainel" onClick={stopRowActivate}>
@@ -242,7 +243,12 @@ export function SaidaItemSubpainel({
       {emConfirmacaoCaixas && paleteAtivoDoItem && (
         <div className="saida-item-fase">
           <p className="consulta-enderecar-contagem">
-            Palete: <strong>{formatAddressLabel(paleteAtivoDoItem)}</strong>
+            {paletesEmConfirmacao > 1 ? 'Paletes selecionados' : 'Palete'}:{' '}
+            <strong>
+              {paletesEmConfirmacao > 1
+                ? `${paletesEmConfirmacao} paletes`
+                : formatAddressLabel(paleteAtivoDoItem)}
+            </strong>
             <span className="muted">
               {' '}
               · até {formatQuantidadeNfe(maxCaixasExibicao)} {unidadeEstoqueItem(item)}
@@ -252,7 +258,7 @@ export function SaidaItemSubpainel({
             </span>
           </p>
           <label className="saida-item-campo">
-            <span>Caixas nesta saída</span>
+            <span>{paletesEmConfirmacao > 1 ? 'Caixas na seleção' : 'Caixas nesta saída'}</span>
             <input
               type="number"
               min={0}
@@ -272,7 +278,13 @@ export function SaidaItemSubpainel({
             disabled={!calcPreview && !(semSaldo && caixas === 0)}
             onClick={onConfirmarPalete}
           >
-            {semSaldo ? 'Liberar posição' : 'Confirmar palete'}
+            {semSaldo
+              ? paletesEmConfirmacao > 1
+                ? 'Liberar posições'
+                : 'Liberar posição'
+              : paletesEmConfirmacao > 1
+                ? 'Confirmar paletes selecionados'
+                : 'Confirmar palete'}
           </button>
         </div>
       )}
