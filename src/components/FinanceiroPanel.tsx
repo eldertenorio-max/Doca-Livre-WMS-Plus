@@ -58,6 +58,26 @@ function dateInputValue(raw: string | undefined): string {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
 }
 
+function parseDateInput(raw: string): Date | null {
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  const [, y, m, d] = match
+  const parsed = new Date(Number(y), Number(m) - 1, Number(d))
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function diasPeriodoCobranca(inicio: string, fim: string): number {
+  const start = parseDateInput(inicio)
+  const end = parseDateInput(fim)
+  if (!start || !end) return 0
+  const diff = Math.floor((end.getTime() - start.getTime()) / 86_400_000)
+  return Math.max(0, diff + 1)
+}
+
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function FinanceiroPanel({
   data,
   notas,
@@ -807,6 +827,9 @@ function DataEntradaSection({
   onSelectCliente: (cnpj: string) => void
 }) {
   const [filtroCliente, setFiltroCliente] = useState('')
+  const [periodosCobranca, setPeriodosCobranca] = useState<
+    Record<string, { inicio: string; fim: string }>
+  >({})
 
   const resumos = useMemo(
     () => notas.map((nf) => resumirNfArmazenada(nf, movimentos)),
@@ -860,6 +883,21 @@ function DataEntradaSection({
             const tabela = tabelaById(data, contrato?.tabelaId ?? null)
             const valorDiaria = tabela ? (nf.pesoBruto * tabela.custoPorKilo) / 30 : 0
             const valorACobrar = valorDiaria * nf.diasArmazenados
+            const periodo = periodosCobranca[nf.nfId]
+            const periodoInicio = periodo?.inicio ?? dateInputValue(nf.dataEntrada)
+            const periodoFim = periodo?.fim ?? todayInputValue()
+            const diasPeriodo = diasPeriodoCobranca(periodoInicio, periodoFim)
+            const valorPeriodo = diasPeriodo * valorDiaria
+            const updatePeriodo = (patch: Partial<{ inicio: string; fim: string }>) => {
+              setPeriodosCobranca((prev) => ({
+                ...prev,
+                [nf.nfId]: {
+                  inicio: periodoInicio,
+                  fim: periodoFim,
+                  ...patch,
+                },
+              }))
+            }
             return (
               <li key={nf.nfId} className="fin-nf-item">
                 <div className="fin-nf-header">
@@ -927,6 +965,44 @@ function DataEntradaSection({
                   <div className="fin-valor-cobrar-card">
                     <span>Valor vigente</span>
                     <strong>{formatMoedaFinanceiro(valorACobrar)}</strong>
+                  </div>
+                </div>
+                <div className="fin-periodo-cobranca-card">
+                  <div className="fin-periodo-cobranca-head">
+                    <strong>Período de cobrança</strong>
+                    <span className="muted">Informe o intervalo para calcular o valor a cobrar.</span>
+                  </div>
+                  <div className="fin-periodo-cobranca-grid">
+                    <label className="nf-itens-campo">
+                      <span>Início</span>
+                      <input
+                        type="date"
+                        className="input-nf input-nf--compact"
+                        value={periodoInicio}
+                        onChange={(e) => updatePeriodo({ inicio: e.target.value })}
+                      />
+                    </label>
+                    <label className="nf-itens-campo">
+                      <span>Fim</span>
+                      <input
+                        type="date"
+                        className="input-nf input-nf--compact"
+                        value={periodoFim}
+                        onChange={(e) => updatePeriodo({ fim: e.target.value })}
+                      />
+                    </label>
+                    <div>
+                      <span className="muted">Dias do período</span>
+                      <strong>{diasPeriodo}</strong>
+                    </div>
+                    <div>
+                      <span className="muted">Valor diária</span>
+                      <strong>{formatMoedaFinanceiro(valorDiaria)}</strong>
+                    </div>
+                  </div>
+                  <div className="fin-periodo-cobranca-total">
+                    <span>Valor a cobrar</span>
+                    <strong>{formatMoedaFinanceiro(valorPeriodo)}</strong>
                   </div>
                 </div>
               </li>
