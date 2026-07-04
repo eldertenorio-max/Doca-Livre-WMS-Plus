@@ -159,7 +159,7 @@ export function SaidaItensTable({
                               key={a}
                               className={
                                 paleteAtivo === a
-                                  ? 'addr-flagged addr-ativo'
+                                  ? 'addr-ativo'
                                   : paletesConfirmadosIds.includes(a)
                                     ? 'addr-confirmado'
                                     : paletesSelecionadosIds.includes(a)
