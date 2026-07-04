@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { AppSidebar } from './components/AppSidebar'
 import { AppTopBar } from './components/AppTopBar'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
+import { AmbienteBanner } from './components/AmbienteBanner'
 import { VoiceAssistantHUD } from './components/VoiceAssistantHUD'
 import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
@@ -118,6 +119,7 @@ import { useVoiceRegistry } from './hooks/useVoiceRegistry'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { repararNfDuplicadaDoXml, tentarRepararPersistido } from './lib/repararNfEstoque'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
+import { tituloApp } from './lib/appAmbiente'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
 import { parseEnderecoFalado, validarEnderecoDestinoVoz } from './lib/parseEnderecoFalado'
 import { splitMovimentacaoVozTranscript } from './lib/movimentacaoVoz'
@@ -352,7 +354,7 @@ export default function App() {
   }, [state])
 
   useEffect(() => {
-    document.title = 'Doca Livre WMS'
+    document.title = tituloApp()
   }, [])
 
   const reparoInicialFeitoRef = useRef(false)
@@ -3395,6 +3397,7 @@ export default function App() {
       className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}
     >
       <PwaInstallBanner />
+      <AmbienteBanner />
       {savingImportante && (
         <div className="salvando-overlay" role="status" aria-live="polite">
           <div className="salvando-overlay-card">
