@@ -2122,7 +2122,11 @@ export default function App() {
   }
 
   /** Após finalizar uma saída, volta para a lista de NFs referenciadas se ainda houver pendências. */
-  function finalizarSaidaResetUI(nextState: AppState, nfFinalizadaId?: string) {
+  function finalizarSaidaResetUI(
+    nextState: AppState,
+    nfFinalizadaId?: string,
+    options?: { limparXml?: boolean },
+  ) {
     setNfBuscaSaidaId(null)
     setSaidaOrigemSelecionadaId('')
     setSaidaUploadXmlErro(null)
@@ -2134,7 +2138,7 @@ export default function App() {
         (r) => r.nf && r.nf.id !== nfFinalizadaId,
       )
 
-    if (!aindaTemReferencias) {
+    if (options?.limparXml || !aindaTemReferencias) {
       setSaidaXmlDoc(null)
       setSaidaRefChaves([])
     }
@@ -2227,8 +2231,7 @@ export default function App() {
 
   function handleCancelarSaida() {
     setBuscaErro(null)
-    // Em XML com várias referências, cancelar volta para a lista de NFs pendentes.
-    finalizarSaidaResetUI(state)
+    finalizarSaidaResetUI(state, undefined, { limparXml: true })
   }
 
   function limparEstadoMapaEditar() {
