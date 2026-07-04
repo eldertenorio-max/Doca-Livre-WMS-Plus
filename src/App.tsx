@@ -2116,11 +2116,11 @@ export default function App() {
     }
     setState(nextState)
     await saveNow(nextState)
-    finalizarSaidaResetUI(nextState)
+    finalizarSaidaResetUI(nextState, nfBuscaSaida.id)
   }
 
   /** Após finalizar uma saída, volta para a lista de NFs referenciadas se ainda houver pendências. */
-  function finalizarSaidaResetUI(nextState: AppState) {
+  function finalizarSaidaResetUI(nextState: AppState, nfFinalizadaId?: string) {
     setNfBuscaSaidaId(null)
     setSaidaOrigemSelecionadaId('')
     setSaidaUploadXmlErro(null)
@@ -2128,7 +2128,9 @@ export default function App() {
 
     const aindaTemReferencias =
       saidaRefChaves.length > 0 &&
-      resolverReferenciasSaida(nextState.notas, saidaRefChaves).some((r) => r.nf)
+      resolverReferenciasSaida(nextState.notas, saidaRefChaves).some(
+        (r) => r.nf && r.nf.id !== nfFinalizadaId,
+      )
 
     if (!aindaTemReferencias) {
       setSaidaXmlDoc(null)
@@ -2218,7 +2220,7 @@ export default function App() {
     }
     setState(nextState)
     await saveNow(nextState)
-    finalizarSaidaResetUI(nextState)
+    finalizarSaidaResetUI(nextState, nfBuscaSaida.id)
   }
 
   function handleCancelarSaida() {
