@@ -8433,6 +8433,42 @@ html.scroll-locked .sidebar.sidebar--wide {
     #d1d5db;
 }
 
+.fin-logica-resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-color: rgba(148, 163, 184, 0.35);
+  background:
+    linear-gradient(135deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.92)),
+    #e5e7eb;
+}
+
+.fin-logica-resumo .fin-entrada-resumo-head h4 {
+  color: #0f172a;
+}
+
+.fin-logica-resumo .fin-entrada-resumo-card {
+  border-color: rgba(30, 64, 175, 0.38);
+  background:
+    linear-gradient(135deg, rgba(219, 234, 254, 0.98), rgba(147, 197, 253, 0.88)),
+    #93c5fd;
+}
+
+.fin-logica-resumo .fin-entrada-resumo-card span {
+  color: #1e3a8a;
+}
+
+.fin-logica-resumo .fin-entrada-resumo-card strong {
+  color: #0f172a;
+}
+
+.fin-logica-resumo .fin-entrada-resumo-card--destaque {
+  border-color: rgba(29, 78, 216, 0.55);
+  background:
+    linear-gradient(135deg, rgba(191, 219, 254, 0.98), rgba(96, 165, 250, 0.92)),
+    #60a5fa;
+}
+
 .fin-periodo-massa {
   display: flex;
   flex-direction: column;
