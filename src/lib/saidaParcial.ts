@@ -380,13 +380,14 @@ export function consolidarDraftsPorItem(paletes: SaidaPaleteDraft[]): SaidaItemD
 export function enderecosALiberar(
   nf: NotaFiscal,
   paletes: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): AddressId[] {
   const liberar: AddressId[] = []
   for (const p of paletes) {
     const item = nf.items.find((it) => it.index === p.itemIndex)
     if (!item) continue
     const jaSaido = caixasJaSaidasItem(item.index, paletes, p.addressId)
-    const qtdItem = quantidadeEstoqueItem(item)
+    const qtdItem = quantidadeBaseSaida(item, limites)
     const disponivel = qtdItem - jaSaido
     if (disponivel <= 1e-9) {
       // Posição residual sem saldo: libera ao confirmar (mesmo com 0 caixas).
@@ -416,9 +417,13 @@ export function sobrasPorItem(
   return sobras
 }
 
-export function aplicarSaidaPaletes(nf: NotaFiscal, paletes: SaidaPaleteDraft[]): NotaFiscal {
+export function aplicarSaidaPaletes(
+  nf: NotaFiscal,
+  paletes: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
+): NotaFiscal {
   const itemDrafts = consolidarDraftsPorItem(paletes)
-  const liberar = new Set(enderecosALiberar(nf, paletes))
+  const liberar = new Set(enderecosALiberar(nf, paletes, limites))
   return aplicarSaidaParcial(nf, itemDrafts, [...liberar])
 }
 
@@ -466,15 +471,18 @@ export function aplicarSaidaParcial(
 export function snapshotSaidaPaletes(
   nf: NotaFiscal,
   paletes: SaidaPaleteDraft[],
+  limites?: SaidaLimitesPorItem,
 ): MovimentoItemSnapshot[] {
-  const liberar = new Set(enderecosALiberar(nf, paletes))
+  const liberar = new Set(enderecosALiberar(nf, paletes, limites))
   const snapshots: MovimentoItemSnapshot[] = []
+  const anteriores: SaidaPaleteDraft[] = []
 
   for (const p of paletes) {
     const item = nf.items.find((it) => it.index === p.itemIndex)
     if (!item) continue
-    const calc = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, [])
+    const calc = calcularSaidaPalete(nf, item, p.addressId, p.quantidadeCaixas, anteriores, limites)
     if (!calc) continue
+    anteriores.push(p)
 
     snapshots.push({
       itemIndex: item.index,

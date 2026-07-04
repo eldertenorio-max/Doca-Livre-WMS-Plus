@@ -14,7 +14,7 @@ import { itemNoStage } from '../layout/stage'
 import { syncVinculosNotas } from './nfCanceladas'
 import { buildNfResumo } from './nfResumo'
 import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from './saidaParcial'
-import type { SaidaItemDraft, SaidaPaleteDraft } from './saidaParcial'
+import type { SaidaItemDraft, SaidaLimitesPorItem, SaidaPaleteDraft } from './saidaParcial'
 import { snapshotSaidaItens, snapshotSaidaPaletes } from './saidaParcial'
 
 /** Atualiza IDs de endereço salvos antes da troca de numeração das ruas. */
@@ -465,7 +465,7 @@ export function criarMovimentoSaida(
   justificativaSaida: JustificativaSaidaId,
   saidas?: SaidaItemDraft[],
   paletes?: SaidaPaleteDraft[],
-  options?: { nfSaida?: NfeDocumentoResumo },
+  options?: { nfSaida?: NfeDocumentoResumo; limitesPorItem?: SaidaLimitesPorItem },
 ): MovimentoRegistro {
   return {
     id: `mov-saida-${nf.id}-${Date.now()}`,
@@ -478,7 +478,7 @@ export function criarMovimentoSaida(
     ...(options?.nfSaida ? { nfSaida: options.nfSaida } : {}),
     itens:
       paletes && paletes.length > 0
-        ? snapshotSaidaPaletes(nf, paletes)
+        ? snapshotSaidaPaletes(nf, paletes, options?.limitesPorItem)
         : saidas && saidas.length > 0
           ? snapshotSaidaItens(nf, saidas, addressIds)
           : snapshotItensNfPorEnderecos(nf, addressIds),

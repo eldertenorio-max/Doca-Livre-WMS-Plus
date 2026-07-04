@@ -2086,7 +2086,7 @@ export default function App() {
   async function handleFinalizarSaida(justificativaSaida: JustificativaSaidaId) {
     if (!nfBuscaSaida || saidaPaletesConfirmados.length === 0) return
 
-    const liberar = enderecosALiberar(nfBuscaSaida, saidaPaletesConfirmados)
+    const liberar = enderecosALiberar(nfBuscaSaida, saidaPaletesConfirmados, saidaLimitesPorItem)
     const mov = criarMovimentoSaida(
       nfBuscaSaida,
       liberar,
@@ -2102,6 +2102,7 @@ export default function App() {
               emitente: saidaXmlDoc.emitente,
               dataEmissao: saidaXmlDoc.dataEmissao,
             },
+            limitesPorItem: saidaLimitesPorItem,
           }
         : undefined,
     )
@@ -2109,7 +2110,9 @@ export default function App() {
     const nextState = {
       ...snapshot,
       notas: snapshot.notas.map((n) =>
-        n.id === nfBuscaSaida.id ? aplicarSaidaPaletes(n, saidaPaletesConfirmados) : n,
+        n.id === nfBuscaSaida.id
+          ? aplicarSaidaPaletes(n, saidaPaletesConfirmados, saidaLimitesPorItem)
+          : n,
       ),
       movimentos: [mov, ...snapshot.movimentos],
     }
