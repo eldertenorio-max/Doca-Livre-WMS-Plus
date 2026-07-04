@@ -8687,6 +8687,7 @@ html.scroll-locked .sidebar.sidebar--wide {
   align-items: center;
   min-height: 28px;
   line-height: 1.2;
+  color: var(--text);
 }
 
 .fin-data-armazenagem-input {

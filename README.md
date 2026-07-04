@@ -60,7 +60,18 @@ git push -u origin main
 | Ambiente | URL | Deploy |
 |----------|-----|--------|
 | **Homologação** | [ultrafrio.onrender.com](https://ultrafrio.onrender.com/) | Automático a cada push no `main` |
-| **Produção** | [wms.docalivre.com.br](https://wms.docalivre.com.br/) | Manual — só quando você aprovar |
+| **Produção** | [wms.docalivre.com.br](https://wms.docalivre.com.br/) | **Manual** — só quando você aprovar |
+
+> **Importante:** se produção também atualizar sozinha, os dois serviços no Render estão com **Auto Deploy ligado** no mesmo repositório. Desligue na produção **uma vez** (passo a passo abaixo).
+
+#### Desligar deploy automático na produção (Render)
+
+1. Acesse [dashboard.render.com](https://dashboard.render.com)
+2. Abra o serviço do **WMS** (`wms.docalivre.com.br` — pode se chamar *Ultrafrio* ou similar)
+3. **Settings** → **Build & Deploy** → **Auto-Deploy**
+4. Selecione **Off** e salve
+
+Depois disso, só a homologação recebe push automaticamente. Para publicar no WMS: **Manual Deploy → Deploy latest commit** (ou peça aqui: *“publicar no WMS”*).
 
 No Render, configure dois **Static Sites** apontando para o mesmo repositório:
 
