@@ -119,7 +119,7 @@ import { useVoiceRegistry } from './hooks/useVoiceRegistry'
 import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
 import { repararNfDuplicadaDoXml, tentarRepararPersistido } from './lib/repararNfEstoque'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
-import { getAmbienteDeploy, tituloApp } from './lib/appAmbiente'
+import { isHomologacao, tituloApp } from './lib/appAmbiente'
 import { parseNfeReferenciaChaves, parseNfeXml } from './lib/parseNfeXml'
 import { parseEnderecoFalado, validarEnderecoDestinoVoz } from './lib/parseEnderecoFalado'
 import { splitMovimentacaoVozTranscript } from './lib/movimentacaoVoz'
@@ -357,7 +357,7 @@ export default function App() {
     document.title = tituloApp()
   }, [])
 
-  const ambienteDeploy = getAmbienteDeploy()
+  const homologacao = isHomologacao()
 
   const reparoInicialFeitoRef = useRef(false)
   useEffect(() => {
@@ -3396,7 +3396,7 @@ export default function App() {
 
   return (
     <div
-      className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}${ambienteDeploy ? ` app-shell--${ambienteDeploy}` : ''}`}
+      className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}${homologacao ? ' app-shell--homolog' : ''}`}
     >
       <PwaInstallBanner />
       <AmbienteBanner />

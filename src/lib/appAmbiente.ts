@@ -38,13 +38,9 @@ export function isProducao(): boolean {
 }
 
 export function labelAmbiente(): string | null {
-  const ambiente = getAmbienteDeploy()
-  if (ambiente === 'homolog') return 'Homologação'
-  if (ambiente === 'producao') return 'Produção'
-  return null
+  return isHomologacao() ? 'Homologação' : null
 }
 
 export function tituloApp(): string {
-  const label = labelAmbiente()
-  return label ? `Doca Livre WMS — ${label}` : 'Doca Livre WMS'
+  return isHomologacao() ? 'Doca Livre WMS — Homologação' : 'Doca Livre WMS'
 }

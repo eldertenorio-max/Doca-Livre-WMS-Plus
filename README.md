@@ -67,7 +67,7 @@ No Render, configure dois **Static Sites** apontando para o mesmo repositório:
 1. **Homologação** — variável `VITE_APP_AMBIENTE=homolog`, Auto Deploy **ligado**
 2. **Produção** — variável `VITE_APP_AMBIENTE=producao`, Auto Deploy **desligado**
 
-O site de homologação exibe banner e selo **Homologação**; o de produção exibe **Produção**.
+O site de homologação exibe banner e selo **Homologação**; produção permanece sem avisos visuais.
 
 Fluxo: alteração → push → testar em homologação → quando estiver ok, dizer **“publicar no WMS”** → Manual Deploy no serviço de produção.
 
