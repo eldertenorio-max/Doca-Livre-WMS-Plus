@@ -73,25 +73,25 @@ git push -u origin main
 
 Depois disso, só a homologação recebe push automaticamente. Para publicar no WMS: **Manual Deploy → Deploy latest commit** (ou peça aqui: *“publicar no WMS”*).
 
-No Render, configure dois **Static Sites** apontando para o mesmo repositório:
+No Render, configure **dois Static Sites** com o **mesmo build** nos dois:
 
-1. **Homologação** — variável `VITE_APP_AMBIENTE=homolog`, Auto Deploy **ligado**
-2. **Produção** — variável `VITE_APP_AMBIENTE=producao`, Auto Deploy **desligado**
+| Campo | Valor (homologação e produção) |
+|-------|--------------------------------|
+| **Build command** | `npm ci --no-audit --no-fund && node scripts/write-supabase-config.mjs && npm run build` |
+| **Publish directory** | `dist` |
+| **NODE_VERSION** | `20.19.0` |
+| **VITE_SUPABASE_URL** | URL do Supabase |
+| **VITE_SUPABASE_ANON_KEY** | Chave anon/publishable |
 
-O site de homologação exibe banner e selo **Homologação**; produção permanece sem avisos visuais.
+Os dois sites usam o **mesmo código** e o **mesmo Supabase** (`public/supabase-config.json`). A única diferença é **quando** cada um atualiza (homolog automático, produção manual).
 
-Fluxo: alteração → push → testar em homologação → quando estiver ok, dizer **“publicar no WMS”** → Manual Deploy no serviço de produção.
+Fluxo: alteração → push → testar em homologação → quando estiver ok, dizer **“publicar no WMS”** → **Manual Deploy** no serviço de produção.
 
 ### Configuração básica
 
 1. **New → Blueprint** ou **Static Site** apontando para este repositório
-2. Use o `render.yaml` incluído ou configure:
-   - **Build command:** `npm ci && npm run build`
-   - **Publish directory:** `dist`
-   - **Node:** 20.19+
-3. Adicione as variáveis de ambiente `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `VITE_APP_AMBIENTE` (necessárias no **build** do Vite)
-
-**Homologação sem dados?** Confira se `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão no serviço de homologação e faça **Manual Deploy → Clear build cache & deploy**. O arquivo `/supabase-config.json` precisa existir no site (mesmos dados da produção).
+2. Use o `render.yaml` incluído ou copie a tabela acima
+3. Variáveis `VITE_SUPABASE_*` no Render **sobrescrevem** o `public/supabase-config.json` no build (opcional se o arquivo já estiver no repositório)
 
 O arquivo `public/_redirects` garante que rotas do SPA funcionem no Render.
 
