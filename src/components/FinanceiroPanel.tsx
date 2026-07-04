@@ -1786,7 +1786,7 @@ function DataEntradaSection({
                     </div>
                     <div>
                       <span className="muted">Peso a cobrar</span>
-                      <strong className="fin-peso-cobranca">
+                      <strong>
                         {formatPesoBruto(nf.pesoRestante > 0 ? nf.pesoRestante : nf.pesoEntrada)} kg
                       </strong>
                     </div>

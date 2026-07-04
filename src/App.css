@@ -8721,10 +8721,6 @@ html.scroll-locked .sidebar.sidebar--wide {
   color: #f8fafc;
 }
 
-.fin-peso-cobranca {
-  color: var(--accent, #2563eb);
-}
-
 .fin-saidas-card {
   margin-top: 12px;
   padding: 12px 14px;
