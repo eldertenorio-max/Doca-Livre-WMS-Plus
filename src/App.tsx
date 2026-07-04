@@ -639,9 +639,8 @@ export default function App() {
   ])
 
   const saidaAddresses = useMemo(() => {
-    if (!nfBuscaSaida || saidaItemIndex != null) return new Set<AddressId>()
-    return new Set(enderecosDaNf(nfBuscaSaida))
-  }, [nfBuscaSaida, saidaItemIndex])
+    return new Set<AddressId>()
+  }, [])
 
   const saidaItemDestaqueAddresses = useMemo(() => {
     if (!nfBuscaSaida || saidaItemIndex == null) return new Set<AddressId>()
