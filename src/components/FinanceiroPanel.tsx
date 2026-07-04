@@ -10,6 +10,7 @@ import {
   resumirNfArmazenada,
 } from '../lib/financeiro/calculo'
 import { contratoAtivoCliente, tabelaById } from '../lib/financeiro/clientes'
+import { downloadTextFile } from '../lib/relatorioEstoque'
 import type {
   CicloCobranca,
   ClienteFinanceiro,
@@ -21,6 +22,20 @@ import type {
 import type { MovimentoRegistro, NotaFiscal } from '../types'
 
 type SubAba = 'tabela' | 'contrato' | 'clientes' | 'entrada'
+
+type LinhaFinanceiroEntrada = {
+  nf: ReturnType<typeof resumirNfArmazenada>
+  nota: NotaFiscal | undefined
+  cliente: ClienteFinanceiro | undefined
+  tabela: TabelaCobranca | null
+  valorDiaria: number
+  valorVigente: number
+  periodoInicio: string
+  periodoFim: string
+  diasPeriodo: number
+  valorPeriodo: number
+  posicoes: number
+}
 
 type Props = {
   data: FinanceiroData
@@ -88,6 +103,24 @@ function todayInputValue(): string {
 function inicioMesVigenteInputValue(): string {
   const hoje = new Date()
   return dateToInputValueLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+}
+
+function csvEscapeFinanceiro(value: string | number | undefined | null): string {
+  const s = value == null ? '' : String(value)
+  if (/[",;\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+function csvLineFinanceiro(cols: (string | number | undefined | null)[]): string {
+  return cols.map(csvEscapeFinanceiro).join(';')
+}
+
+function numeroCsv(value: number): string {
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+}
+
+function totalPosicoesNota(nf: NotaFiscal | undefined): number {
+  return nf?.items.reduce((s, it) => s + it.allocatedAddresses.length, 0) ?? 0
 }
 
 export function FinanceiroPanel({
@@ -853,6 +886,146 @@ function DataEntradaSection({
     })
   }, [resumos, filtroCliente])
 
+  const linhasFinanceiro = useMemo<LinhaFinanceiroEntrada[]>(
+    () =>
+      filtrados.map((nf) => {
+        const cliente = data.clientes.find((c) => {
+          const cnpj = nf.emitenteCnpj ? normalizarCnpj(nf.emitenteCnpj) : ''
+          return c.cnpj === cnpj || c.razaoSocial.trim().toLowerCase() === nf.emitente.trim().toLowerCase()
+        })
+        const contrato = cliente ? contratoAtivoCliente(data, cliente.cnpj) : null
+        const tabela = tabelaById(data, contrato?.tabelaId ?? null)
+        const valorDiaria = tabela ? (nf.pesoBruto * tabela.custoPorKilo) / 30 : 0
+        const valorVigente = valorDiaria * nf.diasArmazenados
+        const periodo = periodosCobranca[nf.nfId]
+        const periodoInicio = periodo?.inicio ?? inicioMesVigenteInputValue()
+        const periodoFim = periodo?.fim ?? todayInputValue()
+        const diasPeriodo = diasPeriodoCobranca(periodoInicio, periodoFim)
+        const nota = notasById.get(nf.nfId)
+        return {
+          nf,
+          nota,
+          cliente,
+          tabela,
+          valorDiaria,
+          valorVigente,
+          periodoInicio,
+          periodoFim,
+          diasPeriodo,
+          valorPeriodo: diasPeriodo * valorDiaria,
+          posicoes: totalPosicoesNota(nota),
+        }
+      }),
+    [data, filtrados, notasById, periodosCobranca],
+  )
+
+  const resumoGeral = useMemo(
+    () =>
+      linhasFinanceiro.reduce(
+        (acc, linha) => ({
+          nfs: acc.nfs + 1,
+          valorPeriodo: acc.valorPeriodo + linha.valorPeriodo,
+          valorVigente: acc.valorVigente + linha.valorVigente,
+          posicoes: acc.posicoes + linha.posicoes,
+          peso: acc.peso + linha.nf.pesoLiquido,
+          caixas: acc.caixas + linha.nf.totalCaixas,
+          paletes: acc.paletes + linha.nf.totalPaletes,
+          itens: acc.itens + linha.nf.totalItens,
+        }),
+        {
+          nfs: 0,
+          valorPeriodo: 0,
+          valorVigente: 0,
+          posicoes: 0,
+          peso: 0,
+          caixas: 0,
+          paletes: 0,
+          itens: 0,
+        },
+      ),
+    [linhasFinanceiro],
+  )
+
+  function gerarRelatorioExcelDetalhado() {
+    const header = csvLineFinanceiro([
+      'NF',
+      'Cliente',
+      'CNPJ',
+      'Status',
+      'Data de armazenagem',
+      'Entrada registrada',
+      'Saída',
+      'Dias armazenados',
+      'Período início',
+      'Período fim',
+      'Dias do período',
+      'Valor diária',
+      'Valor vigente',
+      'Valor a cobrar período',
+      'Peso líquido kg',
+      'Peso bruto kg',
+      'Caixas NF',
+      'Paletes NF',
+      'Posições NF',
+      'Valor mercadoria NF',
+      'Código item',
+      'Descrição item',
+      'Quantidade item',
+      'Unidade item',
+      'Paletes item',
+      'Endereços item',
+      'UP',
+      'Lote',
+      'Fabricação',
+      'Validade',
+      'Valor item',
+    ])
+
+    const rows = linhasFinanceiro.flatMap((linha) => {
+      const itens = linha.nota?.items.length ? linha.nota.items : [null]
+      return itens.map((item) =>
+        csvLineFinanceiro([
+          linha.nf.nfNumero,
+          linha.nf.emitente,
+          linha.nf.emitenteCnpj ? formatarCnpj(linha.nf.emitenteCnpj) : '',
+          linha.nf.status,
+          dateInputValue(linha.nf.dataEntrada),
+          formatarDataHoraBr(linha.nota?.createdAt ?? linha.nf.dataEntrada),
+          linha.nf.dataSaida ? formatarDataHoraBr(linha.nf.dataSaida) : '',
+          linha.nf.diasArmazenados,
+          linha.periodoInicio,
+          linha.periodoFim,
+          linha.diasPeriodo,
+          numeroCsv(linha.valorDiaria),
+          numeroCsv(linha.valorVigente),
+          numeroCsv(linha.valorPeriodo),
+          numeroCsv(linha.nf.pesoLiquido),
+          numeroCsv(linha.nf.pesoBruto),
+          numeroCsv(linha.nf.totalCaixas),
+          linha.nf.totalPaletes,
+          linha.posicoes,
+          numeroCsv(linha.nf.valorMercadoria),
+          item?.codigo ?? '',
+          item?.descricao ?? '',
+          item ? numeroCsv(item.quantidade) : '',
+          item?.unidade ?? '',
+          item?.paletes ?? item?.allocatedAddresses.length ?? '',
+          item?.allocatedAddresses.join(', ') ?? '',
+          item?.up ?? '',
+          item?.lote ?? '',
+          item?.dataFabricacao ?? '',
+          item?.dataValidade ?? '',
+          item?.valorTotal != null ? numeroCsv(item.valorTotal) : '',
+        ]),
+      )
+    })
+
+    downloadTextFile(
+      `ultrafrio-financeiro-detalhado-${todayInputValue()}.csv`,
+      [header, ...rows].join('\r\n'),
+    )
+  }
+
   return (
     <div className="fin-section">
       <div className="sidebar-block">
@@ -873,24 +1046,57 @@ function DataEntradaSection({
         )}
       </div>
 
-      {filtrados.length === 0 ? (
+      {linhasFinanceiro.length > 0 && (
+        <div className="sidebar-block fin-entrada-resumo">
+          <div className="fin-entrada-resumo-head">
+            <h4>Resumo geral</h4>
+            <button type="button" className="btn primary btn-sm" onClick={gerarRelatorioExcelDetalhado}>
+              Gerar Excel detalhado
+            </button>
+          </div>
+          <div className="fin-entrada-resumo-grid">
+            <div className="fin-entrada-resumo-card fin-entrada-resumo-card--destaque">
+              <span>Valor a cobrar</span>
+              <strong>{formatMoedaFinanceiro(resumoGeral.valorPeriodo)}</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>Valor vigente</span>
+              <strong>{formatMoedaFinanceiro(resumoGeral.valorVigente)}</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>Posições</span>
+              <strong>{resumoGeral.posicoes}</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>Peso</span>
+              <strong>{formatPesoBruto(resumoGeral.peso)} kg</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>Caixas</span>
+              <strong>{formatQuantidadeNfe(resumoGeral.caixas)}</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>Paletes</span>
+              <strong>{resumoGeral.paletes}</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>Itens</span>
+              <strong>{resumoGeral.itens}</strong>
+            </div>
+            <div className="fin-entrada-resumo-card">
+              <span>NFs</span>
+              <strong>{resumoGeral.nfs}</strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {linhasFinanceiro.length === 0 ? (
         <p className="muted">Nenhuma NF encontrada.</p>
       ) : (
         <ul className="fin-nf-lista">
-          {filtrados.map((nf) => {
-            const cli = data.clientes.find((c) => {
-              const cnpj = nf.emitenteCnpj ? normalizarCnpj(nf.emitenteCnpj) : ''
-              return c.cnpj === cnpj || c.razaoSocial.trim().toLowerCase() === nf.emitente.trim().toLowerCase()
-            })
-            const contrato = cli ? contratoAtivoCliente(data, cli.cnpj) : null
-            const tabela = tabelaById(data, contrato?.tabelaId ?? null)
-            const valorDiaria = tabela ? (nf.pesoBruto * tabela.custoPorKilo) / 30 : 0
-            const valorACobrar = valorDiaria * nf.diasArmazenados
-            const periodo = periodosCobranca[nf.nfId]
-            const periodoInicio = periodo?.inicio ?? inicioMesVigenteInputValue()
-            const periodoFim = periodo?.fim ?? todayInputValue()
-            const diasPeriodo = diasPeriodoCobranca(periodoInicio, periodoFim)
-            const valorPeriodo = diasPeriodo * valorDiaria
+          {linhasFinanceiro.map((linha) => {
+            const { nf, cliente: cli, valorDiaria, valorVigente, periodoInicio, periodoFim, diasPeriodo, valorPeriodo } = linha
             const updatePeriodo = (patch: Partial<{ inicio: string; fim: string }>) => {
               setPeriodosCobranca((prev) => ({
                 ...prev,
@@ -967,7 +1173,7 @@ function DataEntradaSection({
                   </div>
                   <div className="fin-valor-cobrar-card">
                     <span>Valor vigente</span>
-                    <strong>{formatMoedaFinanceiro(valorACobrar)}</strong>
+                    <strong>{formatMoedaFinanceiro(valorVigente)}</strong>
                   </div>
                 </div>
                 <div className="fin-periodo-cobranca-card">

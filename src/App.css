@@ -8316,6 +8316,55 @@ html.scroll-locked .sidebar.sidebar--wide {
   background: rgba(245, 197, 24, 0.06);
 }
 
+.fin-entrada-resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fin-entrada-resumo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fin-entrada-resumo-head h4 {
+  margin: 0;
+}
+
+.fin-entrada-resumo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fin-entrada-resumo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg-panel));
+}
+
+.fin-entrada-resumo-card span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.fin-entrada-resumo-card strong {
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.fin-entrada-resumo-card--destaque {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+}
+
 .fin-nf-lista {
   list-style: none;
   padding: 0;
@@ -8588,6 +8637,15 @@ html.scroll-locked .sidebar.sidebar--wide {
   }
 
   .fin-entrada-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fin-entrada-resumo-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fin-entrada-resumo-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
