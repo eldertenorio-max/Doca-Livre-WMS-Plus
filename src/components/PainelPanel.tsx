@@ -59,10 +59,6 @@ export function PainelPanel({ filtros, movimentos, notas, onFiltrosChange }: Pro
           <div className="painel-hero-text">
             <span className="painel-hero-badge">Analytics</span>
             <h3 className="painel-page-title">Painel analítico</h3>
-            <p className="muted painel-intro">
-              Visão consolidada do estoque e da movimentação. Ajuste o período para refinar os
-              gráficos históricos.
-            </p>
           </div>
           <div className="painel-hero-stats" aria-hidden>
             <span className="painel-hero-stat">

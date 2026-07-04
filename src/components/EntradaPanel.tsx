@@ -90,7 +90,6 @@ export function EntradaPanel({
           />
           Subir XML da NF-e (entrada)
         </label>
-        <p className="muted entrada-upload-hint">Selecione um ou vários XMLs. NFs repetidas são ignoradas.</p>
 
         <button type="button" className="upload-btn upload-btn--muted" onClick={onCadastrarManual}>
           Cadastrar NF manual

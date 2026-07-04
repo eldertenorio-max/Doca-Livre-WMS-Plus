@@ -70,10 +70,6 @@ export function RelatorioPanel({ notas }: Props) {
         <>
           <div className="sidebar-block relatorio-opcao">
             <h4>Notas fiscais armazenadas</h4>
-            <p className="muted">
-              Lista consolidada por NF: emitente, itens, quantidade total de produtos, posições,
-              paletes e valores.
-            </p>
             <div className="relatorio-actions">
               <button
                 type="button"
@@ -99,9 +95,6 @@ export function RelatorioPanel({ notas }: Props) {
 
           <div className="sidebar-block relatorio-opcao">
             <h4>Itens armazenados</h4>
-            <p className="muted">
-              Detalhamento por item: código, descrição, quantidade, lote, endereços e valor.
-            </p>
             <div className="relatorio-actions">
               <button
                 type="button"
