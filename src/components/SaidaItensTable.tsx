@@ -103,6 +103,12 @@ export function SaidaItensTable({
             const selecionadosItem = paletesSelecionadosIds.filter((a) =>
               item.allocatedAddresses.includes(a),
             )
+            const classeEnderecoSaida = (addressId: AddressId): string => {
+              if (paletesConfirmadosIds.includes(addressId)) return 'addr-confirmado'
+              if (paletesSelecionadosIds.includes(addressId)) return 'addr-selecionado'
+              if (paleteAtivo === addressId) return 'addr-ativo'
+              return ''
+            }
 
             return (
               <Fragment key={item.index}>
@@ -157,15 +163,7 @@ export function SaidaItensTable({
                           {item.allocatedAddresses.map((a) => (
                             <li
                               key={a}
-                              className={
-                                paleteAtivo === a
-                                  ? 'addr-ativo'
-                                  : paletesConfirmadosIds.includes(a)
-                                    ? 'addr-confirmado'
-                                    : paletesSelecionadosIds.includes(a)
-                                      ? 'addr-selecionado'
-                                      : ''
-                              }
+                              className={classeEnderecoSaida(a)}
                             >
                               {formatAddressLabel(a)} · {labelLocalizacaoItem(item)}
                             </li>
