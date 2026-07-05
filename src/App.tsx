@@ -50,7 +50,7 @@ import { mesclarEmitentesSugeridos } from './lib/emitentesRegistry'
 import {
   aplicarSaidaPaletes,
   calcularSaidaPalete,
-  caixasPorPalete,
+  distribuirCaixasSaidaEntrePaletes,
   enderecosALiberar,
   paletesDisponiveisItem,
   parseQuantidadeSaida,
@@ -2053,19 +2053,14 @@ export default function App() {
       (p) => !enderecosParaConfirmar.includes(p.addressId),
     )
     const novos: SaidaPaleteDraft[] = []
-    let caixasRestantes = caixas
+    const caixasPorEndereco = semSaldo
+      ? enderecosParaConfirmar.map(() => 0)
+      : distribuirCaixasSaidaEntrePaletes(caixas, enderecosParaConfirmar.length)
 
     for (let i = 0; i < enderecosParaConfirmar.length; i++) {
       const addressId = enderecosParaConfirmar[i]
       const confirmadosAteAqui = [...baseConfirmados, ...novos]
-      const saldoItem = sobraItem(item, confirmadosAteAqui, saidaLimitesPorItem)
-      const soLiberarPosicao = saldoItem <= 1e-9
-      const enderecosRestantes = enderecosParaConfirmar.length - i
-
-      const capPalete = Math.min(saldoItem, caixasPorPalete(item))
-      const caixasDoPalete = soLiberarPosicao
-        ? 0
-        : Math.min(caixasRestantes / enderecosRestantes, capPalete > 0 ? capPalete : caixasRestantes)
+      const caixasDoPalete = caixasPorEndereco[i] ?? 0
       const calc = calcularSaidaPalete(
         nfBuscaSaida,
         item,
@@ -2084,11 +2079,11 @@ export default function App() {
         itemIndex: item.index,
         quantidadeCaixas: caixasDoPalete,
       })
-      caixasRestantes = Math.max(0, caixasRestantes - caixasDoPalete)
     }
 
-    if (caixasRestantes > 1e-9) {
-      setSaidaSelecaoErro('Quantidade de caixas excede os paletes selecionados.')
+    const totalDistribuido = novos.reduce((s, p) => s + p.quantidadeCaixas, 0)
+    if (!semSaldo && Math.abs(totalDistribuido - caixas) > 1e-6) {
+      setSaidaSelecaoErro('Quantidade de caixas excede o disponível neste item.')
       return
     }
 

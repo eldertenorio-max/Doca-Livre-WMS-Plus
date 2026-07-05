@@ -252,8 +252,11 @@ export function SaidaItemSubpainel({
             <span className="muted">
               {' '}
               · até {formatQuantidadeNfe(maxCaixasExibicao)} {unidadeEstoqueItem(item)}
-              {item.allocatedAddresses.length > 1 && (
-                <> ({formatQuantidadeNfe(caixasPorPalete(item))} por palete)</>
+              {paletesEmConfirmacao === 1 && item.allocatedAddresses.length > 1 && (
+                <> (média {formatQuantidadeNfe(caixasPorPalete(item))}/palete)</>
+              )}
+              {paletesEmConfirmacao > 1 && (
+                <> · rateio automático entre {paletesEmConfirmacao} paletes</>
               )}
             </span>
           </p>

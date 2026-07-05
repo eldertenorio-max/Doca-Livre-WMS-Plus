@@ -78,12 +78,22 @@ export function parseQuantidadeSaida(raw: string): number | null {
   return n
 }
 
-/** Caixas atribuídas a cada palete do item (média quando há vários paletes). */
+/** Caixas atribuídas a cada palete do item (média estimada — só referência visual). */
 export function caixasPorPalete(item: NfeItem): number {
   const qtd = quantidadeEstoqueItem(item)
   const n = item.allocatedAddresses.length
   if (n <= 0) return qtd
   return qtd / n
+}
+
+/** Rateia caixas entre N posições selecionadas (última leva o arredondamento). */
+export function distribuirCaixasSaidaEntrePaletes(totalCaixas: number, numPaletes: number): number[] {
+  const n = Math.floor(numPaletes)
+  if (n <= 0 || totalCaixas <= 0) return Array(Math.max(0, n)).fill(0)
+  const base = Math.floor(totalCaixas / n)
+  const amounts = Array<number>(n).fill(base)
+  amounts[n - 1] = totalCaixas - base * (n - 1)
+  return amounts
 }
 
 function quantidadeTotalItens(items: NfeItem[]): number {
