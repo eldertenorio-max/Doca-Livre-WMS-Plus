@@ -258,32 +258,89 @@ export function calcularCobrancaNf(
   agora = new Date(),
 ): CobrancaNf {
   const resumo = resumirNfArmazenada(nf, movimentos, agora)
-  const detalhes: DetalheCobranca[] = []
-  const fator = fatorTempo(resumo.diasArmazenados, contrato.ciclo, contrato.regraTempo)
-  const posicoes = totalPosicoesNf(nf)
-  const peso =
-    resumo.status === 'armazenada'
-      ? resumo.pesoRestante > 0
-        ? resumo.pesoRestante
-        : resumo.pesoEntrada
-      : resumo.pesoEntrada
+  const cobranca = calcularCobrancaDetalhada(resumo, contrato, tabela, {
+    posicoes: totalPosicoesNf(nf),
+    pesoBase:
+      resumo.status === 'armazenada'
+        ? resumo.pesoRestante > 0
+          ? resumo.pesoRestante
+          : resumo.pesoEntrada
+        : resumo.pesoEntrada,
+    paletes: resumo.totalPaletes,
+  })
+  return { nfId: nf.id, nfNumero: nf.numero, detalhes: cobranca.detalhes, total: cobranca.total }
+}
 
-  if (contrato.cobrarPosicaoPalete && tabela.custoPosicaoPalete > 0 && posicoes > 0) {
-    detalhes.push({
-      label: `Posição palete (${posicoes} × ${formatMoeda(tabela.custoPosicaoPalete)} × ${formatFator(fator)})`,
-      valor: posicoes * tabela.custoPosicaoPalete * fator,
-    })
+function formatMoeda(v: number): string {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatFator(f: number): string {
+  if (Math.abs(f - Math.round(f)) < 0.01) return String(Math.round(f))
+  return f.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+}
+
+export type CobrancaDetalhada = {
+  fatorTempo: number
+  detalhes: DetalheCobranca[]
+  /** Inclui taxas únicas (entrada/saída). */
+  total: number
+  /** Só armazenagem recorrente (posição, kilo, palete). */
+  totalRecorrente: number
+  valorDiaria: number
+  valorVigente: number
+}
+
+/** Detalha cobrança conforme contrato/tabela (posição, kilo, palete, entrada, saída). */
+export function calcularCobrancaDetalhada(
+  resumo: ResumoNfArmazenada,
+  contrato: ContratoCliente | null,
+  tabela: TabelaCobranca | null,
+  opts: { posicoes: number; pesoBase: number; paletes: number },
+): CobrancaDetalhada {
+  if (!contrato || !tabela) {
+    return {
+      fatorTempo: 0,
+      detalhes: [],
+      total: 0,
+      totalRecorrente: 0,
+      valorDiaria: 0,
+      valorVigente: 0,
+    }
   }
 
-  if (contrato.cobrarKilo && tabela.custoPorKilo > 0 && peso > 0) {
-    const mult = contrato.kiloPorDia ? resumo.diasArmazenados : fator
-    const labelMult = contrato.kiloPorDia
-      ? `${peso.toLocaleString('pt-BR')} kg × ${formatMoeda(tabela.custoPorKilo)}/dia × ${resumo.diasArmazenados} dias`
-      : `${peso.toLocaleString('pt-BR')} kg × ${formatMoeda(tabela.custoPorKilo)} × ${formatFator(fator)}`
+  const fator = fatorTempo(resumo.diasArmazenados, contrato.ciclo, contrato.regraTempo)
+  const detalhes: DetalheCobranca[] = []
+  let totalRecorrente = 0
+
+  if (contrato.cobrarPosicaoPalete && tabela.custoPosicaoPalete > 0 && opts.posicoes > 0) {
+    const valor = opts.posicoes * tabela.custoPosicaoPalete * fator
     detalhes.push({
-      label: `Kilo (${labelMult})`,
-      valor: peso * tabela.custoPorKilo * mult,
+      label: `Posição palete (${opts.posicoes} × ${formatMoeda(tabela.custoPosicaoPalete)} × ${formatFator(fator)})`,
+      valor,
     })
+    totalRecorrente += valor
+  }
+
+  if (contrato.cobrarKilo && tabela.custoPorKilo > 0 && opts.pesoBase > 0) {
+    const mult = contrato.kiloPorDia ? resumo.diasArmazenados : fator
+    const valor = opts.pesoBase * tabela.custoPorKilo * mult
+    detalhes.push({
+      label: contrato.kiloPorDia
+        ? `Kilo/dia (${opts.pesoBase.toLocaleString('pt-BR')} kg × ${formatMoeda(tabela.custoPorKilo)} × ${resumo.diasArmazenados} dias)`
+        : `Kilo (${opts.pesoBase.toLocaleString('pt-BR')} kg × ${formatMoeda(tabela.custoPorKilo)} × ${formatFator(fator)})`,
+      valor,
+    })
+    totalRecorrente += valor
+  }
+
+  if (contrato.cobrarPalete && tabela.custoPorPalete > 0 && opts.paletes > 0) {
+    const valor = opts.paletes * tabela.custoPorPalete * fator
+    detalhes.push({
+      label: `Palete (${opts.paletes} × ${formatMoeda(tabela.custoPorPalete)} × ${formatFator(fator)})`,
+      valor,
+    })
+    totalRecorrente += valor
   }
 
   if (contrato.cobrarEntrada && tabela.custoEntrada > 0) {
@@ -301,16 +358,15 @@ export function calcularCobrancaNf(
   }
 
   const total = detalhes.reduce((s, d) => s + d.valor, 0)
-  return { nfId: nf.id, nfNumero: nf.numero, detalhes, total }
+  const dias = Math.max(1, resumo.diasArmazenados)
+  const valorDiaria = totalRecorrente / dias
+  const valorVigente = totalRecorrente
+
+  return { fatorTempo: fator, detalhes, total, totalRecorrente, valorDiaria, valorVigente }
 }
 
-function formatMoeda(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function formatFator(f: number): string {
-  if (Math.abs(f - Math.round(f)) < 0.01) return String(Math.round(f))
-  return f.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+export function totalPosicoesNotaFiscal(nf: NotaFiscal): number {
+  return totalPosicoesNf(nf)
 }
 
 export function resumirClienteFinanceiro(

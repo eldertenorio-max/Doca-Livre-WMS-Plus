@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { formatValorNfe, formatPesoBruto, formatQuantidadeNfe } from '../lib/formatNfeItem'
 import {
+  calcularCobrancaDetalhada,
   formatMoedaFinanceiro,
   formatarCnpj,
   formatarDataBr,
@@ -186,15 +187,6 @@ function labelRegraTempo(regra: RegraTempo | undefined): string {
   return regra === 'cheia' ? 'Cheia' : 'Proporcional'
 }
 
-function diasCiclo(ciclo: CicloCobranca): number {
-  return ciclo === 'quinzenal' ? 15 : 30
-}
-
-function fatorTempoFinanceiro(dias: number, ciclo: CicloCobranca, regra: RegraTempo): number {
-  const periodo = diasCiclo(ciclo)
-  return regra === 'cheia' ? Math.max(1, Math.ceil(dias / periodo)) : dias / periodo
-}
-
 function formatFatorFinanceiro(fator: number): string {
   if (Math.abs(fator - Math.round(fator)) < 0.01) return String(Math.round(fator))
   return fator.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
@@ -227,45 +219,8 @@ function calcularDetalhesLogica({
   pesoBase: number
   paletes: number
 }): { fatorTempo: number; detalhes: DetalheLogicaCobranca[]; total: number } {
-  if (!contrato || !tabela) return { fatorTempo: 0, detalhes: [], total: 0 }
-
-  const fatorTempo = fatorTempoFinanceiro(nf.diasArmazenados, contrato.ciclo, contrato.regraTempo)
-  const detalhes: DetalheLogicaCobranca[] = []
-
-  if (contrato.cobrarPosicaoPalete && tabela.custoPosicaoPalete > 0 && posicoes > 0) {
-    detalhes.push({
-      label: `Posição (${posicoes} × ${formatMoedaFinanceiro(tabela.custoPosicaoPalete)} × ${formatFatorFinanceiro(fatorTempo)})`,
-      valor: posicoes * tabela.custoPosicaoPalete * fatorTempo,
-    })
-  }
-
-  if (contrato.cobrarKilo && tabela.custoPorKilo > 0 && pesoBase > 0) {
-    const multiplicador = contrato.kiloPorDia ? nf.diasArmazenados : fatorTempo
-    detalhes.push({
-      label: contrato.kiloPorDia
-        ? `Kilo/dia (${formatPesoBruto(pesoBase)} kg × ${formatMoedaFinanceiro(tabela.custoPorKilo)} × ${nf.diasArmazenados} dias)`
-        : `Kilo (${formatPesoBruto(pesoBase)} kg × ${formatMoedaFinanceiro(tabela.custoPorKilo)} × ${formatFatorFinanceiro(fatorTempo)})`,
-      valor: pesoBase * tabela.custoPorKilo * multiplicador,
-    })
-  }
-
-  if (contrato.cobrarPalete && tabela.custoPorPalete > 0 && paletes > 0) {
-    detalhes.push({
-      label: `Palete (${paletes} × ${formatMoedaFinanceiro(tabela.custoPorPalete)} × ${formatFatorFinanceiro(fatorTempo)})`,
-      valor: paletes * tabela.custoPorPalete * fatorTempo,
-    })
-  }
-
-  if (contrato.cobrarEntrada && tabela.custoEntrada > 0) {
-    detalhes.push({ label: `Entrada (${formatMoedaFinanceiro(tabela.custoEntrada)})`, valor: tabela.custoEntrada })
-  }
-
-  if (contrato.cobrarSaida && tabela.custoSaida > 0 && nf.status === 'finalizada') {
-    detalhes.push({ label: `Saída (${formatMoedaFinanceiro(tabela.custoSaida)})`, valor: tabela.custoSaida })
-  }
-
-  const total = detalhes.reduce((s, d) => s + d.valor, 0)
-  return { fatorTempo, detalhes, total }
+  const cobranca = calcularCobrancaDetalhada(nf, contrato, tabela, { posicoes, pesoBase, paletes })
+  return { fatorTempo: cobranca.fatorTempo, detalhes: cobranca.detalhes, total: cobranca.total }
 }
 
 export function FinanceiroPanel({
@@ -1377,14 +1332,19 @@ function DataEntradaSection({
         })
         const contrato = cliente ? contratoAtivoCliente(data, cliente.cnpj) : null
         const tabela = tabelaById(data, contrato?.tabelaId ?? null)
+        const nota = notasById.get(nf.nfId)
         const pesoCobranca = nf.pesoRestante > 0 ? nf.pesoRestante : nf.pesoEntrada
-        const valorDiaria = tabela ? (pesoCobranca * tabela.custoPorKilo) / 30 : 0
-        const valorVigente = valorDiaria * nf.diasArmazenados
+        const cobranca = calcularCobrancaDetalhada(nf, contrato, tabela, {
+          posicoes: totalPosicoesNota(nota),
+          pesoBase: pesoCobranca,
+          paletes: nf.totalPaletes,
+        })
+        const valorDiaria = cobranca.valorDiaria
+        const valorVigente = cobranca.valorVigente
         const periodo = periodosCobranca[nf.nfId]
         const periodoInicio = periodo?.inicio ?? inicioMesVigenteInputValue()
         const periodoFim = periodo?.fim ?? todayInputValue()
         const diasPeriodo = diasPeriodoCobranca(periodoInicio, periodoFim)
-        const nota = notasById.get(nf.nfId)
         return {
           nf,
           nota,
