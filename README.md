@@ -60,18 +60,20 @@ git push -u origin main
 | Ambiente | URL | Deploy |
 |----------|-----|--------|
 | **Homologação** | [ultrafrio-homologacao.onrender.com](https://ultrafrio-homologacao.onrender.com/) | Automático a cada push no `main` |
-| **Produção** | [wms.docalivre.com.br](https://wms.docalivre.com.br/) | **Manual** — só quando você aprovar |
+| **Produção (WMS)** | [wms.docalivre.com.br](https://wms.docalivre.com.br/) | Automático a cada push no `main` |
 
-> **Importante:** se produção também atualizar sozinha, os dois serviços no Render estão com **Auto Deploy ligado** no mesmo repositório. Desligue na produção **uma vez** (passo a passo abaixo).
+Os dois serviços no Render apontam para o **mesmo repositório** e recebem o **mesmo commit** — builds independentes, código idêntico.
 
-#### Desligar deploy automático na produção (Render)
+#### Ativar deploy automático na produção (Render — uma vez)
+
+Se o WMS ainda estiver com Auto Deploy **Off**:
 
 1. Acesse [dashboard.render.com](https://dashboard.render.com)
-2. Abra o serviço do **WMS** (`wms.docalivre.com.br` — pode se chamar *Ultrafrio* ou similar)
+2. Abra o serviço **Ultrafrio** (`wms.docalivre.com.br`)
 3. **Settings** → **Build & Deploy** → **Auto-Deploy**
-4. Selecione **Off** e salve
+4. Selecione **On Commit** e salve
 
-Depois disso, só a homologação recebe push automaticamente. Para publicar no WMS: **Manual Deploy → Deploy latest commit** (ou peça aqui: *“publicar no WMS”*).
+Repita a conferência no serviço **Ultrafrio-homologacao** (também **On Commit**).
 
 No Render, configure **dois Static Sites** com o **mesmo build** nos dois:
 
@@ -80,24 +82,24 @@ No Render, configure **dois Static Sites** com o **mesmo build** nos dois:
 | **Build command** | `npm ci --no-audit --no-fund && node scripts/write-supabase-config.mjs && npm run build` |
 | **Publish directory** | `dist` |
 | **NODE_VERSION** | `20.19.0` |
-| **VITE_SUPABASE_URL** | URL do Supabase |
-| **VITE_SUPABASE_ANON_KEY** | Chave anon/publishable |
+| **VITE_SUPABASE_URL** | URL do Supabase (mesma nos dois) |
+| **VITE_SUPABASE_ANON_KEY** | Chave anon/publishable (mesma nos dois) |
 
-Os dois sites usam o **mesmo código** e o **mesmo Supabase** (`public/supabase-config.json`). A única diferença é **quando** cada um atualiza (homolog automático, produção manual).
+Não use `VITE_APP_AMBIENTE` — o banner “Homologação” é detectado pelo hostname em runtime.
 
-Fluxo: alteração → push → testar em homologação → quando estiver ok, dizer **“publicar no WMS”** → **Manual Deploy** no serviço de produção.
+Fluxo: alteração → push no `main` → os dois sites atualizam sozinhos (~2–5 min) → teste na homologação → valide paridade.
 
-#### Checklist antes de publicar no WMS
+#### Validar que os dois estão iguais
 
-1. Homologação atualizada (deploy automático concluído — status **Live** no Render).
-2. Testou na homologação tudo que mudou (saída, entrada, financeiro, etc.).
-3. Valide paridade dos builds:
-   ```bash
-   npm run check:deploy
-   ```
-   Deve retornar **AMBIENTES IGUAIS** (mesmo `index-*.js`, `index-*.css`, `sw.js` e `supabase-config.json`).
-4. Render → serviço **Ultrafrio** (`wms.docalivre.com.br`) → **Manual Deploy** → **Clear build cache & deploy**.
-5. Rode `npm run check:deploy` de novo para confirmar.
+Após o deploy (aguarde status **Live** nos dois serviços):
+
+```bash
+npm run check:deploy
+```
+
+Deve retornar **AMBIENTES IGUAIS** (mesmo `index-*.js`, `index-*.css`, `sw.js` e `supabase-config.json`).
+
+Se divergirem, confira build command e variáveis de ambiente iguais nos dois serviços e faça **Manual Deploy → Clear build cache & deploy** no que estiver atrás.
 
 **Única diferença intencional:** na homologação aparece o banner/selo “Homologação” (mesmo código, detectado pelo hostname). No WMS real isso não aparece.
 

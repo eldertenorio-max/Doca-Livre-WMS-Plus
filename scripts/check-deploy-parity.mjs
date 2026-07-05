@@ -89,14 +89,13 @@ async function main() {
     process.exit(0)
   }
 
-  console.log('Resultado: AMBIENTES DIFERENTES — NÃO publique no WMS até homolog e prod coincidirem.')
+  console.log('Resultado: AMBIENTES DIFERENTES — aguarde os deploys ou alinhe build/env no Render.')
   console.log('\nPróximos passos:')
-  console.log('  1. Confirme homologação com o último commit (deploy automático).')
-  console.log('  2. Teste na homologação.')
-  console.log('  3. No Render, confira build command e env vars IGUAIS nos dois serviços')
+  console.log('  1. Aguarde status Live nos dois serviços (deploy automático após push).')
+  console.log('  2. Confira build command e env vars IGUAIS nos dois serviços')
   console.log('     (sem VITE_APP_AMBIENTE — o banner usa hostname em runtime).')
-  console.log('  4. Render → Ultrafrio (WMS) → Manual Deploy → Clear build cache & deploy.')
-  console.log('  5. Rode novamente: npm run check:deploy')
+  console.log('  3. Se um serviço ficou atrás: Manual Deploy → Clear build cache & deploy.')
+  console.log('  4. Rode novamente: npm run check:deploy')
   process.exit(1)
 }
 
