@@ -87,6 +87,20 @@ Os dois sites usam o **mesmo código** e o **mesmo Supabase** (`public/supabase-
 
 Fluxo: alteração → push → testar em homologação → quando estiver ok, dizer **“publicar no WMS”** → **Manual Deploy** no serviço de produção.
 
+#### Checklist antes de publicar no WMS
+
+1. Homologação atualizada (deploy automático concluído — status **Live** no Render).
+2. Testou na homologação tudo que mudou (saída, entrada, financeiro, etc.).
+3. Valide paridade dos builds:
+   ```bash
+   npm run check:deploy
+   ```
+   Deve retornar **AMBIENTES IGUAIS** (mesmo `index-*.js`, `index-*.css`, `sw.js` e `supabase-config.json`).
+4. Render → serviço **Ultrafrio** (`wms.docalivre.com.br`) → **Manual Deploy** → **Clear build cache & deploy**.
+5. Rode `npm run check:deploy` de novo para confirmar.
+
+**Única diferença intencional:** na homologação aparece o banner/selo “Homologação” (mesmo código, detectado pelo hostname). No WMS real isso não aparece.
+
 ### Configuração básica
 
 1. **New → Blueprint** ou **Static Site** apontando para este repositório
