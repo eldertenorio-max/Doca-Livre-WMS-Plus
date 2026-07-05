@@ -227,9 +227,16 @@ export function useEnderecamentoStore() {
       if (lastPersistedRef.current) {
         const localPick = pickPersisted(next)
         const base = lastPersistedRef.current
-        dataToSave = mergePersistedData(base, localPick, base)
-        dataToSave = protegerPersistedContraRegressao(localPick, dataToSave)
-        dataToSave = consolidarRemocoesLocais(base, localPick, dataToSave)
+        const reduziuEnderecos =
+          contarEnderecosPersistidos(localPick) < contarEnderecosPersistidos(base)
+        if (reduziuEnderecos) {
+          // Saída / liberação de posições — grava exatamente o estado local (sem merge anti-regressão).
+          dataToSave = localPick
+        } else {
+          dataToSave = mergePersistedData(base, localPick, base)
+          dataToSave = protegerPersistedContraRegressao(localPick, dataToSave)
+          dataToSave = consolidarRemocoesLocais(base, localPick, dataToSave)
+        }
       }
 
       // Não reparar endereços ao gravar — evita restaurar posições recém-liberadas.
@@ -444,7 +451,8 @@ export function useEnderecamentoStore() {
     skipSave.current = true
     try {
       const remote = await repoRef.current.loadData()
-      const { data, dadosReparados, enderecosRecuperados } = prepareLoadedDataWithRepair(remote)
+      const { data, dadosReparados, enderecosRecuperados, enderecosRemovidos } =
+        prepareLoadedDataWithRepair(remote)
       const remoteMergedNormalized = normalizePersistedData(data)
       const base = lastPersistedRef.current
       const localNow = pickPersisted(stateRef.current)
@@ -482,7 +490,7 @@ export function useEnderecamentoStore() {
         writeLocalCache(repoRef.current, merged)
       }
       const precisaSalvarReparo =
-        (dadosReparados && enderecosRecuperados > 0) ||
+        (dadosReparados && (enderecosRecuperados > 0 || enderecosRemovidos > 0)) ||
         (merged &&
           !persistedEquals(merged, remoteMergedNormalized) &&
           !wouldWipePersistedStock(data, merged))

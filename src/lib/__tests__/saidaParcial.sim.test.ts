@@ -19,6 +19,11 @@ import {
   distribuirCaixasSaidaEntrePaletes,
   enderecosALiberar,
 } from '../saidaParcial'
+import {
+  mergePersistedData,
+  protegerPersistedContraRegressao,
+  consolidarRemocoesLocais,
+} from '../syncMerge'
 
 describe('Simulação: saída parcial 200 cx / 5 paletes (NF 385 cx, 10 paletes)', () => {
   const nf = nfEntrada385()
@@ -97,7 +102,6 @@ describe('Simulação: saída parcial 200 cx / 5 paletes (NF 385 cx, 10 paletes)
     const liberados = enderecosLiberadosPorSaidas([movSaida], NF_ID, ITEM_INDEX)
     expect(liberados.size).toBe(5)
 
-    // Simula carga corrompida: endereços sumiram do item, mas movimentos existem.
     const itemSemEndereco = {
       ...nfDepois.items[0],
       allocatedAddresses: [] as string[],
@@ -112,12 +116,72 @@ describe('Simulação: saída parcial 200 cx / 5 paletes (NF 385 cx, 10 paletes)
     const reparado = normalizePersistedData(corrompido, { reparar: true })
     const enderecos = reparado.notas[0].items[0].allocatedAddresses
 
-    // Restaura só os 5 que ficaram no estoque — não os 5 liberados na saída.
     expect(enderecos).toHaveLength(5)
     for (const addr of liberados) {
       expect(enderecos).not.toContain(addr)
     }
     expect(contarEnderecosPersistidos(reparado)).toBe(5)
+  })
+
+  it('reload (F5): DB com 10 posições + movimento saída corrige para 5', () => {
+    const nfDepois = aplicarSaidaPaletes(nf, paletes, LIMITES_SAIDA)
+    const movEntrada = persistedEntrada385().movimentos[0]
+    const movSaida = criarMovimentoSaida(
+      nf,
+      enderecosALiberar(nf, paletes, LIMITES_SAIDA),
+      'venda',
+      undefined,
+      paletes,
+      { limitesPorItem: LIMITES_SAIDA },
+    )
+
+    // Simula Supabase desatualizado: endereçamentos ainda com 10 posições.
+    const dbDesatualizado = {
+      notas: [{ ...nf, items: [{ ...nf.items[0], allocatedAddresses: nf.items[0].allocatedAddresses }] }],
+      movimentos: [movEntrada, movSaida],
+      notasCanceladas: [],
+      emitentes: [],
+    }
+
+    const carregado = normalizePersistedData(dbDesatualizado, { reparar: true })
+    expect(contarEnderecosPersistidos(carregado)).toBe(5)
+    expect(carregado.notas[0].items[0].allocatedAddresses).toHaveLength(5)
+  })
+
+  it('persistência: redução de endereços grava estado local sem merge anti-regressão', () => {
+    const base = persistedEntrada385()
+    const nfDepois = aplicarSaidaPaletes(nf, paletes, LIMITES_SAIDA)
+    const movSaida = criarMovimentoSaida(
+      nf,
+      enderecosALiberar(nf, paletes, LIMITES_SAIDA),
+      'venda',
+      undefined,
+      paletes,
+      { limitesPorItem: LIMITES_SAIDA },
+    )
+    const local = {
+      notas: [nfDepois],
+      movimentos: [base.movimentos[0], movSaida],
+      notasCanceladas: [],
+      emitentes: [],
+    }
+
+    const viaMerge = normalizePersistedData(
+      protegerPersistedContraRegressao(
+        local,
+        consolidarRemocoesLocais(
+          base,
+          local,
+          mergePersistedData(base, local, base),
+        ),
+      ),
+      { reparar: false },
+    )
+    const viaDireto = normalizePersistedData(local, { reparar: false })
+
+    expect(contarEnderecosPersistidos(viaMerge)).toBe(5)
+    expect(contarEnderecosPersistidos(viaDireto)).toBe(5)
+    expect(viaDireto.notas[0].items[0].allocatedAddresses).toHaveLength(5)
   })
 
   it('saída parcial em 1 palete não libera posição se não esvaziou o palete', () => {

@@ -1,6 +1,7 @@
 import { sanitizarNotasEntrada } from './excluirItemNf'
 import {
   contarEnderecosPersistidos,
+  aplicarLiberacoesSaidaNosItens,
   limparMovimentosEntradaOrfaos,
   migrarRuasNosDados,
   recuperarEnderecosPerdidos,
@@ -35,6 +36,7 @@ export function normalizePersistedData(
   let base = migrarRuasNosDados(data)
   base = sanitizarEnderecosInvalidos(base)
   base = sincronizarMovimentosEntrada(base)
+  base = aplicarLiberacoesSaidaNosItens(base)
   if (reparar) {
     base = recuperarItensPerdidos(base)
     base = recuperarEnderecosPerdidos(base)
@@ -55,6 +57,7 @@ export function prepareLoadedData(remote: PersistedData): PersistedData {
 export function prepareLoadedDataWithRepair(remote: PersistedData): {
   data: PersistedData
   enderecosRecuperados: number
+  enderecosRemovidos: number
   dadosReparados: boolean
 } {
   const antesEnd = contarEnderecosPersistidos(remote)
@@ -65,6 +68,7 @@ export function prepareLoadedDataWithRepair(remote: PersistedData): {
   return {
     data,
     enderecosRecuperados: Math.max(0, depoisEnd - antesEnd),
-    dadosReparados: depoisEnd > antesEnd || depoisItens > antesItens,
+    enderecosRemovidos: Math.max(0, antesEnd - depoisEnd),
+    dadosReparados: depoisEnd !== antesEnd || depoisItens !== antesItens,
   }
 }

@@ -231,6 +231,30 @@ export function recuperarItensPerdidos(data: PersistedData): PersistedData {
   return changed ? { ...data, notas } : data
 }
 
+/** Remove do estoque posições já liberadas em saídas registradas (corrige DB desatualizado). */
+export function aplicarLiberacoesSaidaNosItens(data: PersistedData): PersistedData {
+  let changed = false
+  const notas = data.notas.map((nf) => {
+    const items = nf.items.map((it) => {
+      if (itemNoStage(it) || it.allocatedAddresses.length === 0) return it
+      const liberados = enderecosLiberadosPorSaidas(data.movimentos, nf.id, it.index)
+      if (liberados.size === 0) return it
+      const enderecos = it.allocatedAddresses.filter((a) => !liberados.has(a))
+      if (enderecos.length === it.allocatedAddresses.length) return it
+      changed = true
+      return {
+        ...it,
+        allocatedAddresses: enderecos,
+        localizacao: 'armazem' as const,
+        ...(it.paletes != null ? { paletes: enderecos.length } : {}),
+      }
+    })
+    if (items.every((it, i) => it === nf.items[i])) return nf
+    return { ...nf, items }
+  })
+  return changed ? { ...data, notas } : data
+}
+
 /**
  * Recupera endereços perdidos no estoque usando snapshots do histórico
  * (entrada e movimentações posteriores), quando allocatedAddresses ficou vazio indevidamente.
@@ -251,13 +275,20 @@ export function recuperarEnderecosPerdidos(data: PersistedData): PersistedData {
       if (itemNoStage(it)) return it
       const validos = enderecosValidosItem(it)
       if (validos.length > 0) {
-        if (validos.length === it.allocatedAddresses.length) return it
+        const liberadosPorSaida = enderecosLiberadosPorSaidas(data.movimentos, nf.id, it.index)
+        const enderecos = validos.filter((a) => !liberadosPorSaida.has(a))
+        if (
+          enderecos.length === it.allocatedAddresses.length &&
+          enderecos.every((a, i) => a === it.allocatedAddresses[i])
+        ) {
+          return it
+        }
         changed = true
         return {
           ...it,
-          allocatedAddresses: validos,
+          allocatedAddresses: enderecos,
           localizacao: 'armazem' as const,
-          paletes: it.paletes ?? validos.length,
+          paletes: it.paletes ?? enderecos.length,
         }
       }
 
