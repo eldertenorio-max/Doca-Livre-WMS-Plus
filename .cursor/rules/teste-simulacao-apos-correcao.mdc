@@ -1,0 +1,15 @@
+---
+description: Rodar simulacao de teste apos corrigir bugs de negocio
+alwaysApply: true
+---
+
+# Simulacao de teste apos correcao
+
+Quando o usuario pedir para **arrumar** um bug ou fluxo de negocio (entrada, saida, enderecamento, sync, financeiro, etc.):
+
+1. **Reproduzir em teste** — criar ou estender teste em `src/lib/__tests__/` com o cenario descrito pelo usuario (dados, quantidades, paletes, reload).
+2. **Rodar** `npm run test` e garantir que passa antes de encerrar.
+3. **Cenario minimo** — cobrir: acao do usuario, estado esperado apos aplicar, gravacao (`reparar: false` se relevante) e reload/reparo se o bug envolver F5 ou sync.
+4. **Commit** — incluir o teste no mesmo commit da correcao quando fizer sentido.
+
+Comando: `npm run test` (CI local). Nao substituir teste manual na homolog quando o fluxo for visual.
