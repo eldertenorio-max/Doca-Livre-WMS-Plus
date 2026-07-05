@@ -102,6 +102,7 @@ type MovRow = {
     justificativaSaida?: import('../types').JustificativaSaidaId
     motivoRemocaoEstoque?: import('../types').MotivoRemocaoEstoqueId
     nfSaida?: import('../types').NfeDocumentoResumo
+    dataSaida?: string
     excluido?: boolean
     excluidoEm?: string | null
   }

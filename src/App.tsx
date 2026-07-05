@@ -226,6 +226,10 @@ function savePainelFiltros(filtros: PainelFiltros) {
   }
 }
 
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export default function App() {
   const {
     state,
@@ -343,6 +347,7 @@ export default function App() {
   const [saidaStageItemIndex, setSaidaStageItemIndex] = useState<number | null>(null)
   const [saidaStageQtdInput, setSaidaStageQtdInput] = useState('')
   const [saidaStageConfirmados, setSaidaStageConfirmados] = useState<SaidaItemDraft[]>([])
+  const [saidaDataInput, setSaidaDataInput] = useState(todayInputValue)
   const [painelFiltros, setPainelFiltros] = useState<PainelFiltros>(() => loadPainelFiltros())
   const [mapFocusAddressId, setMapFocusAddressId] = useState<AddressId | null>(null)
   const [mapFocusStage, setMapFocusStage] = useState(false)
@@ -1774,6 +1779,7 @@ export default function App() {
     setSaidaStageItemIndex(null)
     setSaidaStageQtdInput('')
     setSaidaStageConfirmados([])
+    setSaidaDataInput(todayInputValue())
   }
 
   function aplicarBuscaSaida(nf: NotaFiscal, origem: SaidaOrigemEstoque) {
@@ -2138,17 +2144,21 @@ export default function App() {
     setSaidaSelecaoErro(null)
   }
 
-  async function handleFinalizarSaida(justificativaSaida: JustificativaSaidaId) {
+  async function handleFinalizarSaida(
+    justificativaSaida: JustificativaSaidaId,
+    dataSaida: string,
+  ) {
     if (!nfBuscaSaida || saidaPaletesConfirmados.length === 0) return
+    const dataSaidaNorm = dataSaida.trim()
+    if (!dataSaidaNorm) {
+      setSaidaSelecaoErro('Informe a data da saída.')
+      return
+    }
 
     const liberar = enderecosALiberar(nfBuscaSaida, saidaPaletesConfirmados, saidaLimitesPorItem)
-    const mov = criarMovimentoSaida(
-      nfBuscaSaida,
-      liberar,
-      justificativaSaida,
-      undefined,
-      saidaPaletesConfirmados,
-      saidaXmlDoc
+    const saidaOpts = {
+      dataSaida: dataSaidaNorm,
+      ...(saidaXmlDoc
         ? {
             nfSaida: {
               numero: saidaXmlDoc.numero,
@@ -2159,7 +2169,15 @@ export default function App() {
             },
             limitesPorItem: saidaLimitesPorItem,
           }
-        : undefined,
+        : {}),
+    }
+    const mov = criarMovimentoSaida(
+      nfBuscaSaida,
+      liberar,
+      justificativaSaida,
+      undefined,
+      saidaPaletesConfirmados,
+      saidaOpts,
     )
     const snapshot = stateRef.current
     const nextState = {
@@ -2246,8 +2264,16 @@ export default function App() {
     setSaidaSelecaoErro(null)
   }
 
-  async function handleFinalizarSaidaStage(justificativaSaida: JustificativaSaidaId) {
+  async function handleFinalizarSaidaStage(
+    justificativaSaida: JustificativaSaidaId,
+    dataSaida: string,
+  ) {
     if (!nfBuscaSaida || saidaStageConfirmados.length === 0) return
+    const dataSaidaNorm = dataSaida.trim()
+    if (!dataSaidaNorm) {
+      setSaidaSelecaoErro('Informe a data da saída.')
+      return
+    }
 
     const movBase = criarMovimentoSaida(
       nfBuscaSaida,
@@ -2255,17 +2281,20 @@ export default function App() {
       justificativaSaida,
       saidaStageConfirmados,
       undefined,
-      saidaXmlDoc
-        ? {
-            nfSaida: {
-              numero: saidaXmlDoc.numero,
-              serie: saidaXmlDoc.serie,
-              chave: saidaXmlDoc.chave,
-              emitente: saidaXmlDoc.emitente,
-              dataEmissao: saidaXmlDoc.dataEmissao,
-            },
-          }
-        : undefined,
+      {
+        dataSaida: dataSaidaNorm,
+        ...(saidaXmlDoc
+          ? {
+              nfSaida: {
+                numero: saidaXmlDoc.numero,
+                serie: saidaXmlDoc.serie,
+                chave: saidaXmlDoc.chave,
+                emitente: saidaXmlDoc.emitente,
+                dataEmissao: saidaXmlDoc.dataEmissao,
+              },
+            }
+          : {}),
+      },
     )
     const mov = {
       ...movBase,
@@ -3513,6 +3542,8 @@ export default function App() {
           onRemoverPalete: handleRemoverPaleteSaida,
           onFinalizarSaida: handleFinalizarSaida,
           onCancelarSaida: handleCancelarSaida,
+          dataSaidaInput: saidaDataInput,
+          onDataSaidaChange: setSaidaDataInput,
           stageItemIndex: saidaStageItemIndex,
           stageQtdInput: saidaStageQtdInput,
           stageConfirmados: saidaStageConfirmados,

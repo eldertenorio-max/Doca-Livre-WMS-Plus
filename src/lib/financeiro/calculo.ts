@@ -155,7 +155,7 @@ export function listarSaidasNf(nfId: string, movimentos: MovimentoRegistro[]): S
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((m) => ({
       id: m.id,
-      data: m.createdAt,
+      data: m.dataSaida ?? m.createdAt,
       nfSaidaNumero: m.nfSaida?.numero ?? null,
       pesoSaida: pesoMovimentoRegistro(m),
       caixasSaida: caixasMovimento(m),
@@ -205,7 +205,10 @@ function dataEntradaNf(nf: NotaFiscal, movimentos: MovimentoRegistro[]): string 
 function dataSaidaNf(nfId: string, movimentos: MovimentoRegistro[]): string | null {
   const saidas = movimentos.filter((m) => m.tipo === 'saida' && m.nfId === nfId && !m.excluido)
   if (saidas.length === 0) return null
-  return saidas.reduce((latest, m) => (m.createdAt > latest ? m.createdAt : latest), saidas[0].createdAt)
+  return saidas.reduce((latest, m) => {
+    const d = m.dataSaida ?? m.createdAt
+    return d > latest ? d : latest
+  }, saidas[0].dataSaida ?? saidas[0].createdAt)
 }
 
 function nfTemEstoque(nf: NotaFiscal): boolean {

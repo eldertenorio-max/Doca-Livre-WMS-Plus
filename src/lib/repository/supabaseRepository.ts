@@ -282,6 +282,7 @@ function mapMovimentos(rows: MovRow[]): MovimentoRegistro[] {
       ? { motivoRemocaoEstoque: m.payload.motivoRemocaoEstoque }
       : {}),
     ...(m.payload?.nfSaida ? { nfSaida: m.payload.nfSaida } : {}),
+    ...(m.payload?.dataSaida ? { dataSaida: m.payload.dataSaida } : {}),
     ...(m.payload?.excluido ? { excluido: true } : {}),
     ...(m.payload?.excluidoEm ? { excluidoEm: m.payload.excluidoEm } : {}),
   }))
@@ -302,6 +303,7 @@ function movimentoUpsertRow(mov: MovimentoRegistro, notaIds: Set<string>) {
       ...(mov.justificativaSaida ? { justificativaSaida: mov.justificativaSaida } : {}),
       ...(mov.motivoRemocaoEstoque ? { motivoRemocaoEstoque: mov.motivoRemocaoEstoque } : {}),
       ...(mov.nfSaida ? { nfSaida: mov.nfSaida } : {}),
+      ...(mov.dataSaida ? { dataSaida: mov.dataSaida } : {}),
       ...(mov.excluido ? { excluido: true, excluidoEm: mov.excluidoEm ?? null } : {}),
     },
   }

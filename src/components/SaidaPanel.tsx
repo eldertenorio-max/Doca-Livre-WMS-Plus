@@ -52,8 +52,10 @@ type Props = {
   onCaixasPaleteChange: (value: string) => void
   onConfirmarPalete: () => void
   onRemoverPalete: (addressId: AddressId) => void
-  onFinalizarSaida: (justificativa: JustificativaSaidaId) => void
+  onFinalizarSaida: (justificativa: JustificativaSaidaId, dataSaida: string) => void
   onCancelarSaida: () => void
+  dataSaidaInput: string
+  onDataSaidaChange: (value: string) => void
   buscaErro: string | null
   uploadXmlErro: string | null
   selecaoErro: string | null
@@ -65,7 +67,7 @@ type Props = {
   onStageQtdChange: (value: string) => void
   onConfirmarItemStage: () => void
   onRemoverItemStage: (itemIndex: number) => void
-  onFinalizarSaidaStage: (justificativa: JustificativaSaidaId) => void
+  onFinalizarSaidaStage: (justificativa: JustificativaSaidaId, dataSaida: string) => void
 }
 
 export function SaidaPanel({
@@ -103,6 +105,8 @@ export function SaidaPanel({
   onRemoverPalete,
   onFinalizarSaida,
   onCancelarSaida,
+  dataSaidaInput,
+  onDataSaidaChange,
   buscaErro,
   uploadXmlErro,
   selecaoErro,
@@ -568,6 +572,19 @@ export function SaidaPanel({
 
           {(origemEstoque === 'stage' ? stageConfirmados.length > 0 : paletesConfirmados.length > 0) && (
             <div className="item-actions">
+              <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
+                <span>Data da saída</span>
+                <input
+                  type="date"
+                  className="input-nf input-nf--compact nf-data-armazenagem-input"
+                  value={dataSaidaInput}
+                  onChange={(e) => onDataSaidaChange(e.target.value)}
+                  disabled={modoPalete}
+                />
+              </label>
+              <p className="muted saida-data-hint">
+                Informe quando a mercadoria saiu do armazém. O registro no sistema pode ser feito depois.
+              </p>
               <fieldset className="saida-justificativa">
                 <legend className="saida-justificativa-title">Motivo da saída</legend>
                 <ul className="saida-justificativa-list">
@@ -593,11 +610,11 @@ export function SaidaPanel({
               <button
                 type="button"
                 className="btn warning full"
-                disabled={!podeFinalizar}
+                disabled={!podeFinalizar || !dataSaidaInput.trim()}
                 onClick={() => {
-                  if (!justificativa) return
-                  if (origemEstoque === 'stage') onFinalizarSaidaStage(justificativa)
-                  else onFinalizarSaida(justificativa)
+                  if (!justificativa || !dataSaidaInput.trim()) return
+                  if (origemEstoque === 'stage') onFinalizarSaidaStage(justificativa, dataSaidaInput)
+                  else onFinalizarSaida(justificativa, dataSaidaInput)
                 }}
               >
                 Finalizar saída

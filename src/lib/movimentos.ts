@@ -477,6 +477,11 @@ export function limparMovimentosEntradaOrfaos(data: PersistedData): PersistedDat
   return changed ? { ...data, movimentos } : data
 }
 
+/** Data efetiva da saída (informada pelo usuário ou data do registro). */
+export function dataEfetivaMovimentoSaida(mov: MovimentoRegistro): string {
+  return mov.dataSaida ?? mov.createdAt
+}
+
 export function upsertMovimentoEntrada(
   movimentos: MovimentoRegistro[],
   nf: NotaFiscal,
@@ -525,7 +530,11 @@ export function criarMovimentoSaida(
   justificativaSaida: JustificativaSaidaId,
   saidas?: SaidaItemDraft[],
   paletes?: SaidaPaleteDraft[],
-  options?: { nfSaida?: NfeDocumentoResumo; limitesPorItem?: SaidaLimitesPorItem },
+  options?: {
+    nfSaida?: NfeDocumentoResumo
+    limitesPorItem?: SaidaLimitesPorItem
+    dataSaida?: string
+  },
 ): MovimentoRegistro {
   return {
     id: `mov-saida-${nf.id}-${Date.now()}`,
@@ -535,6 +544,7 @@ export function criarMovimentoSaida(
     emitente: nf.emitente,
     createdAt: new Date().toISOString(),
     justificativaSaida,
+    ...(options?.dataSaida ? { dataSaida: options.dataSaida } : {}),
     ...(options?.nfSaida ? { nfSaida: options.nfSaida } : {}),
     itens:
       paletes && paletes.length > 0

@@ -6264,6 +6264,12 @@ html.scroll-locked .sidebar.sidebar--wide {
   max-width: 240px;
 }
 
+.saida-data-hint {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
 .nf-section-title--sm {
   margin: 0 0 8px;
   font-size: 0.88rem;

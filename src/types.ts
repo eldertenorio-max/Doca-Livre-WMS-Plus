@@ -155,6 +155,8 @@ export type MovimentoRegistro = {
   motivoRemocaoEstoque?: MotivoRemocaoEstoqueId
   /** NF de saída (documento) quando a retirada foi iniciada por XML de saída. */
   nfSaida?: NfeDocumentoResumo
+  /** Data em que a mercadoria saiu (YYYY-MM-DD). Pode ser anterior ao registro no sistema. */
+  dataSaida?: string
   /** Registro mantido no histórico após exclusão na aba Movimentação. */
   excluido?: boolean
   excluidoEm?: string

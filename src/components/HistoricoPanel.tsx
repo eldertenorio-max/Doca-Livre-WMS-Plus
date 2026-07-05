@@ -3,6 +3,7 @@ import type { MovimentoItemSnapshot, MovimentoRegistro, NotaFiscal, NotaFiscalCa
 import { dadosCanceladaParaHistorico } from '../lib/nfCanceladas'
 import { labelJustificativaSaida } from '../lib/justificativaSaida'
 import { labelMotivoRemocaoEstoque } from '../lib/motivoRemocaoEstoque'
+import { dataEfetivaMovimentoSaida } from '../lib/movimentos'
 import { formatAddressLabel } from '../layout/camaras'
 import { formatPesoBruto, formatQuantidadeNfe, formatValorNfe } from '../lib/formatNfeItem'
 
@@ -154,6 +155,8 @@ function MovimentoCabecalho({
   mov: MovimentoRegistro
   extra?: ReactNode
 }) {
+  const dataExibicao = rotuloDataMovimento(mov)
+
   return (
     <>
       <p className="hist-saida-linha">
@@ -166,7 +169,7 @@ function MovimentoCabecalho({
         <span className="hist-saida-sep" aria-hidden>
           ·
         </span>
-        <span className="muted">{formatDate(mov.createdAt)}</span>
+        <span className="muted">{dataExibicao}</span>
         {mov.excluidoEm && (
           <span className="muted"> · excluído em {formatDate(mov.excluidoEm)}</span>
         )}
@@ -617,7 +620,19 @@ function formatDate(raw: string): string {
 }
 
 function formatDateShort(raw: string): string {
+  if (!raw) return '—'
   const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return raw.slice(0, 10)
   return d.toLocaleDateString('pt-BR')
+}
+
+function rotuloDataMovimento(mov: MovimentoRegistro): string {
+  if (mov.tipo !== 'saida') return formatDate(mov.createdAt)
+  const efetiva = dataEfetivaMovimentoSaida(mov)
+  const diaSaida = efetiva.slice(0, 10)
+  const diaRegistro = mov.createdAt.slice(0, 10)
+  if (mov.dataSaida && diaSaida !== diaRegistro) {
+    return `Saída ${formatDateShort(efetiva)} · registro ${formatDateShort(mov.createdAt)}`
+  }
+  return formatDate(efetiva)
 }
