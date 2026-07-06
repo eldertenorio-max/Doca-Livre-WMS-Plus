@@ -362,14 +362,13 @@ export default function App() {
     setZerandoBancoHomolog(true)
     try {
       await zerarBancoHomologacao()
-      financeiro.zerarHomolog()
       window.location.reload()
     } catch {
       /* erro exibido na barra */
     } finally {
       setZerandoBancoHomolog(false)
     }
-  }, [zerarBancoHomologacao, financeiro])
+  }, [zerarBancoHomologacao])
 
   useEffect(() => {
     stateRef.current = state

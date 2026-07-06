@@ -117,13 +117,14 @@ export function AppTopBar({
   function handleZerarBancoHomolog() {
     if (!onZerarBancoHomolog || zerandoBancoHomolog) return
     const ok1 = window.confirm(
-      'Zerar todo o estoque e histórico na HOMOLOGAÇÃO?\n\n' +
-        'Serão apagadas todas as NFs, endereços, movimentações e clientes financeiros. ' +
-        'Esta ação não pode ser desfeita.',
+      'Zerar estoque e histórico na HOMOLOGAÇÃO?\n\n' +
+        'Serão apagadas todas as NFs, endereços, movimentações e os dados de permanência ' +
+        '(Financeiro → Data de entrada).\n\n' +
+        'Mantém: clientes cadastrados, tabelas de frete e contratos financeiros.',
     )
     if (!ok1) return
     const ok2 = window.confirm(
-      'Confirme novamente: apagar TODOS os dados operacionais do banco de homologação?',
+      'Confirme novamente: apagar todo o estoque operacional e as NFs do banco de homologação?',
     )
     if (!ok2) return
     void onZerarBancoHomolog()

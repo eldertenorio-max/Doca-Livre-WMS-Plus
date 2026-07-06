@@ -6,17 +6,24 @@ export function podeZerarBancoHomologacao(): boolean {
   return isHomologacao() && !isProducao()
 }
 
-const TABELAS_ZERAR: { table: string; filterCol: string }[] = [
+/** Estoque, histórico e dados de permanência das NFs (aba Financeiro → Data de entrada). */
+export const TABELAS_ZERAR_HOMOLOG: { table: string; filterCol: string }[] = [
   { table: 'ultrafrio_movimentos', filterCol: 'id' },
   { table: 'ultrafrio_notas_canceladas', filterCol: 'id' },
   { table: 'ultrafrio_enderecamentos', filterCol: 'nf_id' },
   { table: 'ultrafrio_nf_itens', filterCol: 'nf_id' },
   { table: 'ultrafrio_notas_fiscais', filterCol: 'id' },
-  { table: 'ultrafrio_fin_contratos', filterCol: 'id' },
-  { table: 'ultrafrio_fin_clientes', filterCol: 'cnpj' },
 ]
 
-/** Apaga estoque, histórico e clientes financeiros (mesma ordem de supabase/sql/reset_tudo.sql). */
+/** Cadastro financeiro e remetentes — não apagar no reset de homolog. */
+export const TABELAS_PRESERVAR_HOMOLOG = [
+  'ultrafrio_fin_tabelas',
+  'ultrafrio_fin_clientes',
+  'ultrafrio_fin_contratos',
+  'ultrafrio_cadastro_remetentes',
+] as const
+
+/** Apaga estoque e histórico operacional; mantém tabelas, clientes e contratos financeiros. */
 export async function zerarBancoHomologacaoSupabase(): Promise<void> {
   if (!podeZerarBancoHomologacao()) {
     throw new Error('Zerar banco só é permitido no ambiente de homologação.')
@@ -27,7 +34,7 @@ export async function zerarBancoHomologacaoSupabase(): Promise<void> {
 
   const sb = getSupabase()
 
-  for (const { table, filterCol } of TABELAS_ZERAR) {
+  for (const { table, filterCol } of TABELAS_ZERAR_HOMOLOG) {
     const { error } = await sb.from(table).delete().not(filterCol, 'is', null)
     if (error) {
       if (error.message.includes('does not exist') || error.code === 'PGRST205') continue
