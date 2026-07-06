@@ -382,6 +382,19 @@ export function SaidaPanel({
             )}
           </dl>
 
+          <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
+            <span>Data da saída</span>
+            <input
+              type="date"
+              className="input-nf input-nf--compact nf-data-armazenagem-input"
+              value={dataSaidaInput}
+              onChange={(e) => onDataSaidaChange(e.target.value)}
+            />
+          </label>
+          <p className="muted saida-data-hint">
+            Informe quando a mercadoria saiu do armazém. O registro no sistema pode ser feito depois.
+          </p>
+
           {saidaXml ? (
             <>
               <p className="nf-leitura-subtitle">Totais da NF de saída</p>
@@ -572,19 +585,6 @@ export function SaidaPanel({
 
           {(origemEstoque === 'stage' ? stageConfirmados.length > 0 : paletesConfirmados.length > 0) && (
             <div className="item-actions">
-              <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
-                <span>Data da saída</span>
-                <input
-                  type="date"
-                  className="input-nf input-nf--compact nf-data-armazenagem-input"
-                  value={dataSaidaInput}
-                  onChange={(e) => onDataSaidaChange(e.target.value)}
-                  disabled={modoPalete}
-                />
-              </label>
-              <p className="muted saida-data-hint">
-                Informe quando a mercadoria saiu do armazém. O registro no sistema pode ser feito depois.
-              </p>
               <fieldset className="saida-justificativa">
                 <legend className="saida-justificativa-title">Motivo da saída</legend>
                 <ul className="saida-justificativa-list">
