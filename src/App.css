@@ -6349,6 +6349,33 @@ html.scroll-locked .sidebar.sidebar--wide {
   border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
 }
 
+.saida-itens-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  margin: 12px 0 10px;
+}
+
+.saida-itens-section-head .saida-data-row {
+  margin: 0;
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+
+.saida-itens-section-copy {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.saida-itens-section-copy .nf-section-title--sm {
+  margin-bottom: 4px;
+}
+
+.saida-itens-section-copy .saida-itens-intro {
+  margin: 0;
+}
+
 .saida-data-hint {
   margin: 0 0 10px;
   font-size: 0.85rem;

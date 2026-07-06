@@ -223,24 +223,6 @@ export function SaidaPanel({
         )}
       </div>
 
-      {nfBusca && (
-        <div className="sidebar-block saida-data-block">
-          <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
-            <span>Data da saída</span>
-            <input
-              type="date"
-              className="input-nf input-nf--compact nf-data-armazenagem-input"
-              value={dataSaidaInput}
-              onChange={(e) => onDataSaidaChange(e.target.value)}
-              disabled={modoPalete}
-            />
-          </label>
-          <p className="muted saida-data-hint">
-            Informe quando a mercadoria saiu do armazém. O registro no sistema pode ser feito depois.
-          </p>
-        </div>
-      )}
-
       {modoBusca === 'xml' && saidaXml && (
         <div className="sidebar-block nf-detail saida-xml-doc">
           <h3 className="nf-section-title nf-section-title--sm">NF de saída {saidaXml.numero}</h3>
@@ -421,14 +403,27 @@ export function SaidaPanel({
             </>
           )}
 
-          <h4 className="nf-section-title nf-section-title--sm">Itens da saída</h4>
-          <p className="muted nf-itens-intro saida-itens-intro">
-            {origemEstoque === 'stage'
-              ? 'Clique no item no stage, informe a quantidade e confirme.'
-              : saidaXml
-                ? 'Itens do XML de saída vinculados ao estoque da NF de origem. A quantidade máxima por item segue o XML.'
-                : 'Clique no item que vai sair (linha fica verde). Informe os paletes abaixo de cada item.'}
-          </p>
+          <div className="saida-itens-section-head">
+            <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
+              <span>Data da saída</span>
+              <input
+                type="date"
+                className="input-nf input-nf--compact nf-data-armazenagem-input"
+                value={dataSaidaInput}
+                onChange={(e) => onDataSaidaChange(e.target.value)}
+              />
+            </label>
+            <div className="saida-itens-section-copy">
+              <h4 className="nf-section-title nf-section-title--sm">Itens da saída</h4>
+              <p className="muted nf-itens-intro saida-itens-intro">
+                {origemEstoque === 'stage'
+                  ? 'Clique no item no stage, informe a quantidade e confirme.'
+                  : saidaXml
+                    ? 'Itens do XML de saída vinculados ao estoque da NF de origem. A quantidade máxima por item segue o XML.'
+                    : 'Clique no item que vai sair (linha fica verde). Informe os paletes abaixo de cada item.'}
+              </p>
+            </div>
+          </div>
 
           {origemEstoque === 'stage' ? (
             <>
