@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   calcularCobrancaDetalhada,
   dataNoPeriodoCobranca,
+  debitosEntradaPeriodo,
   debitosSaidaPeriodo,
+  paletesSaidasPeriodo,
   saidasNoPeriodoCobranca,
   valorAcumuladoArmazenagem,
   valorCobrancaPeriodo,
@@ -53,6 +55,8 @@ const resumoNf = (overrides: Partial<ResumoNfArmazenada> = {}): ResumoNfArmazena
   pesoEntrada: 23500,
   pesoRestante: 23500,
   pesoSaido: 0,
+  paletesEntrada: 20,
+  paletesSaidos: 0,
   saidas: [],
   totalItens: 1,
   totalCaixas: 0,
@@ -93,7 +97,7 @@ describe('calcularCobrancaDetalhada', () => {
     expect(cobranca.totalRecorrente).toBeCloseTo(20 * 15 * (1 / 30), 4)
     expect(cobranca.valorDiaria).toBeCloseTo(cobranca.totalRecorrente, 4)
     expect(cobranca.valorVigente).toBeCloseTo(cobranca.valorDiaria, 4)
-    expect(cobranca.total).toBeCloseTo(cobranca.totalRecorrente + 50, 4)
+    expect(cobranca.total).toBeCloseTo(cobranca.totalRecorrente + 20 * 50, 4)
   })
 
   it('kilo: diaria por peso bruto e acumulado = dias × diaria (exemplo NF 211264)', () => {
@@ -173,25 +177,33 @@ describe('calcularCobrancaDetalhada', () => {
 
 describe('debitosSaidaPeriodo', () => {
   const saidas = [
-    { id: 's1', data: '2026-07-03T10:00:00.000Z', nfSaidaNumero: '100', pesoSaida: 1000, caixasSaida: 10, paletesSaida: 1 },
-    { id: 's2', data: '2026-07-15T10:00:00.000Z', nfSaidaNumero: '101', pesoSaida: 500, caixasSaida: 5, paletesSaida: 1 },
+    { id: 's1', data: '2026-07-03T10:00:00.000Z', nfSaidaNumero: '100', pesoSaida: 1000, caixasSaida: 10, paletesSaida: 5 },
+    { id: 's2', data: '2026-07-15T10:00:00.000Z', nfSaidaNumero: '101', pesoSaida: 500, caixasSaida: 5, paletesSaida: 3 },
   ]
 
-  it('cobra custo de saída por registro dentro do período', () => {
-    const contrato = contratoBase()
+  it('cobra custo de saída por palete movimentado no período', () => {
+    const contrato = contratoBase({ cobrarSaida: true })
     const tabela = { ...tabelaBase(), custoSaida: 30 }
-    expect(debitosSaidaPeriodo(saidas, '2026-07-01', '2026-07-06', contrato, tabela)).toBe(30)
+    expect(paletesSaidasPeriodo(saidas, '2026-07-01', '2026-07-06')).toBe(5)
+    expect(debitosSaidaPeriodo(saidas, '2026-07-01', '2026-07-06', contrato, tabela)).toBe(150)
     expect(saidasNoPeriodoCobranca(saidas, '2026-07-01', '2026-07-31')).toHaveLength(2)
   })
 
-  it('retorna zero sem custo de saída na tabela', () => {
-    expect(
-      debitosSaidaPeriodo(saidas, '2026-07-01', '2026-07-31', contratoBase(), { ...tabelaBase(), custoSaida: 0 }),
-    ).toBe(0)
+  it('retorna zero sem cobrança de saída no contrato', () => {
+    expect(debitosSaidaPeriodo(saidas, '2026-07-01', '2026-07-06', contratoBase(), tabelaBase())).toBe(0)
   })
 
   it('dataNoPeriodoCobranca respeita intervalo inclusivo', () => {
     expect(dataNoPeriodoCobranca('2026-07-06T23:59:00.000Z', '2026-07-01', '2026-07-06')).toBe(true)
     expect(dataNoPeriodoCobranca('2026-06-30', '2026-07-01', '2026-07-06')).toBe(false)
+  })
+})
+
+describe('debitosEntradaPeriodo', () => {
+  it('cobra paletes da movimentação de entrada quando data cai no período', () => {
+    const contrato = contratoBase({ cobrarEntrada: true })
+    const tabela = { ...tabelaBase(), custoEntrada: 50 }
+    expect(debitosEntradaPeriodo('2026-07-03', 10, '2026-07-01', '2026-07-31', contrato, tabela)).toBe(500)
+    expect(debitosEntradaPeriodo('2026-06-01', 10, '2026-07-01', '2026-07-31', contrato, tabela)).toBe(0)
   })
 })

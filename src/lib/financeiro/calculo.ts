@@ -30,6 +30,10 @@ export type ResumoNfArmazenada = {
   pesoRestante: number
   /** Soma das saídas parciais ou totais. */
   pesoSaido: number
+  /** Paletes registrados na entrada da NF. */
+  paletesEntrada: number
+  /** Paletes movimentados em saídas (parciais ou total). */
+  paletesSaidos: number
   saidas: SaidaNfFinanceiro[]
   totalItens: number
   totalCaixas: number
@@ -158,7 +162,18 @@ export function saidasNoPeriodoCobranca(
   return saidas.filter((s) => dataNoPeriodoCobranca(s.data, periodoInicio, periodoFim))
 }
 
-/** Débitos de saída no período (custo da tabela × cada saída registrada no intervalo). */
+/** Débitos de saída no período (custo × paletes movimentados nas saídas do intervalo). */
+export function paletesSaidasPeriodo(
+  saidas: SaidaNfFinanceiro[],
+  periodoInicio: string,
+  periodoFim: string,
+): number {
+  const list = saidasNoPeriodoCobranca(saidas, periodoInicio, periodoFim)
+  const paletes = list.reduce((s, x) => s + x.paletesSaida, 0)
+  if (paletes > 0) return paletes
+  return list.length
+}
+
 export function debitosSaidaPeriodo(
   saidas: SaidaNfFinanceiro[],
   periodoInicio: string,
@@ -166,9 +181,26 @@ export function debitosSaidaPeriodo(
   contrato: ContratoCliente | null,
   tabela: TabelaCobranca | null,
 ): number {
-  if (!contrato || !tabela || tabela.custoSaida <= 0) return 0
-  const qtd = saidasNoPeriodoCobranca(saidas, periodoInicio, periodoFim).length
-  return Math.round(qtd * tabela.custoSaida * 100) / 100
+  if (!contrato?.cobrarSaida || !tabela || tabela.custoSaida <= 0) return 0
+  const paletes = paletesSaidasPeriodo(saidas, periodoInicio, periodoFim)
+  if (paletes <= 0) return 0
+  return Math.round(paletes * tabela.custoSaida * 100) / 100
+}
+
+/** Débitos de entrada no período (custo × paletes da movimentação de entrada). */
+export function debitosEntradaPeriodo(
+  dataEntrada: string,
+  paletesEntrada: number,
+  periodoInicio: string,
+  periodoFim: string,
+  contrato: ContratoCliente | null,
+  tabela: TabelaCobranca | null,
+): number {
+  if (!contrato?.cobrarEntrada || !tabela || tabela.custoEntrada <= 0) return 0
+  if (!dataNoPeriodoCobranca(dataEntrada, periodoInicio, periodoFim)) return 0
+  const paletes = paletesEntrada > 0 ? paletesEntrada : 0
+  if (paletes <= 0) return 0
+  return Math.round(paletes * tabela.custoEntrada * 100) / 100
 }
 
 function pesoBrutoArmazenagem(resumo: ResumoNfArmazenada): number {
@@ -371,6 +403,9 @@ export function resumirNfArmazenada(
     saidas.reduce((s, x) => s + x.pesoSaida, 0) ||
     (pesoLiquidoEntrada > 0 ? Math.max(0, pesoLiquidoEntrada - pesoRestante) : 0)
   const pesoCobranca = armazenada ? pesoRestante : pesoLiquidoEntrada
+  const entradaMov = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id && !m.excluido)
+  const paletesEntrada = entradaMov ? paletesMovimento(entradaMov) : totalPaletesNf(nf)
+  const paletesSaidos = saidas.reduce((s, x) => s + x.paletesSaida, 0)
 
   return {
     nfId: nf.id,
@@ -386,6 +421,8 @@ export function resumirNfArmazenada(
     pesoEntrada: pesoLiquidoEntrada,
     pesoRestante,
     pesoSaido,
+    paletesEntrada,
+    paletesSaidos,
     saidas,
     totalItens: nf.items.length,
     totalCaixas: totalCaixasNf(nf),
@@ -490,17 +527,19 @@ export function calcularCobrancaDetalhada(
     totalRecorrente += valor
   }
 
-  if (contrato.cobrarEntrada && tabela.custoEntrada > 0) {
+  if (contrato.cobrarEntrada && tabela.custoEntrada > 0 && resumo.paletesEntrada > 0) {
+    const valor = resumo.paletesEntrada * tabela.custoEntrada
     detalhes.push({
-      label: `Entrada (${formatMoeda(tabela.custoEntrada)})`,
-      valor: tabela.custoEntrada,
+      label: `Entrada (${resumo.paletesEntrada} paletes × ${formatMoeda(tabela.custoEntrada)})`,
+      valor,
     })
   }
 
-  if (contrato.cobrarSaida && tabela.custoSaida > 0 && resumo.status === 'finalizada') {
+  if (contrato.cobrarSaida && tabela.custoSaida > 0 && resumo.paletesSaidos > 0) {
+    const valor = resumo.paletesSaidos * tabela.custoSaida
     detalhes.push({
-      label: `Saída (${formatMoeda(tabela.custoSaida)})`,
-      valor: tabela.custoSaida,
+      label: `Saída (${resumo.paletesSaidos} paletes × ${formatMoeda(tabela.custoSaida)})`,
+      valor,
     })
   }
 
