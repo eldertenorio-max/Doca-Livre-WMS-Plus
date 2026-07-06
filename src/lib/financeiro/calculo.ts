@@ -310,14 +310,6 @@ function pesoItensLiquidoNf(nf: NotaFiscal): number {
   }, 0)
 }
 
-function pesoItensBrutoNf(nf: NotaFiscal): number {
-  return nf.items.reduce((s, it) => {
-    if (it.pesoBruto != null && it.pesoBruto > 0) return s + it.pesoBruto
-    const total = pesoBrutoTotalItem(nf, it)
-    return s + (total ?? 0)
-  }, 0)
-}
-
 function pesoSaidaBrutoMovimento(m: MovimentoRegistro): number {
   if (m.pesoBruto != null && m.pesoBruto > 0) return m.pesoBruto
   const fromItems = m.itens.reduce((s, it) => s + (it.pesoBruto ?? 0), 0)
