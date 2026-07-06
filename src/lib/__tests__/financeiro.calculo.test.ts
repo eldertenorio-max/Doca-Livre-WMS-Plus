@@ -72,7 +72,7 @@ describe('calcularCobrancaDetalhada', () => {
   })
 
   it('valor diaria por kilo = peso bruto x custo kilo / 30 e acumulado = dias x diaria', () => {
-    const pesoBruto = 26_028.707
+    const pesoBruto = 27_794.92
     const custoKilo = 5.58
     const dias = 126
     const diaria = valorDiariaPorKilo(pesoBruto, custoKilo, 'mensal')

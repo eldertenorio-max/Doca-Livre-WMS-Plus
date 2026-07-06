@@ -127,9 +127,9 @@ function fatorTempo(dias: number, ciclo: 'mensal' | 'quinzenal', regra: RegraTem
 
 
 function pesoMovimentoRegistro(m: MovimentoRegistro): number {
-  if (m.pesoLiquido != null && m.pesoLiquido > 0) return m.pesoLiquido
   if (m.pesoBruto != null && m.pesoBruto > 0) return m.pesoBruto
-  return m.itens.reduce((s, it) => s + (it.pesoLiquido ?? it.pesoBruto ?? 0), 0)
+  if (m.pesoLiquido != null && m.pesoLiquido > 0) return m.pesoLiquido
+  return m.itens.reduce((s, it) => s + (it.pesoBruto ?? it.pesoLiquido ?? 0), 0)
 }
 
 function caixasMovimento(m: MovimentoRegistro): number {
@@ -149,9 +149,9 @@ function paletesMovimento(m: MovimentoRegistro): number {
 
 function pesoItensAtualNf(nf: NotaFiscal): number {
   return nf.items.reduce((s, it) => {
-    const direct = it.pesoLiquido ?? it.pesoBruto
+    const direct = it.pesoBruto ?? it.pesoLiquido
     if (direct != null && direct > 0) return s + direct
-    const total = pesoLiquidoTotalItem(nf, it) ?? pesoBrutoTotalItem(nf, it)
+    const total = pesoBrutoTotalItem(nf, it) ?? pesoLiquidoTotalItem(nf, it)
     return s + (total ?? 0)
   }, 0)
 }
@@ -160,8 +160,8 @@ function pesoEntradaNf(nf: NotaFiscal, movimentos: MovimentoRegistro[]): number 
   const entrada = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id && !m.excluido)
   const movPeso = entrada ? pesoMovimentoRegistro(entrada) : 0
   if (movPeso > 0) return movPeso
-  if (nf.pesoLiquido != null && nf.pesoLiquido > 0) return nf.pesoLiquido
   if (nf.pesoBruto != null && nf.pesoBruto > 0) return nf.pesoBruto
+  if (nf.pesoLiquido != null && nf.pesoLiquido > 0) return nf.pesoLiquido
   return pesoItensAtualNf(nf)
 }
 
@@ -189,7 +189,7 @@ function pesoRestanteNf(nf: NotaFiscal, movimentos: MovimentoRegistro[], pesoEnt
   const pesoSaido = saidas.reduce((s, x) => s + x.pesoSaida, 0)
   if (pesoEntrada > 0 && pesoSaido > 0) return Math.max(0, pesoEntrada - pesoSaido)
 
-  return nf.pesoLiquido ?? nf.pesoBruto ?? 0
+  return nf.pesoBruto ?? nf.pesoLiquido ?? 0
 }
 
 function totalPaletesNf(nf: NotaFiscal): number {

@@ -48,6 +48,37 @@ function parseItemQuantidadeUnidade(prod: Element): { quantidade: number; unidad
   })
 }
 
+function pesoLiquidoReferenciaItem(item: NfeItem): number {
+  if (item.pesoLiquido != null && item.pesoLiquido > 0) return item.pesoLiquido
+  if (item.pesoBruto != null && item.pesoBruto > 0 && isUnidadePeso(item.unidade)) return item.pesoBruto
+  return 0
+}
+
+/** Distribui peso bruto do transporte (pesoB) entre os itens, proporcional ao peso líquido. */
+export function distribuirPesoBrutoNosItens(
+  items: NfeItem[],
+  totais: { pesoBruto?: number; pesoLiquido?: number },
+): void {
+  const pesoLiqItens = items.reduce((s, it) => s + pesoLiquidoReferenciaItem(it), 0)
+  if (pesoLiqItens <= 0) return
+
+  if (totais.pesoBruto != null && totais.pesoBruto > 0) {
+    for (const item of items) {
+      const liq = pesoLiquidoReferenciaItem(item)
+      if (liq <= 0) continue
+      item.pesoBruto = totais.pesoBruto * (liq / pesoLiqItens)
+    }
+    return
+  }
+
+  for (const item of items) {
+    const liq = pesoLiquidoReferenciaItem(item)
+    if (liq <= 0) continue
+    if (item.pesoLiquido == null) item.pesoLiquido = liq
+    if (item.pesoBruto == null) item.pesoBruto = liq
+  }
+}
+
 function applyTransportVolumeToItems(items: NfeItem[], volumes: VolumeInfo[]): void {
   if (volumes.length === 0 || items.length !== 1) return
   const item = items[0]
@@ -151,7 +182,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
       quantidade,
       unidade,
       allocatedAddresses: [],
-      ...(pesoKg != null ? { pesoBruto: pesoKg, pesoLiquido: pesoKg } : {}),
+      ...(pesoKg != null ? { pesoLiquido: pesoKg } : {}),
       ...(valorUnitario > 0 ? { valorUnitario } : {}),
       ...(valorTotal > 0 ? { valorTotal } : {}),
     }
@@ -169,6 +200,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
   const total = inf.getElementsByTagName('total')[0]
   const valorTotalNota = numOf(total, 'vNF')
   const totaisTransp = parseTotaisTransporte(transp)
+  distribuirPesoBrutoNosItens(items, totaisTransp)
   const quantidadeVolume = parseQuantidadeVolume(volumes)
 
   return {
