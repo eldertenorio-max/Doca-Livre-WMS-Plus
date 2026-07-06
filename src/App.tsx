@@ -130,6 +130,7 @@ import {
   resolverReferenciasSaida,
   saidaXmlCorrespondeNf,
   sugerirOrigemSaida,
+  origemEstoqueParaSaidaXml,
   vincularSaidaXmlOrigem,
 } from './lib/saidaXml'
 import {
@@ -621,6 +622,14 @@ export default function App() {
   }, [nfBuscaSaida, saidaVinculo, saidaOrigemEstoque])
   const saidaLimitesPorItem = saidaVinculo?.limitesPorItem
   const saidaVinculoAvisos = saidaVinculo?.avisos ?? []
+
+  useEffect(() => {
+    if (!nfBuscaSaida || !saidaXmlDoc || !saidaVinculo) return
+    if (saidaVinculo.itensExibicao.length > 0) return
+    const alt = origemEstoqueParaSaidaXml(nfBuscaSaida, saidaXmlDoc)
+    if (alt && alt !== saidaOrigemEstoque) setSaidaOrigemEstoque(alt)
+  }, [nfBuscaSaida, saidaXmlDoc, saidaVinculo, saidaOrigemEstoque])
+
   const saidaReferencias = useMemo(
     () => resolverReferenciasSaida(state.notas, saidaRefChaves),
     [state.notas, saidaRefChaves],
@@ -1943,7 +1952,7 @@ export default function App() {
         const sugerida = sugerirOrigemSaida(state.notas, doc, refs)
         if (sugerida) {
           setSaidaOrigemSelecionadaId(sugerida.id)
-          setNfBuscaSaidaId(sugerida.id)
+          resolverDestinoSaida(sugerida)
         }
       }
       // Múltiplas referências com estoque: lista aparece para o usuário escolher.

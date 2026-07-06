@@ -149,7 +149,9 @@ export function SaidaPanel({
   const itensComEstoque =
     origemEstoque === 'stage'
       ? itensSaida.filter(itemNoStage)
-      : itensSaida.filter((it) => it.allocatedAddresses.length > 0)
+      : saidaXml
+        ? itensSaida
+        : itensSaida.filter((it) => it.allocatedAddresses.length > 0)
   const nfTemEstoqueSaida =
     nfBusca &&
     (origemEstoque === 'stage'
@@ -647,15 +649,6 @@ export function SaidaPanel({
               Cancelar saída
             </button>
           </div>
-          {vinculoAvisos.length > 0 && (
-            <ul className="saida-vinculo-avisos">
-              {vinculoAvisos.map((msg) => (
-                <li key={msg} className="error">
-                  {msg}
-                </li>
-              ))}
-            </ul>
-          )}
           <p className="muted sidebar-block">
             {origemEstoque === 'stage'
               ? 'Esta NF não possui itens no stage.'

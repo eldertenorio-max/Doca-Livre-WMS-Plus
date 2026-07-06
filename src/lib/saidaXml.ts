@@ -1,7 +1,12 @@
 import { nfTemEnderecos } from './movimentos'
 import { nfTemEstoqueStage } from './stageEstoque'
 import { itemNoStage } from '../layout/stage'
-import { corrigirQuantidadeItemSePeso, quantidadeEstoqueItem, unidadeEstoqueItem } from './nfeUnidades'
+import {
+  corrigirQuantidadeItemSePeso,
+  normalizarQuantidadeItensNf,
+  quantidadeEstoqueItem,
+  unidadeEstoqueItem,
+} from './nfeUnidades'
 import type { NfeItem, NotaFiscal, SaidaXmlDocumento } from '../types'
 
 export type SaidaOrigemVinculo = 'armazem' | 'stage'
@@ -27,11 +32,16 @@ function itemComEstoqueVinculo(item: NfeItem, origem: SaidaOrigemVinculo): boole
   const qtd = quantidadeEstoqueItem(norm)
   if (qtd <= 1e-9) return false
   if (origem === 'stage') return itemNoStage(norm)
-  return !itemNoStage(norm) && norm.allocatedAddresses.length > 0
+  if (itemNoStage(norm)) return false
+  return norm.allocatedAddresses.length > 0 || qtd > 0
+}
+
+function itensOrigemParaVinculo(origem: NotaFiscal): NfeItem[] {
+  return normalizarQuantidadeItensNf(origem.items.map((it) => ({ ...it })))
 }
 
 function itensEstoqueOrigem(origem: NotaFiscal, origemEstoque: SaidaOrigemVinculo): NfeItem[] {
-  return origem.items.filter((it) => itemComEstoqueVinculo(it, origemEstoque))
+  return itensOrigemParaVinculo(origem).filter((it) => itemComEstoqueVinculo(it, origemEstoque))
 }
 
 function quantidadesXmlPorCodigo(doc: SaidaXmlDocumento): Map<string, number> {
@@ -140,7 +150,7 @@ export function sugerirOrigemSaida(
         normCodigo(it.codigo),
       ),
     )
-    return xmlCodigos.every((c) => origCodigos.has(c))
+    return xmlCodigos.some((c) => origCodigos.has(c))
   })
 
   return candidatos.length === 1 ? candidatos[0] : null
@@ -170,12 +180,7 @@ export function vincularSaidaXmlOrigem(
       return jaUsado < qtdEstoque - 1e-9
     })
 
-    if (!origItem) {
-      avisos.push(
-        `Código ${xmlItem.codigo} do XML de saída não encontrado com estoque disponível na NF ${origem.numero}.`,
-      )
-      continue
-    }
+    if (!origItem) continue
 
     const normOrig = itemNormalizadoParaVinculo(origItem)
     const qtdEstoque = quantidadeEstoqueItem(normOrig)
@@ -195,10 +200,6 @@ export function vincularSaidaXmlOrigem(
     if (!itensExibicao.some((i) => i.index === origItem.index)) {
       itensExibicao.push(origItem)
     }
-  }
-
-  if (itensExibicao.length === 0) {
-    avisos.unshift('Nenhum item do XML foi encontrado com estoque na NF de origem.')
   }
 
   itensExibicao.sort((a, b) => a.index - b.index)

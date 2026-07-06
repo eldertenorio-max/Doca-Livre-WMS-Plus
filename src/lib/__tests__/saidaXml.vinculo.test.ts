@@ -185,6 +185,53 @@ describe('vincularSaidaXmlOrigem', () => {
     const v = vincularSaidaXmlOrigem(origem, doc, 'armazem')
     expect(v.itensExibicao).toHaveLength(1)
     expect(v.limitesPorItem[1]).toBe(200)
+    expect(v.avisos).toHaveLength(0)
+  })
+
+  it('NF 211264: vincula 5035900 após saída parcial com quantidade ainda em KG', () => {
+    const origem = nfOrigem()
+    origem.numero = '211264'
+    origem.items = [
+      {
+        index: 0,
+        codigo: '4152168',
+        descricao: '9369 - FRANGO CONG PCT CX VAR STA CEC',
+        quantidade: 6848.66,
+        unidade: 'KG',
+        allocatedAddresses: ['A1'],
+        pesoBruto: 6848.66,
+        pesoLiquido: 6848.66,
+      },
+      {
+        index: 1,
+        codigo: '5035900',
+        descricao: '9140 - COXA E SOBRECOXA CARNE FGO CON PCT CX20KG STA CEC',
+        quantidade: 6600,
+        unidade: 'KG',
+        allocatedAddresses: ['B1'],
+        pesoBruto: 6600,
+        pesoLiquido: 6600,
+      },
+    ]
+    const doc: SaidaXmlDocumento = {
+      ...xmlDoisItens(),
+      items: [
+        {
+          index: 0,
+          codigo: '5035900',
+          descricao: 'COXA',
+          quantidade: 330,
+          unidade: 'CX',
+          allocatedAddresses: [],
+        },
+      ],
+    }
+
+    const v = vincularSaidaXmlOrigem(origem, doc, 'armazem')
+    expect(v.itensExibicao).toHaveLength(1)
+    expect(v.itensExibicao[0]?.codigo).toBe('5035900')
+    expect(v.limitesPorItem[1]).toBe(330)
+    expect(v.avisos).toHaveLength(0)
   })
 })
 
