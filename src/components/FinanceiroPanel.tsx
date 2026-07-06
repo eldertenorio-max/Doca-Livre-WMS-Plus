@@ -197,7 +197,6 @@ function flagsContrato(contrato: ContratoCliente | null): string {
   const flags = [
     contrato.cobrarPosicaoPalete && 'Posição',
     contrato.cobrarKilo && (contrato.kiloPorDia ? 'Kilo por dia' : 'Kilo por ciclo'),
-    contrato.cobrarPalete && 'Palete',
     contrato.cobrarEntrada && 'Entrada',
     contrato.cobrarSaida && 'Saída',
   ].filter(Boolean)
@@ -512,7 +511,6 @@ function ContratoSection({
   const [regraTempo, setRegraTempo] = useState<RegraTempo>('proporcional')
   const [cobPosicao, setCobPosicao] = useState(false)
   const [cobKilo, setCobKilo] = useState(false)
-  const [cobPalete, setCobPalete] = useState(false)
   const [cobEntrada, setCobEntrada] = useState(false)
   const [cobSaida, setCobSaida] = useState(false)
   const [kiloPorDia, setKiloPorDia] = useState(false)
@@ -528,7 +526,6 @@ function ContratoSection({
     setRegraTempo('proporcional')
     setCobPosicao(false)
     setCobKilo(false)
-    setCobPalete(false)
     setCobEntrada(false)
     setCobSaida(false)
     setKiloPorDia(false)
@@ -544,7 +541,6 @@ function ContratoSection({
     setRegraTempo(c.regraTempo)
     setCobPosicao(c.cobrarPosicaoPalete)
     setCobKilo(c.cobrarKilo)
-    setCobPalete(c.cobrarPalete)
     setCobEntrada(c.cobrarEntrada)
     setCobSaida(c.cobrarSaida)
     setKiloPorDia(c.kiloPorDia)
@@ -573,7 +569,7 @@ function ContratoSection({
       regraTempo,
       cobrarPosicaoPalete: cobPosicao,
       cobrarKilo: cobKilo,
-      cobrarPalete: cobPalete,
+      cobrarPalete: false,
       cobrarEntrada: cobEntrada,
       cobrarSaida: cobSaida,
       kiloPorDia,
@@ -715,10 +711,6 @@ function ContratoSection({
               Por quilo
             </label>
             <label className="fin-check">
-              <input type="checkbox" checked={cobPalete} onChange={(e) => setCobPalete(e.target.checked)} />
-              Por palete
-            </label>
-            <label className="fin-check">
               <input type="checkbox" checked={cobEntrada} onChange={(e) => setCobEntrada(e.target.checked)} />
               Entrada
             </label>
@@ -759,7 +751,6 @@ function ContratoSection({
               const flags = [
                 c.cobrarPosicaoPalete && 'Posição',
                 c.cobrarKilo && (c.kiloPorDia ? 'Kilo×dia' : 'Kilo'),
-                c.cobrarPalete && 'Palete',
                 c.cobrarEntrada && 'Entrada',
                 c.cobrarSaida && 'Saída',
               ].filter(Boolean)
