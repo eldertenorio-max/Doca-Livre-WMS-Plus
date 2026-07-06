@@ -86,6 +86,11 @@ export function recoverBestPersisted(remote: PersistedData): {
   return { data: best, recoveredFromLocal }
 }
 
+/** Nuvem vazia com estoque local = reset do banco ou aba antiga regravando por cima. */
+export function remotoEstoqueZerado(remote: PersistedData, local: PersistedData): boolean {
+  return persistedRichness(remote) === 0 && persistedRichness(local) > 0
+}
+
 /** Impede gravar estado vazio por cima de estoque existente. */
 export function wouldWipePersistedStock(prev: PersistedData, next: PersistedData): boolean {
   const prevEnd = contarEnderecosPersistidos(prev)

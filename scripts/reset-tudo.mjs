@@ -158,6 +158,7 @@ async function main() {
   }
 
   console.log('\nPronto. Homologação e produção compartilham este banco — os dois ficam vazios.')
+  console.log('IMPORTANTE: feche TODAS as abas do WMS antes do reset; abas abertas regravam o estoque na nuvem.')
   console.log('1. Feche TODAS as abas do WMS (homolog e produção).')
   console.log('2. Abra de novo e use Ctrl+Shift+R (limpa cache do site).')
   console.log('   Homolog: https://ultrafrio-homologacao.onrender.com')

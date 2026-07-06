@@ -332,6 +332,7 @@ function TabelaCobrancaSection({
   const [nome, setNome] = useState('')
   const [cPosicao, setCPosicao] = useState('')
   const [cKilo, setCKilo] = useState('')
+  const [cPalete, setCPalete] = useState('')
   const [cEntrada, setCEntrada] = useState('')
   const [cSaida, setCSaida] = useState('')
 
@@ -340,6 +341,7 @@ function TabelaCobrancaSection({
     setNome('')
     setCPosicao('')
     setCKilo('')
+    setCPalete('')
     setCEntrada('')
     setCSaida('')
   }
@@ -349,6 +351,7 @@ function TabelaCobrancaSection({
     setNome(t.nome)
     setCPosicao(String(t.custoPosicaoPalete))
     setCKilo(String(t.custoPorKilo))
+    setCPalete(String(t.custoPorPalete))
     setCEntrada(String(t.custoEntrada))
     setCSaida(String(t.custoSaida))
   }
@@ -361,7 +364,7 @@ function TabelaCobrancaSection({
       nome: trimmed,
       custoPosicaoPalete: parseNum(cPosicao),
       custoPorKilo: parseNum(cKilo),
-      custoPorPalete: 0,
+      custoPorPalete: parseNum(cPalete),
       custoEntrada: parseNum(cEntrada),
       custoSaida: parseNum(cSaida),
       criadoEm: editId
@@ -404,6 +407,10 @@ function TabelaCobrancaSection({
           <label className="nf-itens-campo">
             <span>Custo por quilo (R$)</span>
             <input type="text" className="input-nf" value={cKilo} onChange={(e) => setCKilo(e.target.value)} placeholder="0,00" />
+          </label>
+          <label className="nf-itens-campo">
+            <span>Custo por palete (R$)</span>
+            <input type="text" className="input-nf" value={cPalete} onChange={(e) => setCPalete(e.target.value)} placeholder="0,00" />
           </label>
           <label className="nf-itens-campo">
             <span>Custo de entrada (R$)</span>
@@ -449,7 +456,8 @@ function TabelaCobrancaSection({
                     <strong>{t.nome}</strong>
                     <span className="muted fin-lista-detalhe">
                       Posição {formatMoedaFinanceiro(t.custoPosicaoPalete)} · Kilo{' '}
-                      {formatMoedaFinanceiro(t.custoPorKilo)} · Entrada{' '}
+                      {formatMoedaFinanceiro(t.custoPorKilo)} · Palete{' '}
+                      {formatMoedaFinanceiro(t.custoPorPalete)} · Entrada{' '}
                       {formatMoedaFinanceiro(t.custoEntrada)} · Saída{' '}
                       {formatMoedaFinanceiro(t.custoSaida)}
                     </span>
@@ -502,6 +510,7 @@ function ContratoSection({
   const [regraTempo, setRegraTempo] = useState<RegraTempo>('proporcional')
   const [cobPosicao, setCobPosicao] = useState(false)
   const [cobKilo, setCobKilo] = useState(false)
+  const [cobPalete, setCobPalete] = useState(false)
   const [cobEntrada, setCobEntrada] = useState(false)
   const [cobSaida, setCobSaida] = useState(false)
   const [kiloPorDia, setKiloPorDia] = useState(false)
@@ -517,6 +526,7 @@ function ContratoSection({
     setRegraTempo('proporcional')
     setCobPosicao(false)
     setCobKilo(false)
+    setCobPalete(false)
     setCobEntrada(false)
     setCobSaida(false)
     setKiloPorDia(false)
@@ -532,6 +542,7 @@ function ContratoSection({
     setRegraTempo(c.regraTempo)
     setCobPosicao(c.cobrarPosicaoPalete)
     setCobKilo(c.cobrarKilo)
+    setCobPalete(c.cobrarPalete)
     setCobEntrada(c.cobrarEntrada)
     setCobSaida(c.cobrarSaida)
     setKiloPorDia(c.kiloPorDia)
@@ -560,7 +571,7 @@ function ContratoSection({
       regraTempo,
       cobrarPosicaoPalete: cobPosicao,
       cobrarKilo: cobKilo,
-      cobrarPalete: false,
+      cobrarPalete: cobPalete,
       cobrarEntrada: cobEntrada,
       cobrarSaida: cobSaida,
       kiloPorDia,
@@ -702,6 +713,10 @@ function ContratoSection({
               Por quilo
             </label>
             <label className="fin-check">
+              <input type="checkbox" checked={cobPalete} onChange={(e) => setCobPalete(e.target.checked)} />
+              Por palete
+            </label>
+            <label className="fin-check">
               <input type="checkbox" checked={cobEntrada} onChange={(e) => setCobEntrada(e.target.checked)} />
               Entrada
             </label>
@@ -742,6 +757,7 @@ function ContratoSection({
               const flags = [
                 c.cobrarPosicaoPalete && 'Posição',
                 c.cobrarKilo && (c.kiloPorDia ? 'Kilo×dia' : 'Kilo'),
+                c.cobrarPalete && 'Palete',
                 c.cobrarEntrada && 'Entrada',
                 c.cobrarSaida && 'Saída',
               ].filter(Boolean)
@@ -1398,6 +1414,10 @@ function DataEntradaSection({
   )
   const fimPaginaEntrada = Math.min(inicioPaginaEntrada + linhasPaginaEntrada.length, linhasFinanceiro.length)
   const nfsMarcadasFiltradas = linhasFinanceiro.filter((linha) => nfsMarcadas.has(linha.nf.nfId))
+  const financeiroIncompleto =
+    data.tabelas.length === 0 ||
+    data.contratos.length === 0 ||
+    linhasFinanceiro.some((l) => !l.cliente || !data.contratos.some((c) => c.cnpj === l.cliente?.cnpj && c.ativo))
   const todasPaginaMarcadas =
     linhasPaginaEntrada.length > 0 &&
     linhasPaginaEntrada.every((linha) => nfsMarcadas.has(linha.nf.nfId))
@@ -1537,6 +1557,14 @@ function DataEntradaSection({
     <div className="fin-section">
       <div className="sidebar-block">
         <h4>Controle de permanência</h4>
+
+        {financeiroIncompleto && (
+          <p className="error fin-aviso-config">
+            Para calcular a diária, cadastre uma <strong>tabela de cobrança</strong>, um{' '}
+            <strong>contrato</strong> ativo para o cliente (com posição, kilo ou palete marcados) e
+            confira os valores na tabela.
+          </p>
+        )}
 
         {data.clientes.length > 0 && (
           <label className="nf-itens-campo">
