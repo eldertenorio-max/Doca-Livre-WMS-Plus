@@ -109,6 +109,7 @@ describe('calcularCobrancaDetalhada', () => {
     expect(cobranca.valorVigente).toBe(20_845)
     expect(cobranca.detalhes[0]?.valor).toBe(20_845)
     expect(cobranca.total).toBe(20_845)
+    expect(valorCobrancaPeriodo(6, diaria)).toBe(1000.56)
   })
 
   it('cobra posição de palete quando habilitado no contrato', () => {

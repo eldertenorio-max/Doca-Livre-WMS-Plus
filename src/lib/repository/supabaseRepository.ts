@@ -2,6 +2,7 @@ import type { AppState, MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } fro
 import { dataArmazenagemNf, normalizarDataArmazenagemInput } from '../dataArmazenagem'
 import { emitenteKey, normalizarEmitente } from '../emitentesRegistry'
 import { normalizarQuantidadeItensNf } from '../nfeUnidades'
+import { sincronizarPesoBrutoNota } from '../parseNfeXml'
 import { limparMovimentosEntradaOrfaos, podeApagarTodasNotasSemEstoque } from '../movimentos'
 import { loadUiSession, saveUiSession } from '../uiSession'
 import { getSupabase, type CanceladaRow, type EmitenteRow, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
@@ -247,7 +248,8 @@ function mapNotas(
       dataArmazenagem: nf.data_armazenagem ?? undefined,
       createdAt: nf.created_at,
     })
-    return {
+    return (() => {
+    const nota: NotaFiscal = {
     id: nf.id,
     numero: nf.numero,
     serie: nf.serie,
@@ -282,6 +284,9 @@ function mapNotas(
       })),
     ),
   }
+    sincronizarPesoBrutoNota(nota)
+    return nota
+    })()
   })
 }
 

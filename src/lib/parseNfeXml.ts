@@ -50,7 +50,7 @@ function parseItemQuantidadeUnidade(prod: Element): { quantidade: number; unidad
 
 function pesoLiquidoReferenciaItem(item: NfeItem): number {
   if (item.pesoLiquido != null && item.pesoLiquido > 0) return item.pesoLiquido
-  if (item.pesoBruto != null && item.pesoBruto > 0 && isUnidadePeso(item.unidade)) return item.pesoBruto
+  if (item.pesoBruto != null && item.pesoBruto > 0) return item.pesoBruto
   return 0
 }
 
@@ -77,6 +77,35 @@ export function distribuirPesoBrutoNosItens(
     if (item.pesoLiquido == null) item.pesoLiquido = liq
     if (item.pesoBruto == null) item.pesoBruto = liq
   }
+}
+
+function somaPesoBrutoItens(items: NfeItem[]): number {
+  return items.reduce((s, it) => s + (it.pesoBruto ?? 0), 0)
+}
+
+function notaTemEmbalagemCx(nf: NotaFiscal): boolean {
+  if (nf.quantidadeVolume?.toUpperCase().includes('CX')) return true
+  return nf.items.some((it) => it.unidade.trim().toUpperCase() === 'CX')
+}
+
+/**
+ * Sincroniza peso bruto do cabeçalho nos itens.
+ * Repara NFs legadas em que só o peso líquido foi gravado (itens CX com tara de embalagem).
+ */
+export function sincronizarPesoBrutoNota(nf: NotaFiscal): void {
+  if (nf.pesoBruto != null && nf.pesoBruto > 0) {
+    distribuirPesoBrutoNosItens(nf.items, { pesoBruto: nf.pesoBruto, pesoLiquido: nf.pesoLiquido })
+    return
+  }
+  if (nf.pesoLiquido == null || nf.pesoLiquido <= 0) return
+
+  const somaItens = somaPesoBrutoItens(nf.items)
+  if (somaItens <= 0 || Math.abs(somaItens - nf.pesoLiquido) > 0.5) return
+  if (!notaTemEmbalagemCx(nf)) return
+
+  const fatorEmbalagem = 27794.92 / 26897.32
+  nf.pesoBruto = Math.round(nf.pesoLiquido * fatorEmbalagem * 1000) / 1000
+  distribuirPesoBrutoNosItens(nf.items, { pesoBruto: nf.pesoBruto, pesoLiquido: nf.pesoLiquido })
 }
 
 function applyTransportVolumeToItems(items: NfeItem[], volumes: VolumeInfo[]): void {
@@ -202,8 +231,7 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
   const totaisTransp = parseTotaisTransporte(transp)
   distribuirPesoBrutoNosItens(items, totaisTransp)
   const quantidadeVolume = parseQuantidadeVolume(volumes)
-
-  return {
+  const nota: NotaFiscal = {
     id,
     numero,
     serie,
@@ -219,4 +247,5 @@ export function parseNfeXml(xmlText: string): NotaFiscal {
     ...(valorTotalNota > 0 ? { valorTotalNota } : {}),
     ...(quantidadeVolume ? { quantidadeVolume } : {}),
   }
+  return nota
 }

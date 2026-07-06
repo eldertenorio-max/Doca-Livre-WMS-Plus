@@ -131,9 +131,33 @@ function pesoBrutoArmazenagem(
   resumo: ResumoNfArmazenada,
   opts: { pesoBase: number },
 ): number {
-  if (resumo.pesoEntrada > 0) return resumo.pesoEntrada
   if (resumo.pesoBruto > 0) return resumo.pesoBruto
+  if (resumo.pesoEntrada > 0) return resumo.pesoEntrada
   return opts.pesoBase
+}
+
+/** Peso bruto da NF para cobrança (pesoB do XML / cabeçalho), sem usar peso líquido do movimento. */
+export function pesoBrutoReferenciaNf(
+  nf: NotaFiscal,
+  movimentos: MovimentoRegistro[] = [],
+): number {
+  if (nf.pesoBruto != null && nf.pesoBruto > 0) return nf.pesoBruto
+
+  const brutoItens = nf.items.reduce((s, it) => s + (it.pesoBruto ?? 0), 0)
+  const liqItens = nf.items.reduce((s, it) => s + (it.pesoLiquido ?? 0), 0)
+  if (brutoItens > 0 && brutoItens > liqItens + 0.01) return brutoItens
+  if (brutoItens > 0 && nf.pesoLiquido == null) return brutoItens
+
+  const entrada = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id && !m.excluido)
+  if (entrada?.pesoBruto != null && entrada.pesoBruto > 0) return entrada.pesoBruto
+
+  if (nf.pesoLiquido != null && nf.pesoLiquido > 0) return nf.pesoLiquido
+  if (liqItens > 0) return liqItens
+
+  const movPeso = entrada ? pesoMovimentoRegistro(entrada) : 0
+  if (movPeso > 0) return movPeso
+
+  return pesoItensAtualNf(nf)
 }
 
 function fatorTempo(dias: number, ciclo: 'mensal' | 'quinzenal', regra: RegraTempo): number {
@@ -174,10 +198,11 @@ function pesoItensAtualNf(nf: NotaFiscal): number {
 }
 
 function pesoEntradaNf(nf: NotaFiscal, movimentos: MovimentoRegistro[]): number {
+  if (nf.pesoBruto != null && nf.pesoBruto > 0) return nf.pesoBruto
   const entrada = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id && !m.excluido)
+  if (entrada?.pesoBruto != null && entrada.pesoBruto > 0) return entrada.pesoBruto
   const movPeso = entrada ? pesoMovimentoRegistro(entrada) : 0
   if (movPeso > 0) return movPeso
-  if (nf.pesoBruto != null && nf.pesoBruto > 0) return nf.pesoBruto
   if (nf.pesoLiquido != null && nf.pesoLiquido > 0) return nf.pesoLiquido
   return pesoItensAtualNf(nf)
 }
@@ -259,6 +284,7 @@ export function resumirNfArmazenada(
   const saida = dataSaidaNf(nf.id, movimentos)
   const armazenada = nfTemEstoque(nf)
   const saidas = listarSaidasNf(nf.id, movimentos)
+  const pesoBruto = pesoBrutoReferenciaNf(nf, movimentos)
   const pesoEntrada = pesoEntradaNf(nf, movimentos)
   const pesoRestante = armazenada ? pesoRestanteNf(nf, movimentos, pesoEntrada) : 0
   const pesoSaido =
@@ -274,9 +300,9 @@ export function resumirNfArmazenada(
     dataEntrada: entrada,
     dataSaida: armazenada ? null : saida,
     diasArmazenados: diasArmazenados(entrada, armazenada ? null : saida, agora),
-    pesoBruto: nf.pesoBruto ?? pesoEntrada,
+    pesoBruto,
     pesoLiquido: pesoCobranca,
-    pesoEntrada,
+    pesoEntrada: pesoBruto,
     pesoRestante,
     pesoSaido,
     saidas,
