@@ -148,6 +148,7 @@ import { itemMovimentavel, proximoItemMovimentavel } from './lib/movimentacaoIte
 import type { ModoMovimentacao } from './components/EditarPosicaoPanel'
 import type { EntradaItemCampos } from './lib/entradaCampos'
 import { quantidadeEstoqueItem } from './lib/nfeUnidades'
+import { normalizarDataArmazenagemInput } from './lib/dataArmazenagem'
 import type { SaidaItemDraft } from './lib/saidaParcial'
 import type { AddressId, AddressOccupancy, AppState, JustificativaSaidaId, LocalizacaoEstoque, MotivoRemocaoEstoqueId, MovimentoRegistro, NotaFiscal, SaidaXmlDocumento } from './types'
 import {
@@ -1462,12 +1463,14 @@ export default function App() {
   }
 
   function handleUpdateNfDataArmazenagem(nfId: string, dataArmazenagem: string) {
-    if (!dataArmazenagem) return
+    const norm = normalizarDataArmazenagemInput(dataArmazenagem)
+    if (!norm) return
     setState((s) => {
       const next = {
         ...s,
-        notas: s.notas.map((nf) => (nf.id === nfId ? { ...nf, dataArmazenagem } : nf)),
+        notas: s.notas.map((nf) => (nf.id === nfId ? { ...nf, dataArmazenagem: norm } : nf)),
       }
+      stateRef.current = next
       queueMicrotask(() => {
         void saveNow(next, { indicar: false })
       })

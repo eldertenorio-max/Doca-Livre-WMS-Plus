@@ -1,6 +1,7 @@
 import type { MovimentoRegistro, NotaFiscal } from '../../types'
 import type { ContratoCliente, RegraTempo, TabelaCobranca } from './types'
 import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../saidaParcial'
+import { dataArmazenagemNf, normalizarDataArmazenagemInput } from '../dataArmazenagem'
 
 export type SaidaNfFinanceiro = {
   id: string
@@ -197,9 +198,11 @@ function totalCaixasNf(nf: NotaFiscal): number {
 }
 
 function dataEntradaNf(nf: NotaFiscal, movimentos: MovimentoRegistro[]): string {
-  if (nf.dataArmazenagem) return nf.dataArmazenagem
+  const armazenagem = dataArmazenagemNf(nf)
+  if (armazenagem) return armazenagem
   const mov = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id)
-  return mov?.createdAt ?? nf.createdAt
+  const fallback = mov?.createdAt ?? nf.createdAt
+  return normalizarDataArmazenagemInput(fallback) ?? fallback
 }
 
 function dataSaidaNf(nfId: string, movimentos: MovimentoRegistro[]): string | null {

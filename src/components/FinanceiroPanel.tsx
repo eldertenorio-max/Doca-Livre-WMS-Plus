@@ -10,6 +10,7 @@ import {
   resumirClienteFinanceiro,
   resumirNfArmazenada,
 } from '../lib/financeiro/calculo'
+import { dataArmazenagemNf } from '../lib/dataArmazenagem'
 import { contratoAtivoCliente, tabelaById } from '../lib/financeiro/clientes'
 import { downloadTextFile } from '../lib/relatorioEstoque'
 import type {
@@ -1738,7 +1739,9 @@ function DataEntradaSection({
                       <input
                         type="date"
                         className="input-nf input-nf--compact fin-data-armazenagem-input"
-                        value={dateInputValue(linha.nota?.dataArmazenagem ?? nf.dataEntrada)}
+                        value={dateInputValue(
+                          dataArmazenagemNf(linha.nota ?? {}) ?? nf.dataEntrada,
+                        )}
                         onChange={(e) => onUpdateNotaDataArmazenagem(nf.nfId, e.target.value)}
                       />
                     </div>

@@ -1,4 +1,5 @@
 import type { AppState, MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../../types'
+import { dataArmazenagemNf, normalizarDataArmazenagemInput } from '../dataArmazenagem'
 import { emitenteKey, normalizarEmitente } from '../emitentesRegistry'
 import { normalizarQuantidadeItensNf } from '../nfeUnidades'
 import { limparMovimentosEntradaOrfaos, podeApagarTodasNotasSemEstoque } from '../movimentos'
@@ -36,7 +37,14 @@ function nfUpsertRow(nf: NotaFiscal) {
   const row = {
     ...base,
     ...(omitNfCnpjField ? {} : { emitente_cnpj: nf.emitenteCnpj ?? null }),
-    ...(omitNfDataArmazenagemField ? {} : { data_armazenagem: nf.dataArmazenagem ?? nf.createdAt?.slice(0, 10) ?? null }),
+    ...(omitNfDataArmazenagemField
+      ? {}
+      : {
+          data_armazenagem:
+            normalizarDataArmazenagemInput(nf.dataArmazenagem ?? '') ??
+            dataArmazenagemNf(nf) ??
+            null,
+        }),
   }
   if (omitNfCommercialFields) return row
   return {
@@ -234,7 +242,12 @@ function mapNotas(
     itensByNf.set(it.nf_id, list)
   }
 
-  return rows.map((nf) => ({
+  return rows.map((nf) => {
+    const dataArm = dataArmazenagemNf({
+      dataArmazenagem: nf.data_armazenagem ?? undefined,
+      createdAt: nf.created_at,
+    })
+    return {
     id: nf.id,
     numero: nf.numero,
     serie: nf.serie,
@@ -242,7 +255,7 @@ function mapNotas(
     emitente: nf.emitente,
     ...(nf.emitente_cnpj ? { emitenteCnpj: nf.emitente_cnpj } : {}),
     dataEmissao: nf.data_emissao,
-    ...(nf.data_armazenagem ? { dataArmazenagem: nf.data_armazenagem } : {}),
+    ...(dataArm ? { dataArmazenagem: dataArm } : {}),
     status: nf.status,
     createdAt: nf.created_at,
     ...(nf.peso_bruto != null ? { pesoBruto: Number(nf.peso_bruto) } : {}),
@@ -268,7 +281,8 @@ function mapNotas(
         ...(it.localizacao === 'stage' ? { localizacao: 'stage' as const } : {}),
       })),
     ),
-  }))
+  }
+  })
 }
 
 function mapMovimentos(rows: MovRow[]): MovimentoRegistro[] {

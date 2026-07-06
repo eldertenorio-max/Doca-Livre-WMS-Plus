@@ -11,6 +11,7 @@ import {
 } from './movimentos'
 import { syncVinculosNotas } from './nfCanceladas'
 import { emitentesFromPersisted } from './emitentesRegistry'
+import { dataArmazenagemNf } from './dataArmazenagem'
 import type { NotaFiscal, PersistedData } from '../types'
 
 function normalizarStatusNotas(notas: NotaFiscal[]): NotaFiscal[] {
@@ -19,7 +20,7 @@ function normalizarStatusNotas(notas: NotaFiscal[]): NotaFiscal[] {
   // destino do item não some com o painel da entrada em andamento.
   return sanitizarNotasEntrada(notas).map((nf) => ({
     ...nf,
-    dataArmazenagem: nf.dataArmazenagem ?? nf.createdAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    dataArmazenagem: dataArmazenagemNf(nf) ?? new Date().toISOString().slice(0, 10),
   }))
 }
 
