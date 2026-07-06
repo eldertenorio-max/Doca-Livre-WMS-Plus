@@ -222,6 +222,24 @@ export function SaidaPanel({
         )}
       </div>
 
+      {nfBusca && (
+        <div className="sidebar-block saida-data-block">
+          <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
+            <span>Data da saída</span>
+            <input
+              type="date"
+              className="input-nf input-nf--compact nf-data-armazenagem-input"
+              value={dataSaidaInput}
+              onChange={(e) => onDataSaidaChange(e.target.value)}
+              disabled={modoPalete}
+            />
+          </label>
+          <p className="muted saida-data-hint">
+            Informe quando a mercadoria saiu do armazém. O registro no sistema pode ser feito depois.
+          </p>
+        </div>
+      )}
+
       {modoBusca === 'xml' && saidaXml && (
         <div className="sidebar-block nf-detail saida-xml-doc">
           <h3 className="nf-section-title nf-section-title--sm">NF de saída {saidaXml.numero}</h3>
@@ -381,19 +399,6 @@ export function SaidaPanel({
               </div>
             )}
           </dl>
-
-          <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
-            <span>Data da saída</span>
-            <input
-              type="date"
-              className="input-nf input-nf--compact nf-data-armazenagem-input"
-              value={dataSaidaInput}
-              onChange={(e) => onDataSaidaChange(e.target.value)}
-            />
-          </label>
-          <p className="muted saida-data-hint">
-            Informe quando a mercadoria saiu do armazém. O registro no sistema pode ser feito depois.
-          </p>
 
           {saidaXml ? (
             <>

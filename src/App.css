@@ -6264,6 +6264,12 @@ html.scroll-locked .sidebar.sidebar--wide {
   max-width: 240px;
 }
 
+.saida-data-block {
+  margin-top: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+}
+
 .saida-data-hint {
   margin: 0 0 10px;
   font-size: 0.85rem;
