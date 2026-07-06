@@ -1,8 +1,10 @@
 import { nfTemEnderecos } from './movimentos'
 import { nfTemEstoqueStage } from './stageEstoque'
 import { itemNoStage } from '../layout/stage'
-import { quantidadeEstoqueItem, unidadeEstoqueItem } from './nfeUnidades'
+import { corrigirQuantidadeItemSePeso, quantidadeEstoqueItem, unidadeEstoqueItem } from './nfeUnidades'
 import type { NfeItem, NotaFiscal, SaidaXmlDocumento } from '../types'
+
+export type SaidaOrigemVinculo = 'armazem' | 'stage'
 
 export type VinculoSaidaXmlResult = {
   limitesPorItem: Record<number, number>
@@ -16,12 +18,29 @@ function normCodigo(codigo: string): string {
   return semZeros || t
 }
 
+function itemNormalizadoParaVinculo(item: NfeItem): NfeItem {
+  return corrigirQuantidadeItemSePeso(item)
+}
+
+function itemComEstoqueVinculo(item: NfeItem, origem: SaidaOrigemVinculo): boolean {
+  const norm = itemNormalizadoParaVinculo(item)
+  const qtd = quantidadeEstoqueItem(norm)
+  if (qtd <= 1e-9) return false
+  if (origem === 'stage') return itemNoStage(norm)
+  return !itemNoStage(norm) && norm.allocatedAddresses.length > 0
+}
+
+function itensEstoqueOrigem(origem: NotaFiscal, origemEstoque: SaidaOrigemVinculo): NfeItem[] {
+  return origem.items.filter((it) => itemComEstoqueVinculo(it, origemEstoque))
+}
+
 function quantidadesXmlPorCodigo(doc: SaidaXmlDocumento): Map<string, number> {
   const map = new Map<string, number>()
   for (const item of doc.items) {
     const cod = normCodigo(item.codigo)
     if (!cod) continue
-    map.set(cod, (map.get(cod) ?? 0) + quantidadeEstoqueItem(item))
+    const norm = itemNormalizadoParaVinculo(item)
+    map.set(cod, (map.get(cod) ?? 0) + quantidadeEstoqueItem(norm))
   }
   return map
 }
@@ -93,13 +112,8 @@ export function resolverReferenciasSaida(
  * quando a mercadoria referenciada está no stage.
  */
 export function saidaXmlCorrespondeNf(nf: NotaFiscal, doc: SaidaXmlDocumento): boolean {
-  const xmlCods = quantidadesXmlPorCodigo(doc)
-  if (xmlCods.size === 0) return false
-  return nf.items.some((it) => {
-    const cod = normCodigo(it.codigo)
-    if (!cod || !xmlCods.has(cod)) return false
-    return it.allocatedAddresses.length > 0 || itemNoStage(it)
-  })
+  if (vincularSaidaXmlOrigem(nf, doc, 'armazem').itensExibicao.length > 0) return true
+  return vincularSaidaXmlOrigem(nf, doc, 'stage').itensExibicao.length > 0
 }
 
 export function sugerirOrigemSaida(
@@ -122,9 +136,9 @@ export function sugerirOrigemSaida(
 
   const candidatos = comEstoque.filter((nf) => {
     const origCodigos = new Set(
-      nf.items
-        .filter((it) => it.allocatedAddresses.length > 0)
-        .map((it) => normCodigo(it.codigo)),
+      [...itensEstoqueOrigem(nf, 'armazem'), ...itensEstoqueOrigem(nf, 'stage')].map((it) =>
+        normCodigo(it.codigo),
+      ),
     )
     return xmlCodigos.every((c) => origCodigos.has(c))
   })
@@ -135,22 +149,23 @@ export function sugerirOrigemSaida(
 export function vincularSaidaXmlOrigem(
   origem: NotaFiscal,
   doc: SaidaXmlDocumento,
+  origemEstoque: SaidaOrigemVinculo = 'armazem',
 ): VinculoSaidaXmlResult {
   const avisos: string[] = []
   const limitesPorItem: Record<number, number> = {}
   const itensExibicao: NfeItem[] = []
   const usadoPorItem = new Map<number, number>()
 
-  const estoqueOrigem = origem.items.filter((it) => it.allocatedAddresses.length > 0)
+  const estoqueOrigem = itensEstoqueOrigem(origem, origemEstoque)
 
   for (const xmlItem of doc.items) {
     const cod = normCodigo(xmlItem.codigo)
-    const qtdXml = quantidadeEstoqueItem(xmlItem)
+    const qtdXml = quantidadeEstoqueItem(itemNormalizadoParaVinculo(xmlItem))
     if (!cod || qtdXml <= 1e-9) continue
 
     const origItem = estoqueOrigem.find((it) => {
       if (normCodigo(it.codigo) !== cod) return false
-      const qtdEstoque = quantidadeEstoqueItem(it)
+      const qtdEstoque = quantidadeEstoqueItem(itemNormalizadoParaVinculo(it))
       const jaUsado = usadoPorItem.get(it.index) ?? 0
       return jaUsado < qtdEstoque - 1e-9
     })
@@ -162,14 +177,15 @@ export function vincularSaidaXmlOrigem(
       continue
     }
 
-    const qtdEstoque = quantidadeEstoqueItem(origItem)
+    const normOrig = itemNormalizadoParaVinculo(origItem)
+    const qtdEstoque = quantidadeEstoqueItem(normOrig)
     const jaUsado = usadoPorItem.get(origItem.index) ?? 0
     const disponivel = qtdEstoque - jaUsado
     const limite = Math.min(qtdXml, disponivel)
 
     if (qtdXml > disponivel + 1e-9) {
       avisos.push(
-        `${origItem.codigo}: XML pede ${qtdXml} ${unidadeEstoqueItem(origItem)}, mas há ${disponivel} disponível nesta linha de estoque.`,
+        `${origItem.codigo}: XML pede ${qtdXml} ${unidadeEstoqueItem(normOrig)}, mas há ${disponivel} disponível nesta linha de estoque.`,
       )
     }
 
@@ -187,4 +203,19 @@ export function vincularSaidaXmlOrigem(
 
   itensExibicao.sort((a, b) => a.index - b.index)
   return { limitesPorItem, itensExibicao, avisos }
+}
+
+/** Escolhe armazém ou stage conforme onde o XML consegue vincular itens. */
+export function origemEstoqueParaSaidaXml(
+  nf: NotaFiscal,
+  doc: SaidaXmlDocumento,
+): SaidaOrigemVinculo | null {
+  const arm = vincularSaidaXmlOrigem(nf, doc, 'armazem')
+  const stage = vincularSaidaXmlOrigem(nf, doc, 'stage')
+  const okArm = arm.itensExibicao.length > 0
+  const okStage = stage.itensExibicao.length > 0
+  if (okArm && !okStage) return 'armazem'
+  if (okStage && !okArm) return 'stage'
+  if (okArm && okStage) return 'armazem'
+  return null
 }

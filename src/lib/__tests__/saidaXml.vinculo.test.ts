@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NotaFiscal, SaidaXmlDocumento } from '../../types'
-import { vincularSaidaXmlOrigem } from '../saidaXml'
+import { saidaXmlCorrespondeNf, vincularSaidaXmlOrigem } from '../saidaXml'
 import { proximoItemSaidaPendente } from '../saidaParcial'
 
 const nfOrigem = (): NotaFiscal => ({
@@ -60,7 +60,7 @@ const xmlDoisItens = (): SaidaXmlDocumento => ({
 
 describe('vincularSaidaXmlOrigem', () => {
   it('vincula dois itens distintos do XML às linhas de estoque corretas', () => {
-    const v = vincularSaidaXmlOrigem(nfOrigem(), xmlDoisItens())
+    const v = vincularSaidaXmlOrigem(nfOrigem(), xmlDoisItens(), 'armazem')
 
     expect(v.itensExibicao).toHaveLength(2)
     expect(v.itensExibicao.map((i) => i.index)).toEqual([0, 1])
@@ -111,11 +111,111 @@ describe('vincularSaidaXmlOrigem', () => {
       ],
     }
 
-    const v = vincularSaidaXmlOrigem(origem, doc)
+    const v = vincularSaidaXmlOrigem(origem, doc, 'armazem')
 
     expect(v.itensExibicao).toHaveLength(2)
     expect(v.limitesPorItem[0]).toBe(30)
     expect(v.limitesPorItem[1]).toBe(25)
+  })
+
+  it('vincula item no stage quando origem é stage', () => {
+    const origem = nfOrigem()
+    origem.items = [
+      {
+        index: 1,
+        codigo: '5035900',
+        descricao: 'COXA CX20KG',
+        quantidade: 330,
+        unidade: 'CX',
+        allocatedAddresses: [],
+        localizacao: 'stage',
+        pesoBruto: 6600,
+        pesoLiquido: 6600,
+      },
+    ]
+    const doc: SaidaXmlDocumento = {
+      ...xmlDoisItens(),
+      items: [
+        {
+          index: 0,
+          codigo: '5035900',
+          descricao: 'COXA',
+          quantidade: 200,
+          unidade: 'CX',
+          allocatedAddresses: [],
+        },
+      ],
+    }
+
+    expect(vincularSaidaXmlOrigem(origem, doc, 'armazem').itensExibicao).toHaveLength(0)
+    const v = vincularSaidaXmlOrigem(origem, doc, 'stage')
+    expect(v.itensExibicao).toHaveLength(1)
+    expect(v.limitesPorItem[1]).toBe(200)
+    expect(v.avisos).toHaveLength(0)
+  })
+
+  it('normaliza quantidade KG→CX na origem (NF 5035900)', () => {
+    const origem = nfOrigem()
+    origem.items = [
+      {
+        index: 1,
+        codigo: '5035900',
+        descricao: '9140 - COXA E SOBRECOXA CARNE FGO CON PCT CX20KG STA CEC',
+        quantidade: 6600,
+        unidade: 'KG',
+        allocatedAddresses: ['B1'],
+        pesoBruto: 6600,
+        pesoLiquido: 6600,
+      },
+    ]
+    const doc: SaidaXmlDocumento = {
+      ...xmlDoisItens(),
+      items: [
+        {
+          index: 0,
+          codigo: '5035900',
+          descricao: 'COXA',
+          quantidade: 200,
+          unidade: 'CX',
+          allocatedAddresses: [],
+        },
+      ],
+    }
+
+    const v = vincularSaidaXmlOrigem(origem, doc, 'armazem')
+    expect(v.itensExibicao).toHaveLength(1)
+    expect(v.limitesPorItem[1]).toBe(200)
+  })
+})
+
+describe('saidaXmlCorrespondeNf', () => {
+  it('retorna true quando só há estoque no stage para o código do XML', () => {
+    const origem = nfOrigem()
+    origem.items = [
+      {
+        index: 1,
+        codigo: '5035900',
+        descricao: 'COXA',
+        quantidade: 330,
+        unidade: 'CX',
+        allocatedAddresses: [],
+        localizacao: 'stage',
+      },
+    ]
+    const doc: SaidaXmlDocumento = {
+      ...xmlDoisItens(),
+      items: [
+        {
+          index: 0,
+          codigo: '5035900',
+          descricao: 'COXA',
+          quantidade: 100,
+          unidade: 'CX',
+          allocatedAddresses: [],
+        },
+      ],
+    }
+    expect(saidaXmlCorrespondeNf(origem, doc)).toBe(true)
   })
 })
 

@@ -609,8 +609,8 @@ export default function App() {
   const notasOrigemSaida = useMemo(() => notasDisponiveisParaSaida(state.notas), [state.notas])
   const saidaVinculo = useMemo(() => {
     if (!nfBuscaSaida || !saidaXmlDoc) return null
-    return vincularSaidaXmlOrigem(nfBuscaSaida, saidaXmlDoc)
-  }, [nfBuscaSaida, saidaXmlDoc])
+    return vincularSaidaXmlOrigem(nfBuscaSaida, saidaXmlDoc, saidaOrigemEstoque)
+  }, [nfBuscaSaida, saidaXmlDoc, saidaOrigemEstoque])
   const saidaItensExibicao = useMemo(() => {
     if (!nfBuscaSaida) return []
     if (saidaOrigemEstoque === 'stage') {
@@ -1844,6 +1844,39 @@ export default function App() {
   function resolverDestinoSaida(nf: NotaFiscal): boolean {
     const temArmazem = nfTemEstoqueArmazem(nf)
     const temStage = nfTemEstoqueStage(nf)
+
+    if (saidaXmlDoc) {
+      const vArm = vincularSaidaXmlOrigem(nf, saidaXmlDoc, 'armazem')
+      const vStage = vincularSaidaXmlOrigem(nf, saidaXmlDoc, 'stage')
+      const okArm = vArm.itensExibicao.length > 0
+      const okStage = vStage.itensExibicao.length > 0
+
+      if (!okArm && !okStage) {
+        setBuscaErro(
+          vArm.avisos[0] ??
+            vStage.avisos[0] ??
+            mensagemNfSemEstoqueVisivel(nf, state.movimentos),
+        )
+        setNfBuscaSaidaId(null)
+        limparEstadoSaida()
+        return false
+      }
+
+      if (okArm && okStage && temArmazem && temStage) {
+        saveSaidaDestinoPendenteId(nf.id)
+        setSaidaDestinoPendente(nf)
+        return false
+      }
+
+      if (okStage && (!okArm || !temArmazem)) {
+        aplicarBuscaSaida(nf, 'stage')
+        return true
+      }
+
+      aplicarBuscaSaida(nf, 'armazem')
+      return true
+    }
+
     if (temArmazem && temStage) {
       saveSaidaDestinoPendenteId(nf.id)
       setSaidaDestinoPendente(nf)
