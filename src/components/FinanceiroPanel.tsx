@@ -72,7 +72,7 @@ type Props = {
   saving: boolean
   error: string | null
   onUpdate: (updater: (prev: FinanceiroData) => FinanceiroData) => void
-  onSaveNow: () => Promise<void>
+  onSaveNow: (snapshot?: FinanceiroData) => Promise<void>
   onUpdateNotaDataArmazenagem: (nfId: string, data: string) => void
 }
 
@@ -371,24 +371,26 @@ function TabelaCobrancaSection({
         ? (data.tabelas.find((t) => t.id === editId)?.criadoEm ?? new Date().toISOString())
         : new Date().toISOString(),
     }
-    onUpdate((prev) => ({
-      ...prev,
+    const next: FinanceiroData = {
+      ...data,
       tabelas: editId
-        ? prev.tabelas.map((t) => (t.id === editId ? tabela : t))
-        : [tabela, ...prev.tabelas],
-    }))
+        ? data.tabelas.map((t) => (t.id === editId ? tabela : t))
+        : [tabela, ...data.tabelas],
+    }
+    onUpdate(() => next)
     resetForm()
-    void onSaveNow()
+    void onSaveNow(next)
   }
 
   function handleExcluir(id: string) {
     if (data.contratos.some((c) => c.tabelaId === id)) return
-    onUpdate((prev) => ({
-      ...prev,
-      tabelas: prev.tabelas.filter((t) => t.id !== id),
-    }))
+    const next: FinanceiroData = {
+      ...data,
+      tabelas: data.tabelas.filter((t) => t.id !== id),
+    }
+    onUpdate(() => next)
     if (editId === id) resetForm()
-    void onSaveNow()
+    void onSaveNow(next)
   }
 
   return (
@@ -582,37 +584,37 @@ function ContratoSection({
         : new Date().toISOString(),
     }
 
-    onUpdate((prev) => {
-      const clientes = prev.clientes.some((c) => c.cnpj === cnpjNorm)
-        ? prev.clientes
-        : [
-            {
-              cnpj: cnpjNorm,
-              razaoSocial: razaoTrim,
-              origem: 'manual' as const,
-              criadoEm: new Date().toISOString(),
-            },
-            ...prev.clientes,
-          ]
-      return {
-        ...prev,
-        clientes,
-        contratos: editId
-          ? prev.contratos.map((c) => (c.id === editId ? contrato : c))
-          : [contrato, ...prev.contratos],
-      }
-    })
+    const clientes = data.clientes.some((c) => c.cnpj === cnpjNorm)
+      ? data.clientes
+      : [
+          {
+            cnpj: cnpjNorm,
+            razaoSocial: razaoTrim,
+            origem: 'manual' as const,
+            criadoEm: new Date().toISOString(),
+          },
+          ...data.clientes,
+        ]
+    const next: FinanceiroData = {
+      ...data,
+      clientes,
+      contratos: editId
+        ? data.contratos.map((c) => (c.id === editId ? contrato : c))
+        : [contrato, ...data.contratos],
+    }
+    onUpdate(() => next)
     resetForm()
-    void onSaveNow()
+    void onSaveNow(next)
   }
 
   function handleExcluir(id: string) {
-    onUpdate((prev) => ({
-      ...prev,
-      contratos: prev.contratos.filter((c) => c.id !== id),
-    }))
+    const next: FinanceiroData = {
+      ...data,
+      contratos: data.contratos.filter((c) => c.id !== id),
+    }
+    onUpdate(() => next)
     if (editId === id) resetForm()
-    void onSaveNow()
+    void onSaveNow(next)
   }
 
   return (
@@ -825,10 +827,14 @@ function ClientesSection({
       origem: 'manual',
       criadoEm: new Date().toISOString(),
     }
-    onUpdate((prev) => ({ ...prev, clientes: [novo, ...prev.clientes] }))
+    const next: FinanceiroData = {
+      ...data,
+      clientes: [novo, ...data.clientes],
+    }
+    onUpdate(() => next)
     setCnpjManual('')
     setRazaoManual('')
-    void onSaveNow()
+    void onSaveNow(next)
   }
 
   return (

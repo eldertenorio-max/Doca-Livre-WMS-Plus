@@ -86,16 +86,15 @@ const TABELAS_ESTOQUE = [
   ['ultrafrio_notas_fiscais', 'id'],
 ]
 
-/** Financeiro (clientes/contratos gerados pelas NFs). */
+/** Financeiro derivado das NFs (clientes/contratos). Tabelas de cobrança são mantidas. */
 const TABELAS_FINANCEIRO = [
   ['ultrafrio_fin_contratos', 'id'],
   ['ultrafrio_fin_clientes', 'cnpj'],
-  ['ultrafrio_fin_tabelas', 'id'],
 ]
 
 async function main() {
   const contagensAntes = {}
-  for (const [table] of [...TABELAS_ESTOQUE, ...TABELAS_FINANCEIRO]) {
+  for (const [table] of [...TABELAS_ESTOQUE, ...TABELAS_FINANCEIRO, ['ultrafrio_fin_tabelas']]) {
     contagensAntes[table] = await contarOpcional(table)
   }
 
@@ -115,7 +114,7 @@ async function main() {
   console.log(`NFs canceladas: ${contagensAntes['ultrafrio_notas_canceladas']}`)
   console.log(`Fin. clientes: ${contagensAntes['ultrafrio_fin_clientes']}`)
   console.log(`Fin. contratos: ${contagensAntes['ultrafrio_fin_contratos']}`)
-  console.log(`Fin. tabelas: ${contagensAntes['ultrafrio_fin_tabelas']}`)
+  console.log(`Fin. tabelas: ${contagensAntes['ultrafrio_fin_tabelas']} (mantidas no reset)`)
   console.log('Cadastro de remetentes: mantido')
 
   if (dryRun) {
@@ -138,7 +137,7 @@ async function main() {
   }
 
   const contagensDepois = {}
-  for (const [table] of [...TABELAS_ESTOQUE, ...TABELAS_FINANCEIRO]) {
+  for (const [table] of [...TABELAS_ESTOQUE, ...TABELAS_FINANCEIRO, ['ultrafrio_fin_tabelas']]) {
     contagensDepois[table] = await contarOpcional(table)
   }
 
@@ -150,14 +149,22 @@ async function main() {
   console.log(`Canceladas: ${contagensDepois['ultrafrio_notas_canceladas']}`)
   console.log(`Fin. clientes: ${contagensDepois['ultrafrio_fin_clientes']}`)
   console.log(`Fin. contratos: ${contagensDepois['ultrafrio_fin_contratos']}`)
+  console.log(`Fin. tabelas: ${contagensDepois['ultrafrio_fin_tabelas']} (mantidas)`)
 
-  const restante = Object.values(contagensDepois).reduce((s, n) => s + n, 0)
+  const restante =
+    contagensDepois['ultrafrio_movimentos'] +
+    contagensDepois['ultrafrio_notas_fiscais'] +
+    contagensDepois['ultrafrio_nf_itens'] +
+    contagensDepois['ultrafrio_enderecamentos'] +
+    contagensDepois['ultrafrio_notas_canceladas'] +
+    contagensDepois['ultrafrio_fin_clientes'] +
+    contagensDepois['ultrafrio_fin_contratos']
   if (restante > 0) {
     console.error('\nERRO: ainda há registros. Verifique RLS ou use o SQL em supabase/sql/reset_tudo.sql')
     process.exit(1)
   }
 
-  console.log('\nPronto. Homologação e produção compartilham este banco — os dois ficam vazios.')
+  console.log('\nPronto. Estoque e histórico zerados; tabelas de cobrança mantidas.')
   console.log('IMPORTANTE: feche TODAS as abas do WMS antes do reset; abas abertas regravam o estoque na nuvem.')
   console.log('1. Feche TODAS as abas do WMS (homolog e produção).')
   console.log('2. Abra de novo e use Ctrl+Shift+R (limpa cache do site).')

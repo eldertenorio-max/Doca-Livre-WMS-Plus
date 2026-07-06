@@ -1,7 +1,7 @@
 import { getSupabase } from '../../supabaseClient'
 import type { ClienteFinanceiro, ContratoCliente, TabelaCobranca } from '../types'
 import { financeiroVazio } from '../types'
-import type { FinanceiroRepository } from './types'
+import type { FinanceiroRepository, FinanceiroSaveOptions } from './types'
 
 type TabelaRow = {
   id: string
@@ -127,6 +127,7 @@ async function syncTable<T extends { id: string }>(
   table: string,
   items: T[],
   toRow: (item: T) => Record<string, unknown>,
+  opts?: FinanceiroSaveOptions,
 ): Promise<void> {
   const sb = getSupabase()
   const { data: existing, error: loadErr } = await sb.from(table).select('id')
@@ -139,6 +140,9 @@ async function syncTable<T extends { id: string }>(
     .map((r) => r.id)
     .filter((id) => !keep.has(id))
   if (toDelete.length) {
+    if (items.length === 0 && !opts?.permitirListaVazia) {
+      return
+    }
     const { error } = await sb.from(table).delete().in('id', toDelete)
     if (error) throw new Error(error.message)
   }
@@ -211,9 +215,9 @@ export const supabaseFinanceiroRepository: FinanceiroRepository = {
     }
   },
 
-  async save(data) {
-    await syncTable('ultrafrio_fin_tabelas', data.tabelas, tabelaUpsertRow)
+  async save(data, opts) {
+    await syncTable('ultrafrio_fin_tabelas', data.tabelas, tabelaUpsertRow, opts)
     await syncClientes(data.clientes)
-    await syncTable('ultrafrio_fin_contratos', data.contratos, contratoUpsertRow)
+    await syncTable('ultrafrio_fin_contratos', data.contratos, contratoUpsertRow, opts)
   },
 }
