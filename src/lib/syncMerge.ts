@@ -1,4 +1,5 @@
 import { todosItensEnderecados } from './excluirItemNf'
+import { contarEnderecosPersistidos } from './movimentos'
 import { itemEnderecamentoCompleto } from './paletes'
 import type { MovimentoRegistro, NotaFiscal, NfeItem, PersistedData } from '../types'
 
@@ -285,6 +286,19 @@ export function pickPersisted(state: {
 
 export function persistedEquals(a: PersistedData, b: PersistedData): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/** Remoto atrasado (ex.: leitura antes do upsert propagar) — não substituir o estado local. */
+export function remoteRegressedVersusLocal(local: PersistedData, remote: PersistedData): boolean {
+  const remoteNfIds = new Set(remote.notas.map((n) => n.id))
+  for (const nf of local.notas) {
+    if (!remoteNfIds.has(nf.id)) return true
+  }
+  const remoteMovIds = new Set(remote.movimentos.map((m) => m.id))
+  for (const mov of local.movimentos) {
+    if (!remoteMovIds.has(mov.id)) return true
+  }
+  return contarEnderecosPersistidos(remote) < contarEnderecosPersistidos(local)
 }
 
 /** Mescla base → local vs remoto: alterações locais prevalecem; o restante vem da nuvem. */

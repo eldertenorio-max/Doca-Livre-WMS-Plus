@@ -803,7 +803,15 @@ export default function App() {
             nf,
           )
           if (resultado) {
-            const nextState = { ...stateRef.current, ...resultado.data }
+            const nota = resultado.nota
+            const nextState = {
+              ...stateRef.current,
+              ...resultado.data,
+              ...(nota.status === 'em_andamento'
+                ? { activeNfId: nota.id, activeItemIndex: nota.items[0]?.index ?? 0 }
+                : {}),
+            }
+            stateRef.current = nextState
             setState(nextState)
             movimentos = resultado.data.movimentos
             acumulado.splice(0, acumulado.length, ...resultado.data.notas)
@@ -868,16 +876,21 @@ export default function App() {
 
   async function handleEntradaDestinoConfirm(localizacao: LocalizacaoEstoque) {
     if (!entradaDestinoPendente) return
-    const { imported, movimentos } = entradaDestinoPendente
+    const { imported } = entradaDestinoPendente
     const snapshot = stateRef.current
     const nfsComDestino = imported.map((nf) => aplicarLocalizacaoNf(nf, localizacao))
+    let movimentos = snapshot.movimentos
+    for (const nf of nfsComDestino) {
+      movimentos = upsertMovimentoEntrada(movimentos, nf)
+    }
     const nextState = {
       ...snapshot,
-      notas: [...nfsComDestino, ...snapshot.notas],
+      notas: [...nfsComDestino, ...snapshot.notas.filter((n) => !nfsComDestino.some((nf) => nf.id === n.id))],
       movimentos,
       activeNfId: nfsComDestino[0].id,
       activeItemIndex: nfsComDestino[0].items[0]?.index ?? 0,
     }
+    stateRef.current = nextState
     setState(nextState)
     setPendingSelection(new Set())
     setSelectedEntradaIds(nfsComDestino.map((nf) => nf.id))

@@ -28,6 +28,7 @@ import {
   pickPersisted,
   protegerNotasContraRegressao,
   protegerPersistedContraRegressao,
+  remoteRegressedVersusLocal,
 } from '../lib/syncMerge'
 import type { AppState, PersistedData } from '../types'
 import type { StorageMode } from '../lib/repository/types'
@@ -131,7 +132,11 @@ function preserveUi(
     ) {
       notas = [prevNf, ...notas.filter((n) => n.id !== activeNfId)]
     } else if (!inMerged) {
-      activeNfId = null
+      if (prevNf?.status === 'em_andamento') {
+        notas = [prevNf, ...notas.filter((n) => n.id !== activeNfId)]
+      } else {
+        activeNfId = null
+      }
     }
   }
 
@@ -497,7 +502,18 @@ export function useEnderecamentoStore() {
         return
       }
 
-      const trustRemote = base !== null && persistedEquals(localNow, base)
+      const trustRemote =
+        base !== null &&
+        persistedEquals(localNow, base) &&
+        !remoteRegressedVersusLocal(localNow, remoteMergedNormalized)
+
+      if (
+        base !== null &&
+        persistedEquals(localNow, base) &&
+        remoteRegressedVersusLocal(localNow, remoteMergedNormalized)
+      ) {
+        return
+      }
 
       if (
         trustRemote &&
