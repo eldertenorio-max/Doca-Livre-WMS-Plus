@@ -404,15 +404,6 @@ export function SaidaPanel({
           )}
 
           <div className="saida-itens-section-head">
-            <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
-              <span>Data da saída</span>
-              <input
-                type="date"
-                className="input-nf input-nf--compact nf-data-armazenagem-input"
-                value={dataSaidaInput}
-                onChange={(e) => onDataSaidaChange(e.target.value)}
-              />
-            </label>
             <div className="saida-itens-section-copy">
               <h4 className="nf-section-title nf-section-title--sm">Itens da saída</h4>
               <p className="muted nf-itens-intro saida-itens-intro">
@@ -423,6 +414,15 @@ export function SaidaPanel({
                     : 'Clique no item que vai sair (linha fica verde). Informe os paletes abaixo de cada item.'}
               </p>
             </div>
+            <label className="nf-itens-campo entrada-data-armazenagem-row saida-data-row">
+              <span>Data da saída</span>
+              <input
+                type="date"
+                className="input-nf input-nf--compact nf-data-armazenagem-input"
+                value={dataSaidaInput}
+                onChange={(e) => onDataSaidaChange(e.target.value)}
+              />
+            </label>
           </div>
 
           {origemEstoque === 'stage' ? (
