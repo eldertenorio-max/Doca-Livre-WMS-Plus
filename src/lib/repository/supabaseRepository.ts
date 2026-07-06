@@ -1,5 +1,6 @@
 import type { AppState, MovimentoRegistro, NotaFiscal, NotaFiscalCancelada } from '../../types'
 import { emitenteKey, normalizarEmitente } from '../emitentesRegistry'
+import { corrigirQuantidadeItemSePeso } from '../nfeUnidades'
 import { limparMovimentosEntradaOrfaos, podeApagarTodasNotasSemEstoque } from '../movimentos'
 import { loadUiSession, saveUiSession } from '../uiSession'
 import { getSupabase, type CanceladaRow, type EmitenteRow, type EndRow, type ItemRow, type MovRow, type NfRow } from '../supabaseClient'
@@ -248,23 +249,25 @@ function mapNotas(
     ...(nf.peso_liquido != null ? { pesoLiquido: Number(nf.peso_liquido) } : {}),
     ...(nf.valor_total_nota != null ? { valorTotalNota: Number(nf.valor_total_nota) } : {}),
     ...(nf.quantidade_volume ? { quantidadeVolume: nf.quantidade_volume } : {}),
-    items: (itensByNf.get(nf.id) ?? []).map((it) => ({
-      index: it.item_index,
-      codigo: it.codigo,
-      descricao: it.descricao,
-      quantidade: Number(it.quantidade),
-      unidade: it.unidade,
-      allocatedAddresses: endByItem.get(`${nf.id}:${it.item_index}`) ?? [],
-      ...(it.peso_bruto != null ? { pesoBruto: Number(it.peso_bruto) } : {}),
-      ...(it.valor_unitario != null ? { valorUnitario: Number(it.valor_unitario) } : {}),
-      ...(it.valor_total != null ? { valorTotal: Number(it.valor_total) } : {}),
-      ...(it.up ? { up: it.up } : {}),
-      ...(it.lote ? { lote: it.lote } : {}),
-      ...(it.data_fabricacao ? { dataFabricacao: it.data_fabricacao } : {}),
-      ...(it.data_validade ? { dataValidade: it.data_validade } : {}),
-      ...(it.paletes != null ? { paletes: Number(it.paletes) } : {}),
-      ...(it.localizacao === 'stage' ? { localizacao: 'stage' as const } : {}),
-    })),
+    items: (itensByNf.get(nf.id) ?? []).map((it) =>
+      corrigirQuantidadeItemSePeso({
+        index: it.item_index,
+        codigo: it.codigo,
+        descricao: it.descricao,
+        quantidade: Number(it.quantidade),
+        unidade: it.unidade,
+        allocatedAddresses: endByItem.get(`${nf.id}:${it.item_index}`) ?? [],
+        ...(it.peso_bruto != null ? { pesoBruto: Number(it.peso_bruto) } : {}),
+        ...(it.valor_unitario != null ? { valorUnitario: Number(it.valor_unitario) } : {}),
+        ...(it.valor_total != null ? { valorTotal: Number(it.valor_total) } : {}),
+        ...(it.up ? { up: it.up } : {}),
+        ...(it.lote ? { lote: it.lote } : {}),
+        ...(it.data_fabricacao ? { dataFabricacao: it.data_fabricacao } : {}),
+        ...(it.data_validade ? { dataValidade: it.data_validade } : {}),
+        ...(it.paletes != null ? { paletes: Number(it.paletes) } : {}),
+        ...(it.localizacao === 'stage' ? { localizacao: 'stage' as const } : {}),
+      }),
+    ),
   }))
 }
 

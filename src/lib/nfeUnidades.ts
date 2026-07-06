@@ -6,9 +6,23 @@ export function isUnidadePeso(unidade: string): boolean {
   return u === 'KG' || u === 'KGM' || u === 'QUILO' || u === 'QUILOGRAMA'
 }
 
-/** Descrição indica produto vendido em caixas. */
+/** Descrição indica produto vendido em caixas (CX, CX20KG, CX VAR, etc.). */
 export function descricaoIndicaCaixas(descricao: string): boolean {
-  return /\bCX\b/i.test(descricao)
+  return /\bCX(?:\s*\d|\b)/i.test(descricao)
+}
+
+function caixasFromValorTributario(
+  vUnCom: number,
+  vUnTrib: number,
+  vProd: number,
+): number | null {
+  if (!(vUnTrib > 0 && vUnCom > 0 && vProd > 0)) return null
+  if (vUnTrib <= vUnCom * 2) return null
+  const caixas = Math.round(vProd / vUnTrib)
+  if (caixas < 1) return null
+  const residual = Math.abs(vProd - caixas * vUnTrib) / vProd
+  if (residual > 0.02) return null
+  return caixas
 }
 
 /** Resolve quantidade/unidade comercial a partir dos campos do XML (prod). */
@@ -18,8 +32,14 @@ export function resolverQuantidadeComercialNfe(input: {
   qTrib: number
   uTrib: string
   descricao: string
+  vUnCom?: number
+  vUnTrib?: number
+  vProd?: number
 }): { quantidade: number; unidade: string } {
   const { qCom, uCom, qTrib, uTrib, descricao } = input
+  const vUnCom = input.vUnCom ?? 0
+  const vUnTrib = input.vUnTrib ?? 0
+  const vProd = input.vProd ?? 0
   const comPeso = isUnidadePeso(uCom)
   const tribPeso = isUnidadePeso(uTrib)
 
@@ -30,6 +50,13 @@ export function resolverQuantidadeComercialNfe(input: {
       if (caixas >= 1 && Math.abs(caixas - Math.round(caixas)) < 0.02) {
         return { quantidade: Math.round(caixas), unidade: 'CX' }
       }
+    }
+  }
+
+  if (comPeso && qCom > 0 && descricaoIndicaCaixas(descricao)) {
+    const caixasValor = caixasFromValorTributario(vUnCom, vUnTrib, vProd)
+    if (caixasValor != null) {
+      return { quantidade: caixasValor, unidade: 'CX' }
     }
   }
 
@@ -111,4 +138,21 @@ export function unidadeEstoqueItem(item: NfeItem): string {
   if (!isUnidadePeso(item.unidade)) return item.unidade
   if (caixasFromPesoKg(item) != null) return 'CX'
   return item.unidade
+}
+
+/**
+ * Corrige itens gravados com quantidade = peso (uCom KG) quando a descrição indica caixas.
+ * Útil ao carregar NF já importada antes da conversão comercial.
+ */
+export function corrigirQuantidadeItemSePeso(item: NfeItem): NfeItem {
+  if (!isUnidadePeso(item.unidade)) return item
+  const peso = item.pesoBruto ?? item.pesoLiquido
+  if (peso == null || peso <= 0) return item
+  if (Math.abs(item.quantidade - peso) / peso > 0.001) return item
+  if (!descricaoIndicaCaixas(item.descricao)) return item
+
+  const caixas = caixasFromPesoKg(item)
+  if (caixas == null) return item
+
+  return { ...item, quantidade: caixas, unidade: 'CX' }
 }

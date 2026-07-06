@@ -42,6 +42,9 @@ function parseItemQuantidadeUnidade(prod: Element): { quantidade: number; unidad
     qTrib: numOf(prod, 'qTrib'),
     uTrib: textOf(prod, 'uTrib'),
     descricao: textOf(prod, 'xProd'),
+    vUnCom: numOf(prod, 'vUnCom'),
+    vUnTrib: numOf(prod, 'vUnTrib'),
+    vProd: numOf(prod, 'vProd'),
   })
 }
 

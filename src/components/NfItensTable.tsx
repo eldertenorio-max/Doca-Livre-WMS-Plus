@@ -330,7 +330,7 @@ export function NfItensTable({
                           min={0}
                           step="any"
                           className="input-nf input-nf--compact"
-                          value={item.quantidade}
+                          value={quantidadeEstoqueItem(item)}
                           disabled={!camposEditaveis}
                           onChange={(e) => onUpdateItemQuantidade(item.index, e.target.value)}
                           onClick={stopRowActivate}
