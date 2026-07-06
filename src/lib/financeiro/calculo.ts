@@ -104,6 +104,21 @@ function diasNoPeriodo(ciclo: 'mensal' | 'quinzenal'): number {
   return ciclo === 'quinzenal' ? 15 : 30
 }
 
+/** Valor diário por kilo: peso bruto × (R$/kg da tabela) ÷ dias do ciclo (30 mensal, 15 quinzenal). */
+export function valorDiariaPorKilo(
+  pesoBrutoKg: number,
+  custoPorKiloPeriodo: number,
+  ciclo: 'mensal' | 'quinzenal' = 'mensal',
+): number {
+  if (pesoBrutoKg <= 0 || custoPorKiloPeriodo <= 0) return 0
+  return (pesoBrutoKg * custoPorKiloPeriodo) / diasNoPeriodo(ciclo)
+}
+
+/** Valor acumulado = dias armazenados × valor diária. */
+export function valorAcumuladoArmazenagem(diasArmazenados: number, valorDiaria: number): number {
+  return Math.max(1, diasArmazenados) * valorDiaria
+}
+
 function fatorTempo(dias: number, ciclo: 'mensal' | 'quinzenal', regra: RegraTempo): number {
   const periodo = diasNoPeriodo(ciclo)
   if (regra === 'cheia') return Math.max(1, Math.ceil(dias / periodo))
@@ -365,8 +380,18 @@ export function calcularCobrancaDetalhada(
 
   const total = detalhes.reduce((s, d) => s + d.valor, 0)
   const dias = Math.max(1, resumo.diasArmazenados)
-  const valorDiaria = totalRecorrente / dias
-  const valorVigente = totalRecorrente
+
+  let valorDiaria = 0
+  let valorVigente = 0
+
+  if (contrato.cobrarKilo && tabela.custoPorKilo > 0) {
+    const pesoBruto = resumo.pesoEntrada > 0 ? resumo.pesoEntrada : opts.pesoBase
+    valorDiaria = valorDiariaPorKilo(pesoBruto, tabela.custoPorKilo, contrato.ciclo)
+    valorVigente = valorAcumuladoArmazenagem(dias, valorDiaria)
+  } else if (totalRecorrente > 0) {
+    valorDiaria = totalRecorrente / dias
+    valorVigente = valorAcumuladoArmazenagem(dias, valorDiaria)
+  }
 
   return { fatorTempo: fator, detalhes, total, totalRecorrente, valorDiaria, valorVigente }
 }
