@@ -1477,7 +1477,7 @@ function DataEntradaSection({
       'Valor acumulado',
       'Valor a cobrar período',
       'Peso entrada kg',
-      'Peso a cobrar kg',
+      'Peso bruto kg',
       'Peso saído kg',
       'Qtd saídas',
       'Caixas NF',
@@ -1516,7 +1516,7 @@ function DataEntradaSection({
           numeroCsv(linha.valorVigente),
           numeroCsv(linha.valorPeriodo),
           numeroCsv(linha.nf.pesoEntrada),
-          numeroCsv(linha.nf.pesoRestante > 0 ? linha.nf.pesoRestante : linha.nf.pesoEntrada),
+          numeroCsv(linha.nf.pesoEntrada),
           numeroCsv(linha.nf.pesoSaido),
           linha.nf.saidas.length,
           numeroCsv(linha.nf.totalCaixas),
@@ -1766,14 +1766,8 @@ function DataEntradaSection({
                       <strong>{formatMoedaFinanceiro(valorDiaria)}</strong>
                     </div>
                     <div>
-                      <span className="muted">Peso entrada</span>
+                      <span className="muted">Peso bruto</span>
                       <strong>{formatPesoBruto(nf.pesoEntrada)} kg</strong>
-                    </div>
-                    <div>
-                      <span className="muted">Peso a cobrar</span>
-                      <strong>
-                        {formatPesoBruto(nf.pesoRestante > 0 ? nf.pesoRestante : nf.pesoEntrada)} kg
-                      </strong>
                     </div>
                     <div>
                       <span className="muted">Itens</span>
