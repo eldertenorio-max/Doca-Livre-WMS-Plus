@@ -1,5 +1,6 @@
 import { emitentesFromPersisted } from './emitentesRegistry'
 import { contarEnderecosPersistidos } from './movimentos'
+import { persistedEquals } from './syncMerge'
 import type { PersistedData } from '../types'
 
 const DATA_KEY = 'ultrafrio-enderecamento-v3'
@@ -86,9 +87,24 @@ export function recoverBestPersisted(remote: PersistedData): {
   return { data: best, recoveredFromLocal }
 }
 
-/** Nuvem vazia com estoque local = reset do banco ou aba antiga regravando por cima. */
-export function remotoEstoqueZerado(remote: PersistedData, local: PersistedData): boolean {
-  return persistedRichness(remote) === 0 && persistedRichness(local) > 0
+/** Nuvem sem NFs nem movimentos ativos (reset administrativo). */
+export function nuvemSemEstoque(data: PersistedData): boolean {
+  return data.notas.length === 0 && !data.movimentos.some((m) => !m.excluido)
+}
+
+/**
+ * Reset detectado no reload: nuvem ficou vazia enquanto a aba ainda tinha o último snapshot persistido.
+ * Não bloqueia cadastro novo após reset (local diferente da base ou base ainda vazia).
+ */
+export function resetRemotoDetectado(
+  remote: PersistedData,
+  local: PersistedData,
+  base: PersistedData | null,
+): boolean {
+  if (!nuvemSemEstoque(remote)) return false
+  if (contarEnderecosPersistidos(local) === 0 && local.notas.length === 0) return false
+  if (!base || persistedRichness(base) === 0) return false
+  return persistedEquals(local, base)
 }
 
 /** Impede gravar estado vazio por cima de estoque existente. */

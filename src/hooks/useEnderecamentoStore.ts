@@ -15,7 +15,7 @@ import { normalizePersistedData, prepareLoadedDataWithRepair } from '../lib/pers
 import {
   persistedRichness,
   recoverBestPersisted,
-  remotoEstoqueZerado,
+  resetRemotoDetectado,
   wouldWipePersistedStock,
 } from '../lib/localBackupRecovery'
 import { contarEnderecosPersistidos } from '../lib/movimentos'
@@ -243,20 +243,6 @@ export function useEnderecamentoStore() {
       // Não reparar endereços ao gravar — evita restaurar posições recém-liberadas.
       dataToSave = normalizePersistedData(dataToSave, { reparar: false })
 
-      const remoteCheckRaw = await repo.loadData()
-      const remoteCheck = normalizePersistedData(
-        prepareLoadedDataWithRepair(remoteCheckRaw).data,
-      )
-      if (remotoEstoqueZerado(remoteCheck, dataToSave)) {
-        lastPersistedRef.current = remoteCheck
-        pendingSaveRef.current = null
-        scheduleRemoteReloadRef.current()
-        setError(
-          'O banco foi resetado. Não foi possível regravar estoque antigo — feche outras abas e use Ctrl+Shift+R.',
-        )
-        return remoteCheck
-      }
-
       if (
         lastPersistedRef.current &&
         wouldWipePersistedStock(lastPersistedRef.current, dataToSave)
@@ -472,7 +458,7 @@ export function useEnderecamentoStore() {
       const base = lastPersistedRef.current
       const localNow = pickPersisted(stateRef.current)
 
-      if (remotoEstoqueZerado(remoteMergedNormalized, localNow)) {
+      if (resetRemotoDetectado(remoteMergedNormalized, localNow, base)) {
         lastPersistedRef.current = remoteMergedNormalized
         setState((prev) => {
           const next = preserveUi(prev, remoteMergedNormalized, { trustRemote: true })
