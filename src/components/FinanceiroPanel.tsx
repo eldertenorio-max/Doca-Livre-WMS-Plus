@@ -9,6 +9,7 @@ import {
   normalizarCnpj,
   resumirClienteFinanceiro,
   resumirNfArmazenada,
+  valorCobrancaPeriodo,
 } from '../lib/financeiro/calculo'
 import { dataArmazenagemNf } from '../lib/dataArmazenagem'
 import { contratoAtivoCliente, tabelaById } from '../lib/financeiro/clientes'
@@ -1362,7 +1363,7 @@ function DataEntradaSection({
           periodoInicio,
           periodoFim,
           diasPeriodo,
-          valorPeriodo: diasPeriodo * valorDiaria,
+          valorPeriodo: valorCobrancaPeriodo(diasPeriodo, valorDiaria),
           posicoes: totalPosicoesNota(nota),
         }
       }),
@@ -1767,7 +1768,7 @@ function DataEntradaSection({
                     </div>
                     <div>
                       <span className="muted">Peso bruto</span>
-                      <strong>{formatPesoBruto(nf.pesoEntrada)} kg</strong>
+                      <strong>{formatPesoBruto(nota?.pesoBruto ?? nf.pesoBruto ?? nf.pesoEntrada)} kg</strong>
                     </div>
                     <div>
                       <span className="muted">Itens</span>

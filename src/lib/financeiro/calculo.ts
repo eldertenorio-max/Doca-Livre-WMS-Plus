@@ -111,12 +111,29 @@ export function valorDiariaPorKilo(
   ciclo: 'mensal' | 'quinzenal' = 'mensal',
 ): number {
   if (pesoBrutoKg <= 0 || custoPorKiloPeriodo <= 0) return 0
-  return (pesoBrutoKg * custoPorKiloPeriodo) / diasNoPeriodo(ciclo)
+  const bruto = (pesoBrutoKg * custoPorKiloPeriodo) / diasNoPeriodo(ciclo)
+  return Math.floor(bruto * 100) / 100
 }
 
 /** Valor acumulado = dias armazenados × valor diária. */
 export function valorAcumuladoArmazenagem(diasArmazenados: number, valorDiaria: number): number {
-  return Math.max(1, diasArmazenados) * valorDiaria
+  const dias = Math.max(1, diasArmazenados)
+  return Math.round(dias * valorDiaria * 100) / 100
+}
+
+/** Valor a cobrar no período = dias do período × valor diária. */
+export function valorCobrancaPeriodo(diasPeriodo: number, valorDiaria: number): number {
+  if (diasPeriodo <= 0 || valorDiaria <= 0) return 0
+  return Math.round(diasPeriodo * valorDiaria * 100) / 100
+}
+
+function pesoBrutoArmazenagem(
+  resumo: ResumoNfArmazenada,
+  opts: { pesoBase: number },
+): number {
+  if (resumo.pesoEntrada > 0) return resumo.pesoEntrada
+  if (resumo.pesoBruto > 0) return resumo.pesoBruto
+  return opts.pesoBase
 }
 
 function fatorTempo(dias: number, ciclo: 'mensal' | 'quinzenal', regra: RegraTempo): number {
@@ -257,7 +274,7 @@ export function resumirNfArmazenada(
     dataEntrada: entrada,
     dataSaida: armazenada ? null : saida,
     diasArmazenados: diasArmazenados(entrada, armazenada ? null : saida, agora),
-    pesoBruto: pesoEntrada,
+    pesoBruto: nf.pesoBruto ?? pesoEntrada,
     pesoLiquido: pesoCobranca,
     pesoEntrada,
     pesoRestante,
@@ -343,16 +360,18 @@ export function calcularCobrancaDetalhada(
     totalRecorrente += valor
   }
 
-  if (contrato.cobrarKilo && tabela.custoPorKilo > 0 && opts.pesoBase > 0) {
-    const mult = contrato.kiloPorDia ? resumo.diasArmazenados : fator
-    const valor = opts.pesoBase * tabela.custoPorKilo * mult
-    detalhes.push({
-      label: contrato.kiloPorDia
-        ? `Kilo/dia (${opts.pesoBase.toLocaleString('pt-BR')} kg × ${formatMoeda(tabela.custoPorKilo)} × ${resumo.diasArmazenados} dias)`
-        : `Kilo (${opts.pesoBase.toLocaleString('pt-BR')} kg × ${formatMoeda(tabela.custoPorKilo)} × ${formatFator(fator)})`,
-      valor,
-    })
-    totalRecorrente += valor
+  if (contrato.cobrarKilo && tabela.custoPorKilo > 0) {
+    const pesoBruto = pesoBrutoArmazenagem(resumo, opts)
+    if (pesoBruto > 0) {
+      const periodoDias = diasNoPeriodo(contrato.ciclo)
+      const diaria = valorDiariaPorKilo(pesoBruto, tabela.custoPorKilo, contrato.ciclo)
+      const acumulado = valorAcumuladoArmazenagem(resumo.diasArmazenados, diaria)
+      detalhes.push({
+        label: `Kilo/dia (${pesoBruto.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg × ${formatMoeda(tabela.custoPorKilo)} ÷ ${periodoDias} dias × ${resumo.diasArmazenados} dias)`,
+        valor: acumulado,
+      })
+      totalRecorrente += acumulado
+    }
   }
 
   if (contrato.cobrarPalete && tabela.custoPorPalete > 0 && opts.paletes > 0) {
@@ -380,16 +399,15 @@ export function calcularCobrancaDetalhada(
 
   const total = detalhes.reduce((s, d) => s + d.valor, 0)
   const dias = Math.max(1, resumo.diasArmazenados)
-
   let valorDiaria = 0
   let valorVigente = 0
 
   if (contrato.cobrarKilo && tabela.custoPorKilo > 0) {
-    const pesoBruto = resumo.pesoEntrada > 0 ? resumo.pesoEntrada : opts.pesoBase
+    const pesoBruto = pesoBrutoArmazenagem(resumo, opts)
     valorDiaria = valorDiariaPorKilo(pesoBruto, tabela.custoPorKilo, contrato.ciclo)
     valorVigente = valorAcumuladoArmazenagem(dias, valorDiaria)
   } else if (totalRecorrente > 0) {
-    valorDiaria = totalRecorrente / dias
+    valorDiaria = Math.floor((totalRecorrente / dias) * 100) / 100
     valorVigente = valorAcumuladoArmazenagem(dias, valorDiaria)
   }
 

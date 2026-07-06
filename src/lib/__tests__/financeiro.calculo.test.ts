@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calcularCobrancaDetalhada,
   valorAcumuladoArmazenagem,
+  valorCobrancaPeriodo,
   valorDiariaPorKilo,
   type ResumoNfArmazenada,
 } from '../financeiro/calculo'
@@ -57,6 +58,26 @@ const resumoNf = (overrides: Partial<ResumoNfArmazenada> = {}): ResumoNfArmazena
   ...overrides,
 })
 
+describe('valorDiariaPorKilo', () => {
+  it('exemplo ASTRAPLUS: 27794,92 kg × R$0,18 ÷ 30 = R$166,76/dia', () => {
+    expect(valorDiariaPorKilo(27_794.92, 0.18, 'mensal')).toBe(166.76)
+  })
+
+  it('usa divisor 15 no ciclo quinzenal', () => {
+    expect(valorDiariaPorKilo(3000, 0.3, 'quinzenal')).toBe(60)
+  })
+})
+
+describe('valorAcumuladoArmazenagem e valorCobrancaPeriodo', () => {
+  it('125 dias × R$166,76 = R$20.845,00', () => {
+    expect(valorAcumuladoArmazenagem(125, 166.76)).toBe(20_845)
+  })
+
+  it('6 dias do período × R$166,76 = R$1.000,56', () => {
+    expect(valorCobrancaPeriodo(6, 166.76)).toBe(1000.56)
+  })
+})
+
 describe('calcularCobrancaDetalhada', () => {
   it('cobra palete proporcional ao ciclo mensal (1 dia = 1/30)', () => {
     const cobranca = calcularCobrancaDetalhada(resumoNf(), contratoBase(), tabelaBase(), {
@@ -71,36 +92,23 @@ describe('calcularCobrancaDetalhada', () => {
     expect(cobranca.total).toBeCloseTo(cobranca.totalRecorrente + 50, 4)
   })
 
-  it('valor diaria por kilo = peso bruto x custo kilo / 30 e acumulado = dias x diaria', () => {
+  it('kilo: diaria por peso bruto e acumulado = dias × diaria (exemplo NF 211264)', () => {
     const pesoBruto = 27_794.92
-    const custoKilo = 5.58
-    const dias = 126
-    const diaria = valorDiariaPorKilo(pesoBruto, custoKilo, 'mensal')
-    expect(diaria).toBeCloseTo((pesoBruto * custoKilo) / 30, 4)
-    expect(valorAcumuladoArmazenagem(dias, diaria)).toBeCloseTo(dias * diaria, 4)
+    const dias = 125
+    const diaria = valorDiariaPorKilo(pesoBruto, 0.18, 'mensal')
 
     const cobranca = calcularCobrancaDetalhada(
       resumoNf({ diasArmazenados: dias, pesoEntrada: pesoBruto, pesoBruto }),
-      contratoBase({ cobrarPalete: false, cobrarKilo: true, cobrarEntrada: false }),
-      { ...tabelaBase(), custoPorKilo: custoKilo },
+      contratoBase({ cobrarPalete: false, cobrarKilo: true, cobrarEntrada: false, kiloPorDia: true }),
+      { ...tabelaBase(), custoPorKilo: 0.18 },
       { posicoes: 0, pesoBase: 26_897.32, paletes: 0 },
     )
 
-    expect(cobranca.valorDiaria).toBeCloseTo(diaria, 4)
-    expect(cobranca.valorVigente).toBeCloseTo(dias * diaria, 4)
-  })
-
-  it('cobra kilo por dia quando contrato usa kiloPorDia', () => {
-    const cobranca = calcularCobrancaDetalhada(
-      resumoNf({ diasArmazenados: 3 }),
-      contratoBase({ cobrarPalete: false, cobrarKilo: true, kiloPorDia: true, cobrarEntrada: false }),
-      tabelaBase(),
-      { posicoes: 0, pesoBase: 1000, paletes: 0 },
-    )
-
-    expect(cobranca.totalRecorrente).toBeCloseTo(1000 * 0.05 * 3, 4)
-    expect(cobranca.valorDiaria).toBeCloseTo(valorDiariaPorKilo(27_500, 0.05, 'mensal'), 4)
-    expect(cobranca.valorVigente).toBeCloseTo(3 * cobranca.valorDiaria, 4)
+    expect(diaria).toBe(166.76)
+    expect(cobranca.valorDiaria).toBe(166.76)
+    expect(cobranca.valorVigente).toBe(20_845)
+    expect(cobranca.detalhes[0]?.valor).toBe(20_845)
+    expect(cobranca.total).toBe(20_845)
   })
 
   it('cobra posição de palete quando habilitado no contrato', () => {
