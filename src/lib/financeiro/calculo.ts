@@ -162,31 +162,6 @@ export function saidasNoPeriodoCobranca(
   return saidas.filter((s) => dataNoPeriodoCobranca(s.data, periodoInicio, periodoFim))
 }
 
-/** Débitos de saída no período (custo × paletes movimentados nas saídas do intervalo). */
-export function paletesSaidasPeriodo(
-  saidas: SaidaNfFinanceiro[],
-  periodoInicio: string,
-  periodoFim: string,
-): number {
-  const list = saidasNoPeriodoCobranca(saidas, periodoInicio, periodoFim)
-  const paletes = list.reduce((s, x) => s + x.paletesSaida, 0)
-  if (paletes > 0) return paletes
-  return list.length
-}
-
-export function debitosSaidaPeriodo(
-  saidas: SaidaNfFinanceiro[],
-  periodoInicio: string,
-  periodoFim: string,
-  contrato: ContratoCliente | null,
-  tabela: TabelaCobranca | null,
-): number {
-  if (!contrato?.cobrarSaida || !tabela || tabela.custoSaida <= 0) return 0
-  const paletes = paletesSaidasPeriodo(saidas, periodoInicio, periodoFim)
-  if (paletes <= 0) return 0
-  return Math.round(paletes * tabela.custoSaida * 100) / 100
-}
-
 /** Débitos de entrada no período (custo × paletes da movimentação de entrada). */
 export function debitosEntradaPeriodo(
   dataEntrada: string,
@@ -531,14 +506,6 @@ export function calcularCobrancaDetalhada(
     const valor = resumo.paletesEntrada * tabela.custoEntrada
     detalhes.push({
       label: `Entrada (${resumo.paletesEntrada} paletes × ${formatMoeda(tabela.custoEntrada)})`,
-      valor,
-    })
-  }
-
-  if (contrato.cobrarSaida && tabela.custoSaida > 0 && resumo.paletesSaidos > 0) {
-    const valor = resumo.paletesSaidos * tabela.custoSaida
-    detalhes.push({
-      label: `Saída (${resumo.paletesSaidos} paletes × ${formatMoeda(tabela.custoSaida)})`,
       valor,
     })
   }

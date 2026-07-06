@@ -2,14 +2,12 @@ import { useMemo, useState } from 'react'
 import { formatValorNfe, formatPesoBruto, formatQuantidadeNfe } from '../lib/formatNfeItem'
 import {
   calcularCobrancaDetalhada,
-  debitosSaidaPeriodo,
   debitosEntradaPeriodo,
   formatMoedaFinanceiro,
   formatarCnpj,
   formatarDataBr,
   formatarDataHoraBr,
   normalizarCnpj,
-  paletesSaidasPeriodo,
   resumirClienteFinanceiro,
   resumirNfArmazenada,
   saidasNoPeriodoCobranca,
@@ -46,9 +44,7 @@ type LinhaFinanceiroEntrada = {
   diasPeriodo: number
   valorArmazenagem: number
   debitosEntrada: number
-  debitosSaida: number
   paletesEntradaPeriodo: number
-  paletesSaidaPeriodo: number
   qtdSaidasPeriodo: number
   valorPeriodo: number
   posicoes: number
@@ -1366,7 +1362,6 @@ function DataEntradaSection({
         const diasPeriodo = diasPeriodoCobranca(periodoInicio, periodoFim)
         const valorArmazenagem = valorCobrancaPeriodo(diasPeriodo, valorDiaria)
         const saidasPeriodo = saidasNoPeriodoCobranca(nf.saidas, periodoInicio, periodoFim)
-        const paletesSaidaPeriodo = paletesSaidasPeriodo(nf.saidas, periodoInicio, periodoFim)
         const entradaNoPeriodo = debitosEntradaPeriodo(
           nf.dataEntrada,
           nf.paletesEntrada,
@@ -1377,8 +1372,7 @@ function DataEntradaSection({
         )
         const debitosEntrada = entradaNoPeriodo
         const paletesEntradaPeriodo = entradaNoPeriodo > 0 ? nf.paletesEntrada : 0
-        const debitosSaida = debitosSaidaPeriodo(nf.saidas, periodoInicio, periodoFim, contrato, tabela)
-        const valorPeriodo = Math.round((valorArmazenagem + debitosEntrada + debitosSaida) * 100) / 100
+        const valorPeriodo = Math.round((valorArmazenagem + debitosEntrada) * 100) / 100
         return {
           nf,
           nota,
@@ -1392,9 +1386,7 @@ function DataEntradaSection({
           diasPeriodo,
           valorArmazenagem,
           debitosEntrada,
-          debitosSaida,
           paletesEntradaPeriodo,
-          paletesSaidaPeriodo,
           qtdSaidasPeriodo: saidasPeriodo.length,
           valorPeriodo,
           posicoes: totalPosicoesNota(nota),
@@ -1411,7 +1403,6 @@ function DataEntradaSection({
           valorPeriodo: acc.valorPeriodo + linha.valorPeriodo,
           valorArmazenagem: acc.valorArmazenagem + linha.valorArmazenagem,
           debitosEntrada: acc.debitosEntrada + linha.debitosEntrada,
-          debitosSaida: acc.debitosSaida + linha.debitosSaida,
           valorVigente: acc.valorVigente + linha.valorVigente,
           posicoes: acc.posicoes + linha.posicoes,
           peso: acc.peso + (linha.nf.pesoRestante > 0 ? linha.nf.pesoRestante : linha.nf.pesoEntrada),
@@ -1424,7 +1415,6 @@ function DataEntradaSection({
           valorPeriodo: 0,
           valorArmazenagem: 0,
           debitosEntrada: 0,
-          debitosSaida: 0,
           valorVigente: 0,
           posicoes: 0,
           peso: 0,
@@ -1517,7 +1507,6 @@ function DataEntradaSection({
       'Valor acumulado',
       'Valor armazenagem período',
       'Débitos entrada período',
-      'Débitos saída período',
       'Valor total a cobrar',
       'Peso entrada kg',
       'Peso bruto kg',
@@ -1559,7 +1548,6 @@ function DataEntradaSection({
           numeroCsv(linha.valorVigente),
           numeroCsv(linha.valorArmazenagem),
           numeroCsv(linha.debitosEntrada),
-          numeroCsv(linha.debitosSaida),
           numeroCsv(linha.valorPeriodo),
           numeroCsv(linha.nf.pesoEntrada),
           numeroCsv(linha.nf.pesoEntrada),
@@ -1754,10 +1742,7 @@ function DataEntradaSection({
                 diasPeriodo,
                 valorArmazenagem,
                 debitosEntrada,
-                debitosSaida,
                 paletesEntradaPeriodo,
-                paletesSaidaPeriodo,
-                qtdSaidasPeriodo,
               } = linha
               const updatePeriodo = (patch: Partial<{ inicio: string; fim: string }>) => {
                 setPeriodosCobranca((prev) => ({
@@ -1895,22 +1880,6 @@ function DataEntradaSection({
                         {linha.tabela && linha.tabela.custoEntrada > 0
                           ? ` · ${formatMoedaFinanceiro(linha.tabela.custoEntrada)}/palete`
                           : ''}
-                      </span>
-                    </div>
-                  )}
-                  {(debitosSaida > 0 || qtdSaidasPeriodo > 0) && (
-                    <div className="fin-periodo-cobranca-debitos">
-                      <div className="fin-periodo-cobranca-debitos-linha">
-                        <span>Débitos de saída</span>
-                        <strong>{formatMoedaFinanceiro(debitosSaida)}</strong>
-                      </div>
-                      <span className="muted fin-periodo-cobranca-debitos-hint">
-                        {paletesSaidaPeriodo} palete(s) em {qtdSaidasPeriodo} saída(s)
-                        {linha.tabela && linha.contrato?.cobrarSaida && linha.tabela.custoSaida > 0
-                          ? ` · ${formatMoedaFinanceiro(linha.tabela.custoSaida)}/palete`
-                          : linha.contrato && !linha.contrato.cobrarSaida
-                            ? ' · cobrança de saída desativada no contrato'
-                            : ''}
                       </span>
                     </div>
                   )}
