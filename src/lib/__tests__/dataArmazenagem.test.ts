@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dataArmazenagemNf, normalizarDataArmazenagemInput } from '../dataArmazenagem'
-import { resumirNfArmazenada } from '../financeiro/calculo'
+import { diasArmazenados, resumirNfArmazenada } from '../financeiro/calculo'
 import type { MovimentoRegistro, NotaFiscal } from '../../types'
 
 describe('normalizarDataArmazenagemInput', () => {
@@ -71,6 +71,11 @@ describe('resumirNfArmazenada — data de armazenagem', () => {
     const resumo = resumirNfArmazenada(nfBase(), [movEntrada()], agora)
 
     expect(resumo.dataEntrada).toBe('2026-05-06')
-    expect(resumo.diasArmazenados).toBe(64)
+    expect(resumo.diasArmazenados).toBe(63)
+  })
+
+  it('conta 125 dias entre 03/03/2026 e 06/07/2026', () => {
+    const agora = new Date(2026, 6, 6)
+    expect(diasArmazenados('2026-03-03', null, agora)).toBe(125)
   })
 })

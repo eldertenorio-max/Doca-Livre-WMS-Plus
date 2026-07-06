@@ -92,12 +92,12 @@ function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
-/** Dias entre duas datas (inclusivo no dia de entrada). */
+/** Dias corridos de armazenagem entre a data de entrada e a data de referência (mínimo 1). */
 export function diasArmazenados(dataEntrada: string, dataSaida: string | null, agora = new Date()): number {
   const inicio = startOfDay(parseDate(dataEntrada))
   const fim = startOfDay(dataSaida ? parseDate(dataSaida) : agora)
   const diff = Math.floor((fim.getTime() - inicio.getTime()) / MS_DIA)
-  return Math.max(1, diff + 1)
+  return Math.max(1, diff)
 }
 
 function diasNoPeriodo(ciclo: 'mensal' | 'quinzenal'): number {
