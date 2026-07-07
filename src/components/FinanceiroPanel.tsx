@@ -9,10 +9,12 @@ import {
   formatarDataBr,
   formatarDataHoraBr,
   normalizarCnpj,
+  pesoBrutoParaCobrancaPeriodo,
   resumirClienteFinanceiro,
   resumirNfArmazenada,
   saidasNoPeriodoCobranca,
   valorCobrancaPeriodo,
+  valorDiariaPorKilo,
 } from '../lib/financeiro/calculo'
 import { dataArmazenagemNf } from '../lib/dataArmazenagem'
 import { contratoAtivoCliente, tabelaById } from '../lib/financeiro/clientes'
@@ -39,6 +41,7 @@ type LinhaFinanceiroEntrada = {
   contrato: ContratoCliente | null
   tabela: TabelaCobranca | null
   valorDiaria: number
+  valorDiariaPeriodo: number
   valorVigente: number
   periodoInicio: string
   periodoFim: string
@@ -1371,10 +1374,16 @@ function DataEntradaSection({
               nf.pesoAtual,
             )
           : diasPeriodoCobranca(periodoInicio, periodoFim)
-        const valorArmazenagem =
-          nf.pesoAtual <= 0 && nf.status === 'armazenada'
-            ? 0
-            : valorCobrancaPeriodo(diasPeriodo, valorDiaria)
+        const teveSaida = nf.saidas.length > 0
+        const pesoPeriodo =
+          contrato?.cobrarKilo && tabela
+            ? pesoBrutoParaCobrancaPeriodo(nf.pesoAtual, nf.pesoBruto, teveSaida)
+            : pesoCobranca
+        const valorDiariaPeriodo =
+          contrato?.cobrarKilo && tabela && pesoPeriodo > 0
+            ? valorDiariaPorKilo(pesoPeriodo, tabela.custoPorKilo, contrato.ciclo)
+            : valorDiaria
+        const valorArmazenagem = valorCobrancaPeriodo(diasPeriodo, valorDiariaPeriodo)
         const saidasPeriodo = saidasNoPeriodoCobranca(nf.saidas, periodoInicio, periodoFim)
         const entradaNoPeriodo = debitosEntradaPeriodo(
           nf.dataEntrada,
@@ -1394,6 +1403,7 @@ function DataEntradaSection({
           tabela,
           contrato,
           valorDiaria,
+          valorDiariaPeriodo,
           valorVigente,
           periodoInicio,
           periodoFim,
@@ -1752,6 +1762,7 @@ function DataEntradaSection({
                 nf,
                 cliente: cli,
                 valorDiaria,
+                valorDiariaPeriodo,
                 valorVigente,
                 periodoInicio,
                 periodoFim,
@@ -1831,7 +1842,7 @@ function DataEntradaSection({
                       <strong>{formatMoedaFinanceiro(valorDiaria)}</strong>
                     </div>
                     <div>
-                      <span className="muted">Peso bruto</span>
+                      <span className="muted">Bruto (entrada)</span>
                       <strong>{formatPesoBruto(nf.pesoBruto)} kg</strong>
                     </div>
                     <div>
@@ -1886,7 +1897,7 @@ function DataEntradaSection({
                     </div>
                     <div>
                       <span className="muted">Valor diária</span>
-                      <strong>{formatMoedaFinanceiro(valorDiaria)}</strong>
+                      <strong>{formatMoedaFinanceiro(valorDiariaPeriodo)}</strong>
                     </div>
                   </div>
                   <div className="fin-periodo-cobranca-total">

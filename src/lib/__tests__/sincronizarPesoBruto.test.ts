@@ -185,4 +185,35 @@ describe('pesoBrutoReferenciaNf', () => {
     expect(resumo.pesoAtual).toBeCloseTo(13_897.46, 0)
     expect(resumo.pesoAtual).toBeLessThan(resumo.pesoBruto)
   })
+
+  it('saída total com itens fantasma (qty sem endereço/peso) fica finalizada e zera totais', () => {
+    const nf = nfLegada()
+    sincronizarPesoBrutoNota(nf)
+    nf.items = nf.items.map((it) => ({
+      ...it,
+      allocatedAddresses: [],
+      pesoBruto: 0,
+      pesoLiquido: 0,
+    }))
+
+    const saida: MovimentoRegistro = {
+      id: 'mov-saida-total',
+      tipo: 'saida',
+      nfId: nf.id,
+      nfNumero: nf.numero,
+      emitente: nf.emitente,
+      createdAt: '2026-07-02T00:00:00.000Z',
+      dataSaida: '2026-07-02',
+      pesoLiquido: 26_897.32,
+      pesoBruto: 27_794.92,
+      itens: [],
+    }
+
+    const resumo = resumirNfArmazenada(nf, [movLiquido(), saida])
+    expect(resumo.status).toBe('finalizada')
+    expect(resumo.pesoAtual).toBe(0)
+    expect(resumo.totalCaixas).toBe(0)
+    expect(resumo.totalPaletes).toBe(0)
+    expect(resumo.dataSaida).toBe('2026-07-02')
+  })
 })

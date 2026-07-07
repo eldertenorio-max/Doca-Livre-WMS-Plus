@@ -4,6 +4,7 @@ import {
   dataNoPeriodoCobranca,
   debitosEntradaPeriodo,
   diasPeriodoCobrancaArmazenagem,
+  pesoBrutoParaCobrancaPeriodo,
   saidasNoPeriodoCobranca,
   valorAcumuladoArmazenagem,
   valorCobrancaPeriodo,
@@ -225,18 +226,18 @@ describe('diasPeriodoCobrancaArmazenagem', () => {
     ).toBe(1)
   })
 
-  it('armazenada sem peso: 0 dias no período', () => {
+  it('estoque esgotado: limita período até a última saída', () => {
     expect(
       diasPeriodoCobrancaArmazenagem(
         '2026-07-01',
         '2026-07-06',
         '2026-05-06',
-        '2026-07-06',
-        null,
-        'armazenada',
+        '2026-07-02',
+        '2026-07-02',
+        'finalizada',
         0,
       ),
-    ).toBe(0)
+    ).toBe(2)
   })
 
   it('sem saída, período respeita data de entrada', () => {
@@ -251,6 +252,14 @@ describe('diasPeriodoCobrancaArmazenagem', () => {
         24_474,
       ),
     ).toBe(2)
+  })
+})
+
+describe('pesoBrutoParaCobrancaPeriodo', () => {
+  it('usa peso de entrada quando estoque zerou após saída', () => {
+    expect(pesoBrutoParaCobrancaPeriodo(0, 24_474, true)).toBe(24_474)
+    expect(pesoBrutoParaCobrancaPeriodo(13_897, 24_474, true)).toBe(13_897)
+    expect(pesoBrutoParaCobrancaPeriodo(0, 24_474, false)).toBe(0)
   })
 })
 

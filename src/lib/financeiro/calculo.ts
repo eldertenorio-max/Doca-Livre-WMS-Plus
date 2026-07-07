@@ -1,4 +1,4 @@
-import type { MovimentoRegistro, NotaFiscal } from '../../types'
+import type { MovimentoRegistro, NfeItem, NotaFiscal } from '../../types'
 import type { ContratoCliente, RegraTempo, TabelaCobranca } from './types'
 import { pesoBrutoTotalItem, pesoLiquidoTotalItem } from '../saidaParcial'
 import { quantidadeEstoqueItem } from '../nfeUnidades'
@@ -156,9 +156,8 @@ export function diasEntreDatasInclusive(inicio: string, fim: string): number {
 
 /**
  * Dias do período de cobrança por kilo.
- * - Armazenada com estoque: desde a última saída (se houver) até o fim do período.
- * - Finalizada: do início efetivo até a data de saída (não cobra após sair).
- * - Sem peso atual (estoque zerado): 0 dias.
+ * - Com estoque: desde a última saída parcial até o fim do período (peso atual).
+ * - Esgotada/finalizada: do início efetivo até a data de saída (peso de entrada).
  */
 export function diasPeriodoCobrancaArmazenagem(
   periodoInicio: string,
@@ -170,7 +169,6 @@ export function diasPeriodoCobrancaArmazenagem(
   pesoAtual: number,
 ): number {
   if (!periodoInicio || !periodoFim) return 0
-  if (pesoAtual <= 1e-6 && status === 'armazenada') return 0
 
   let inicioEfetivo = periodoInicio
   let fimEfetivo = periodoFim
@@ -178,8 +176,11 @@ export function diasPeriodoCobrancaArmazenagem(
   const refEntrada = dataReferenciaIso(dataEntrada)
   if (refEntrada && refEntrada > inicioEfetivo) inicioEfetivo = refEntrada
 
-  if (status === 'finalizada') {
-    const refSaida = dataSaidaFinal ? dataReferenciaIso(dataSaidaFinal) : null
+  const estoqueEsgotado = pesoAtual <= 1e-6
+
+  if (status === 'finalizada' || estoqueEsgotado) {
+    const refSaidaRaw = dataSaidaFinal ?? dataUltimaSaida
+    const refSaida = refSaidaRaw ? dataReferenciaIso(refSaidaRaw) : null
     if (refSaida) {
       if (refSaida < inicioEfetivo) return 0
       if (refSaida < fimEfetivo) fimEfetivo = refSaida
@@ -193,6 +194,17 @@ export function diasPeriodoCobrancaArmazenagem(
   if (refFim && inicioEfetivo > refFim) return 0
 
   return diasEntreDatasInclusive(inicioEfetivo, fimEfetivo)
+}
+
+/** Peso bruto base para cobrança do período (atual ou entrada se já saiu tudo). */
+export function pesoBrutoParaCobrancaPeriodo(
+  pesoAtual: number,
+  pesoBrutoEntrada: number,
+  teveSaida: boolean,
+): number {
+  if (pesoAtual > 1e-6) return pesoAtual
+  if (teveSaida && pesoBrutoEntrada > 0) return pesoBrutoEntrada
+  return 0
 }
 
 function dataUltimaSaidaRegistrada(saidas: SaidaNfFinanceiro[]): string | null {
@@ -464,22 +476,31 @@ function pesoRestanteNf(
   return fromItens
 }
 
+function itemTemSaldoEstoque(it: NfeItem): boolean {
+  if (it.allocatedAddresses.length > 0) return true
+  const qtd = quantidadeEstoqueItem(it)
+  if (qtd <= 1e-9) return false
+  const pesoLiq = it.pesoLiquido ?? 0
+  const pesoBr = it.pesoBruto ?? 0
+  if (pesoLiq <= 1e-9 && pesoBr <= 1e-9) return false
+  return true
+}
+
 function totalPaletesNf(nf: NotaFiscal): number {
-  const fromItems = nf.items.reduce((s, it) => {
+  return nf.items.reduce((s, it) => {
+    if (!itemTemSaldoEstoque(it)) return s
     if (it.paletes != null && it.paletes > 0) return s + it.paletes
     return s + it.allocatedAddresses.length
   }, 0)
-  return fromItems
-}
-
-function totalPosicoesNf(nf: NotaFiscal): number {
-  return nf.items.reduce((s, it) => s + it.allocatedAddresses.length, 0)
 }
 
 function totalCaixasNf(nf: NotaFiscal): number {
   return nf.items.reduce((s, it) => {
+    if (!itemTemSaldoEstoque(it)) return s
     const u = it.unidade.trim().toUpperCase()
-    if (u === 'CX' || u === 'CAIXA' || u === 'FD' || u === 'FARDO') return s + it.quantidade
+    if (u === 'CX' || u === 'CAIXA' || u === 'FD' || u === 'FARDO') {
+      return s + quantidadeEstoqueItem(it)
+    }
     return s
   }, 0)
 }
@@ -501,6 +522,10 @@ function dataSaidaNf(nfId: string, movimentos: MovimentoRegistro[]): string | nu
   }, saidas[0].dataSaida ?? saidas[0].createdAt)
 }
 
+function totalPosicoesNf(nf: NotaFiscal): number {
+  return nf.items.reduce((s, it) => s + it.allocatedAddresses.length, 0)
+}
+
 function nfTemEstoque(nf: NotaFiscal): boolean {
   return nf.items.some((it) => it.quantidade > 1e-9 || it.allocatedAddresses.length > 0)
 }
@@ -511,16 +536,24 @@ export function resumirNfArmazenada(
   agora = new Date(),
 ): ResumoNfArmazenada {
   const entrada = dataEntradaNf(nf, movimentos)
-  const saida = dataSaidaNf(nf.id, movimentos)
-  const armazenada = nfTemEstoque(nf)
   const saidas = listarSaidasNf(nf.id, movimentos)
+  const dataUltimaSaida = dataUltimaSaidaRegistrada(saidas)
   const pesoBruto = pesoBrutoReferenciaNf(nf)
   const pesoLiquidoEntrada = pesoLiquidoReferenciaNf(nf, movimentos)
+  const pesoSaidoBruto = pesoSaidoBrutoNf(nf, nf.id, movimentos, pesoBruto, pesoLiquidoEntrada)
+  const pesoAtualBruto = nfTemEstoque(nf)
+    ? pesoBrutoAtualNf(nf, movimentos, pesoBruto, pesoLiquidoEntrada)
+    : 0
+  const esgotada =
+    saidas.length > 0 &&
+    (pesoAtualBruto <= 1e-6 ||
+      (pesoBruto > 0 && pesoSaidoBruto >= pesoBruto - 1e-3))
+  const armazenada = nfTemEstoque(nf) && !esgotada
+  const saida = esgotada ? (dataUltimaSaida ?? dataSaidaNf(nf.id, movimentos)) : dataSaidaNf(nf.id, movimentos)
   const pesoBrutoRestante = armazenada
     ? pesoBrutoRestanteNf(nf, movimentos, pesoBruto, pesoLiquidoEntrada)
     : 0
-  const pesoSaidoBruto = pesoSaidoBrutoNf(nf, nf.id, movimentos, pesoBruto, pesoLiquidoEntrada)
-  const pesoAtual = armazenada ? pesoBrutoAtualNf(nf, movimentos, pesoBruto, pesoLiquidoEntrada) : 0
+  const pesoAtual = armazenada ? pesoAtualBruto : 0
   const pesoRestante = armazenada ? pesoRestanteNf(nf, movimentos, pesoLiquidoEntrada) : 0
   const pesoSaidoLiquido = pesoSaidoLiquidoNf(nf, nf.id, movimentos, pesoLiquidoEntrada)
   const pesoSaido =
@@ -530,7 +563,6 @@ export function resumirNfArmazenada(
   const entradaMov = movimentos.find((m) => m.tipo === 'entrada' && m.nfId === nf.id && !m.excluido)
   const paletesEntrada = entradaMov ? paletesMovimento(entradaMov) : totalPaletesNf(nf)
   const paletesSaidos = saidas.reduce((s, x) => s + x.paletesSaida, 0)
-  const dataUltimaSaida = dataUltimaSaidaRegistrada(saidas)
   const diasCobranca = diasCobrancaArmazenagem(
     entrada,
     dataUltimaSaida,
