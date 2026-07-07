@@ -107,12 +107,17 @@ export function resetRemotoDetectado(
   return persistedEquals(local, base)
 }
 
-/** Impede gravar estado vazio por cima de estoque existente. */
+/** Impede gravar estado vazio por cima de estoque existente (exceto saída legítima). */
 export function wouldWipePersistedStock(prev: PersistedData, next: PersistedData): boolean {
   const prevEnd = contarEnderecosPersistidos(prev)
   const nextEnd = contarEnderecosPersistidos(next)
   if (prevEnd === 0) return false
   if (nextEnd > 0) return false
+
+  const countSaidas = (d: PersistedData) =>
+    d.movimentos.filter((m) => m.tipo === 'saida' && !m.excluido).length
+  if (countSaidas(next) > countSaidas(prev)) return false
+
   return next.notas.length <= prev.notas.length
 }
 

@@ -234,6 +234,7 @@ export function useEnderecamentoStore() {
 
       let dataToSave = pickPersisted(next)
       const previousSnapshot = lastPersistedRef.current
+      let saidaOuRemocaoIntencional = false
 
       if (lastPersistedRef.current) {
         const localPick = pickPersisted(next)
@@ -241,7 +242,8 @@ export function useEnderecamentoStore() {
         const reduziuEnderecos =
           contarEnderecosPersistidos(localPick) < contarEnderecosPersistidos(base)
         const removeuNotas = nfIdsRemovidosDesde(base, localPick).size > 0
-        if (reduziuEnderecos || removeuNotas) {
+        saidaOuRemocaoIntencional = reduziuEnderecos || removeuNotas
+        if (saidaOuRemocaoIntencional) {
           // Saída / cancelamento de entrada — grava exatamente o estado local (sem merge anti-regressão).
           dataToSave = localPick
         } else {
@@ -256,6 +258,7 @@ export function useEnderecamentoStore() {
 
       if (
         lastPersistedRef.current &&
+        !saidaOuRemocaoIntencional &&
         wouldWipePersistedStock(lastPersistedRef.current, dataToSave)
       ) {
         throw new Error(
