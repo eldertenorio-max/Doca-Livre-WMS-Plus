@@ -8,7 +8,8 @@ alter table public.ultrafrio_notas_fiscais
   add column if not exists peso_liquido numeric,
   add column if not exists valor_total_nota numeric,
   add column if not exists quantidade_volume text,
-  add column if not exists data_armazenagem date;
+  add column if not exists data_armazenagem date,
+  add column if not exists emitente_cnpj text;
 
 update public.ultrafrio_notas_fiscais
 set data_armazenagem = coalesce(data_armazenagem, created_at::date)

@@ -1,7 +1,7 @@
 # Supabase CLI — projeto Endereçamento Ultrafrio
-# Comandos: supabase login → supabase link --project-ref rmcsubgerhbaeyitegvt
+# Comandos: supabase login → supabase link --project-ref bshqrkcjrsujmxhrhnmv
 
-project_id = "rmcsubgerhbaeyitegvt"
+project_id = "bshqrkcjrsujmxhrhnmv"
 
 [api]
 enabled = true

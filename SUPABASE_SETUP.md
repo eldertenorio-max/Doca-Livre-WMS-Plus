@@ -2,8 +2,8 @@
 
 Siga estes passos **uma vez**. Depois disso, qualquer PC ou navegador que abrir o app verá os **mesmos dados atualizados** (entrada, saída, histórico, canceladas).
 
-Projeto Supabase do Ultrafrio: `rmcsubgerhbaeyitegvt`  
-URL: https://supabase.com/dashboard/project/rmcsubgerhbaeyitegvt
+Projeto Supabase do Ultrafrio: `bshqrkcjrsujmxhrhnmv`  
+URL: https://supabase.com/dashboard/project/bshqrkcjrsujmxhrhnmv
 
 ---
 
@@ -31,7 +31,7 @@ No Supabase: **Project Settings → API**
 
 | Campo no Render / `.env` | Onde pegar no Supabase |
 |--------------------------|-------------------------|
-| `VITE_SUPABASE_URL` | **Project URL** (ex.: `https://rmcsubgerhbaeyitegvt.supabase.co`) |
+| `VITE_SUPABASE_URL` | **Project URL** (ex.: `https://bshqrkcjrsujmxhrhnmv.supabase.co`) |
 | `VITE_SUPABASE_ANON_KEY` | **anon public** ou **publishable** key |
 
 ---
