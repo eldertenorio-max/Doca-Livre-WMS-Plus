@@ -55,7 +55,7 @@ export function NfSidebar({
       <div className="sidebar-block">
         <h1 className="app-brand-title">
           <span className="app-brand-title__main">Stock System</span>
-          <span className="app-brand-title__light">Light</span>
+          <span className="app-brand-title__light">Plus</span>
         </h1>
         <p className="muted">Ultrafrio · alocação por NF-e</p>
         {saving && <p className="saving-hint">Salvando…</p>}
