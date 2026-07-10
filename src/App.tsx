@@ -7,7 +7,11 @@ import { VoiceAssistantHUD } from './components/VoiceAssistantHUD'
 import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
 import { ManualNfModal, type ManualNfModalResult } from './components/ManualNfModal'
-import { IntroSplash } from './components/IntroSplash'
+import CompanySplash from './components/CompanySplash'
+import { PortalBackButton } from './components/PortalBackButton'
+import SystemSelectorScreen from './pages/SystemSelectorScreen'
+import SystemEntryScreen from './pages/SystemEntryScreen'
+import { getSystemById, type SystemId } from './lib/systemPortal'
 import { LayoutPanel } from './components/LayoutPanel'
 import { StageModal } from './components/StageModal'
 import { EntradaDestinoModal } from './components/EntradaDestinoModal'
@@ -265,7 +269,8 @@ export default function App() {
   >([])
   const conversationStateRef = useRef(createConversationState())
   const openSectionRef = useRef<SidebarSectionId | null>(null)
-  const [introDone, setIntroDone] = useState(false)
+  const [companyIntroDone, setCompanyIntroDone] = useState(false)
+  const [selectedSystemId, setSelectedSystemId] = useState<SystemId | null>(null)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detailAddress, setDetailAddress] = useState<AddressId | null>(null)
@@ -3515,14 +3520,38 @@ export default function App() {
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
   const detailNota = detailOcc ? state.notas.find((n) => n.id === detailOcc.nfId) : null
 
-  if (!introDone) {
-    return <IntroSplash loading={loading} onFinish={() => setIntroDone(true)} />
+  function handleSystemSelect(id: SystemId) {
+    setSelectedSystemId(id)
+  }
+
+  function handleBackToSystemSelector() {
+    setSelectedSystemId(null)
+  }
+
+  if (!companyIntroDone) {
+    return <CompanySplash loading={loading} onComplete={() => setCompanyIntroDone(true)} />
+  }
+
+  if (!selectedSystemId) {
+    return <SystemSelectorScreen onSelect={handleSystemSelect} />
+  }
+
+  const selectedSystem = getSystemById(selectedSystemId)
+  if (selectedSystem?.url) {
+    return (
+      <SystemEntryScreen
+        system={selectedSystem}
+        onBack={handleBackToSystemSelector}
+        onEnter={() => window.location.assign(selectedSystem.url!)}
+      />
+    )
   }
 
   return (
     <div
       className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}
     >
+      <PortalBackButton onClick={handleBackToSystemSelector} />
       <PwaInstallBanner />
       <AmbienteBanner />
       {savingImportante && (
