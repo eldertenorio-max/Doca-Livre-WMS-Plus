@@ -34,7 +34,10 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
       <div className="portal-login__card">
         <div className="portal-login__header">
           <img className="portal-login__logo" src={LOGO_DOCA_LIVRE_SRC} alt="Doca Livre" />
-          <p className="portal-login__tagline">Um login para Light, Plus e Pro</p>
+          <h1 className="portal-login__title">Login para sistemas</h1>
+          <p className="portal-login__tagline">
+            Um acesso para WMS Light, Plus e Pro
+          </p>
         </div>
         <form className="portal-login__form" onSubmit={handleSubmit}>
           <label className="portal-login__label" htmlFor="portal-user">

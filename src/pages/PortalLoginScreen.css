@@ -28,6 +28,13 @@
   margin: 0 auto 10px;
 }
 
+.portal-login__title {
+  margin: 0 0 6px;
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .portal-login__tagline {
   margin: 0;
   color: #64748b;

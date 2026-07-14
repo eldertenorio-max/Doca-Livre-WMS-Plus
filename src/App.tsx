@@ -289,7 +289,8 @@ export default function App() {
   const initialSsoToken = typeof window !== 'undefined' ? readPortalSsoTokenFromLocation() : null
   const initialHub = typeof window !== 'undefined' ? loadHubSession() : null
   const enteredViaSso = Boolean(initialSsoToken)
-  const [companyIntroDone, setCompanyIntroDone] = useState(() => enteredViaSso || Boolean(initialHub))
+  // Portal público: login → hub (sem splash de marketing na frente)
+  const [companyIntroDone, setCompanyIntroDone] = useState(true)
   const [portalUsuario, setPortalUsuario] = useState(() => initialHub?.usuario || '')
   const [hubReady, setHubReady] = useState(() => Boolean(initialHub) && !enteredViaSso)
   const [selectedSystemId, setSelectedSystemId] = useState<SystemId | null>(() =>
