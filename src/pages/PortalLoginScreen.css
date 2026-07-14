@@ -83,3 +83,56 @@
   opacity: 0.7;
   cursor: wait;
 }
+
+.portal-login__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.portal-login__link {
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.portal-login__link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.portal-login__info {
+  margin: 8px 0 0;
+  color: #0f766e;
+  font-size: 0.9rem;
+}
+
+.portal-login__hint {
+  margin: 0 0 8px;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.portal-login__debug {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.85rem;
+}
+
+.portal-login__input--otp {
+  letter-spacing: 0.35em;
+  font-size: 1.25rem;
+  text-align: center;
+  font-weight: 700;
+}

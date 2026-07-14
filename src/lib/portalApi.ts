@@ -8,6 +8,26 @@ export function getProApiBase(): string {
   return (fromEnv || 'https://doca-livre-wms-pro.onrender.com/').replace(/\/?$/, '/')
 }
 
+async function portalPost<T extends { ok?: boolean; erro?: string }>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<T | { ok: false; erro: string }> {
+  try {
+    const res = await fetch(`${getProApiBase()}${path.replace(/^\//, '')}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = (await res.json().catch(() => ({}))) as T
+    if (!res.ok || !data.ok) {
+      return { ok: false, erro: data.erro || 'Não foi possível concluir a operação.' }
+    }
+    return data
+  } catch {
+    return { ok: false, erro: 'Falha de conexão com o portal.' }
+  }
+}
+
 export function loadHubSession(): { usuario: string; hubToken: string } | null {
   try {
     const hubToken = sessionStorage.getItem(HUB_TOKEN_KEY)?.trim() || ''
@@ -57,6 +77,69 @@ export async function portalLogin(
   } catch {
     return { ok: false, erro: 'Falha de conexão com o portal.' }
   }
+}
+
+export async function portalCadastroEnviarCodigo(email: string) {
+  return portalPost<{
+    ok: true
+    mensagem?: string
+    email?: string
+    debug_codigo?: string
+  }>('api/portal/cadastro/enviar-codigo', { email })
+}
+
+export async function portalCadastroVerificarCodigo(email: string, codigo: string) {
+  return portalPost<{
+    ok: true
+    verify_token: string
+    email?: string
+    mensagem?: string
+  }>('api/portal/cadastro/verificar-codigo', { email, codigo })
+}
+
+export async function portalCadastroConcluir(input: {
+  verifyToken: string
+  usuario: string
+  senha: string
+  confirmarSenha: string
+}) {
+  return portalPost<{ ok: true; mensagem?: string; usuario?: string }>('api/portal/cadastro/concluir', {
+    verify_token: input.verifyToken,
+    usuario: input.usuario,
+    senha: input.senha,
+    confirmar_senha: input.confirmarSenha,
+  })
+}
+
+export async function portalSenhaEnviarCodigo(identificador: string) {
+  return portalPost<{
+    ok: true
+    mensagem?: string
+    email_mascarado?: string
+    debug_codigo?: string
+  }>('api/portal/senha/enviar-codigo', { identificador })
+}
+
+export async function portalSenhaVerificarCodigo(identificador: string, codigo: string) {
+  return portalPost<{
+    ok: true
+    verify_token: string
+    usuario?: string
+    email?: string
+    mensagem?: string
+  }>('api/portal/senha/verificar-codigo', { identificador, codigo })
+}
+
+export async function portalSenhaRedefinir(input: {
+  verifyToken: string
+  senha: string
+  confirmarSenha: string
+}) {
+  return portalPost<{ ok: true; mensagem?: string; usuario?: string }>('api/portal/senha/redefinir', {
+    verify_token: input.verifyToken,
+    senha: input.senha,
+    confirmar_senha: input.confirmarSenha,
+  })
 }
 
 export async function issueSystemSsoUrl(
