@@ -12,6 +12,11 @@ import { PortalBackButton } from './components/PortalBackButton'
 import SystemSelectorScreen from './pages/SystemSelectorScreen'
 import SystemEntryScreen from './pages/SystemEntryScreen'
 import { getSystemById, type SystemId } from './lib/systemPortal'
+import {
+  clearPortalSsoTokenFromUrl,
+  readPortalSsoTokenFromLocation,
+  verifyPortalSsoToken,
+} from './lib/portalSso'
 import { LayoutPanel } from './components/LayoutPanel'
 import { StageModal } from './components/StageModal'
 import { EntradaDestinoModal } from './components/EntradaDestinoModal'
@@ -269,8 +274,12 @@ export default function App() {
   >([])
   const conversationStateRef = useRef(createConversationState())
   const openSectionRef = useRef<SidebarSectionId | null>(null)
-  const [companyIntroDone, setCompanyIntroDone] = useState(false)
-  const [selectedSystemId, setSelectedSystemId] = useState<SystemId | null>(null)
+  const [companyIntroDone, setCompanyIntroDone] = useState(() => Boolean(readPortalSsoTokenFromLocation()))
+  const [selectedSystemId, setSelectedSystemId] = useState<SystemId | null>(() =>
+    readPortalSsoTokenFromLocation() ? 'plus' : null,
+  )
+  const [ssoBootstrapping, setSsoBootstrapping] = useState(() => Boolean(readPortalSsoTokenFromLocation()))
+  const [ssoError, setSsoError] = useState<string | null>(null)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detailAddress, setDetailAddress] = useState<AddressId | null>(null)
@@ -3528,8 +3537,69 @@ export default function App() {
     setSelectedSystemId(null)
   }
 
+  useEffect(() => {
+    const token = readPortalSsoTokenFromLocation()
+    if (!token) return
+    let alive = true
+    setSsoBootstrapping(true)
+    setSsoError(null)
+    void verifyPortalSsoToken(token).then((result) => {
+      if (!alive) return
+      clearPortalSsoTokenFromUrl()
+      if (!result.ok) {
+        setSsoError(result.erro)
+        setSsoBootstrapping(false)
+        setSelectedSystemId(null)
+        setCompanyIntroDone(true)
+        return
+      }
+      const usuario = result.usuario.trim()
+      const id = `sso:${usuario.toLowerCase()}`
+      setContaUsuarios(
+        registrarAcessoUsuario({
+          id,
+          nome: usuario,
+          tornarAtivo: true,
+        }),
+      )
+      setContaUsuarioAtivoId(id)
+      setSelectedSystemId('plus')
+      setCompanyIntroDone(true)
+      setSsoBootstrapping(false)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
   if (!companyIntroDone) {
     return <CompanySplash loading={loading} onComplete={() => setCompanyIntroDone(true)} />
+  }
+
+  if (ssoBootstrapping) {
+    return (
+      <div style={{ padding: 48, textAlign: 'center' }}>
+        Entrando pelo portal Doca Livre…
+      </div>
+    )
+  }
+
+  if (ssoError) {
+    return (
+      <div style={{ padding: 32, maxWidth: 480, margin: '48px auto' }}>
+        <h2 style={{ marginTop: 0 }}>SSO não concluído</h2>
+        <p>{ssoError}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setSsoError(null)
+            setSelectedSystemId(null)
+          }}
+        >
+          Ir para seleção de sistemas
+        </button>
+      </div>
+    )
   }
 
   if (!selectedSystemId) {
