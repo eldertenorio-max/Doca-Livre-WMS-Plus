@@ -288,10 +288,10 @@ export default function App() {
   const initialSsoToken = typeof window !== 'undefined' ? readPortalSsoTokenFromLocation() : null
   const initialHub = typeof window !== 'undefined' ? loadHubSession() : null
   const enteredViaSso = Boolean(initialSsoToken)
-  // Sem splash: entrada pública = login → hub (3 sistemas).
+  // Entrada pública: sempre login → hub Light/Plus/Pro (exceto SSO ou já dentro do Plus).
   const [portalUsuario, setPortalUsuario] = useState(() => initialHub?.usuario || '')
-  // Só entra no hub/plus com sessão do portal (ou SSO). Marcador sozinho NÃO pula o login.
-  const [hubReady, setHubReady] = useState(() => Boolean(initialHub) && !enteredViaSso)
+  // Hub só depois do login nesta visita — token antigo no storage não pula a tela de login.
+  const [hubReady, setHubReady] = useState(false)
   const [selectedSystemId, setSelectedSystemId] = useState<SystemId | null>(() => {
     if (enteredViaSso) return 'plus'
     if (initialHub && hasPortalEntryMarker()) return 'plus'
