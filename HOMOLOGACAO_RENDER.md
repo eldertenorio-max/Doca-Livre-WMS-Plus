@@ -5,7 +5,11 @@ Igual ao **Controle de Carregamento / Sistema WMS**: **mesmo Supabase**, **dois 
 | Ambiente | Branch | URL | Deploy |
 |----------|--------|-----|--------|
 | **Homologação** | `homolog` | https://ultrafrio-homologacao.onrender.com | Automático a cada push |
-| **Produção (WMS)** | `main` | https://wms.docalivre.com.br | Manual — só quando pedir |
+| **Produção (WMS)** | `main` | https://wms.docalivre.com.br | **Ligar Auto-Deploy On Commit** (ou Manual Deploy) |
+
+> ⚠️ Em 13/07/2026 a produção ainda servia o build de **10/07** (tela de 4 cards) porque o Auto-Deploy
+> estava **Off**. Portal único exige deploy da `main` no serviço **Ultrafrio (WMS)**.
+
 
 ---
 
@@ -20,8 +24,9 @@ Igual ao **Controle de Carregamento / Sistema WMS**: **mesmo Supabase**, **dois 
 ### Ultrafrio (WMS / wms.docalivre.com.br)
 
 - **Branch:** `main`
-- **Auto-Deploy:** **Off**
+- **Auto-Deploy:** **On Commit** (recomendado para o portal único)
 - Build / env: idêntico à homologação
+- Se ainda aparecer a tela antiga de 4 cards: **Manual Deploy → Clear build cache & deploy**
 
 ---
 
