@@ -8,6 +8,7 @@ import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
 import { ManualNfModal, type ManualNfModalResult } from './components/ManualNfModal'
 import { PortalBackButton } from './components/PortalBackButton'
+import CompanySplash from './components/CompanySplash'
 import SystemSelectorScreen from './pages/SystemSelectorScreen'
 import SystemEntryScreen from './pages/SystemEntryScreen'
 import PortalLoginScreen from './pages/PortalLoginScreen'
@@ -288,13 +289,17 @@ export default function App() {
   const initialSsoToken = typeof window !== 'undefined' ? readPortalSsoTokenFromLocation() : null
   const initialHub = typeof window !== 'undefined' ? loadHubSession() : null
   const enteredViaSso = Boolean(initialSsoToken)
-  // Entrada pública: sempre login → hub Light/Plus/Pro (exceto SSO ou já dentro do Plus).
+  // Entrada pública: intro → login → hub Light/Plus/Pro (exceto SSO ou já dentro do Plus).
   const [portalUsuario, setPortalUsuario] = useState(() => initialHub?.usuario || '')
+  const alreadyInsidePlus = Boolean(initialHub && hasPortalEntryMarker())
+  const [companyIntroDone, setCompanyIntroDone] = useState(
+    () => enteredViaSso || alreadyInsidePlus,
+  )
   // Hub só depois do login nesta visita — token antigo no storage não pula a tela de login.
   const [hubReady, setHubReady] = useState(false)
   const [selectedSystemId, setSelectedSystemId] = useState<SystemId | null>(() => {
     if (enteredViaSso) return 'plus'
-    if (initialHub && hasPortalEntryMarker()) return 'plus'
+    if (alreadyInsidePlus) return 'plus'
     return null
   })
   const [ssoBootstrapping, setSsoBootstrapping] = useState(() => enteredViaSso)
@@ -3644,7 +3649,11 @@ export default function App() {
     }
   }, [])
 
-  // Entrada obrigatória: login do portal (nunca o seletor antigo de 4 cards sem auth).
+  // Intro de marca → login do portal → hub dos 3 sistemas.
+  if (!companyIntroDone) {
+    return <CompanySplash onComplete={() => setCompanyIntroDone(true)} />
+  }
+
   if (!hubReady && !selectedSystemId && !ssoBootstrapping) {
     return (
       <PortalLoginScreen
