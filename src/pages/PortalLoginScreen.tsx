@@ -187,6 +187,14 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
         setErro(result.erro)
         return
       }
+      const enviado = result.enviado === true || Boolean(result.email_mascarado || result.debug_codigo)
+      if (!enviado) {
+        setInfo(
+          result.mensagem ||
+            'Não encontramos uma conta com e-mail para esse usuário. Faça o cadastro ou use o usuário/e-mail cadastrado.',
+        )
+        return
+      }
       const mask = result.email_mascarado ? ` (${result.email_mascarado})` : ''
       setInfo((result.mensagem || 'Código enviado.') + mask)
       setStep('codigo')

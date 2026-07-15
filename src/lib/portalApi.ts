@@ -114,6 +114,7 @@ export async function portalCadastroConcluir(input: {
 export async function portalSenhaEnviarCodigo(identificador: string) {
   return portalPost<{
     ok: true
+    enviado?: boolean
     mensagem?: string
     email_mascarado?: string
     debug_codigo?: string
