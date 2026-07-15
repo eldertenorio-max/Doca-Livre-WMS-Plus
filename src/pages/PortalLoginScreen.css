@@ -61,6 +61,40 @@
   font: inherit;
 }
 
+.portal-login__password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.portal-login__input--password {
+  width: 100%;
+  padding-right: 46px;
+}
+
+.portal-login__password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+}
+
+.portal-login__password-toggle:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
 .portal-login__erro {
   margin: 8px 0 0;
   color: #b91c1c;

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type InputHTMLAttributes } from 'react'
 import { LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
 import {
   portalCadastroConcluir,
@@ -17,6 +17,51 @@ type Props = {
 
 type Mode = 'login' | 'cadastro' | 'senha'
 type Step = 'form' | 'codigo' | 'dados'
+
+type PasswordFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+  id: string
+}
+
+function PasswordField({ id, className, ...rest }: PasswordFieldProps) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="portal-login__password-wrap">
+      <input
+        id={id}
+        type={visible ? 'text' : 'password'}
+        className={`portal-login__input portal-login__input--password${className ? ` ${className}` : ''}`}
+        {...rest}
+      />
+      <button
+        type="button"
+        className="portal-login__password-toggle"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        title={visible ? 'Ocultar senha' : 'Mostrar senha'}
+      >
+        {visible ? (
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 6a9.8 9.8 0 0 1 8.9 5.5A9.8 9.8 0 0 1 12 17a9.8 9.8 0 0 1-8.9-5.5A9.8 9.8 0 0 1 12 6m0-2C7 4 2.7 7.1 1 12c1.7 4.9 6 8 11 8s9.3-3.1 11-8c-1.7-4.9-6-8-11-8zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0-2a5 5 0 1 0 .001 10.001A5 5 0 0 0 12 7z"
+            />
+            <path
+              fill="currentColor"
+              d="M3.3 2.9 2 4.2l18.5 18.5 1.3-1.3L3.3 2.9z"
+            />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 6a9.8 9.8 0 0 1 8.9 5.5A9.8 9.8 0 0 1 12 17a9.8 9.8 0 0 1-8.9-5.5A9.8 9.8 0 0 1 12 6m0-2C7 4 2.7 7.1 1 12c1.7 4.9 6 8 11 8s9.3-3.1 11-8c-1.7-4.9-6-8-11-8zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0-2a5 5 0 1 0 .001 10.001A5 5 0 0 0 12 7z"
+            />
+          </svg>
+        )}
+      </button>
+    </div>
+  )
+}
 
 export default function PortalLoginScreen({ onSuccess }: Props) {
   const [mode, setMode] = useState<Mode>('login')
@@ -253,10 +298,8 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             <label className="portal-login__label" htmlFor="portal-pass">
               Senha
             </label>
-            <input
+            <PasswordField
               id="portal-pass"
-              type="password"
-              className="portal-login__input"
               autoComplete="current-password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
@@ -381,10 +424,8 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             <label className="portal-login__label" htmlFor="portal-new-pass">
               Senha
             </label>
-            <input
+            <PasswordField
               id="portal-new-pass"
-              type="password"
-              className="portal-login__input"
               autoComplete="new-password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
@@ -394,10 +435,8 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             <label className="portal-login__label" htmlFor="portal-new-pass2">
               Confirmar senha
             </label>
-            <input
+            <PasswordField
               id="portal-new-pass2"
-              type="password"
-              className="portal-login__input"
               autoComplete="new-password"
               value={confirmarSenha}
               onChange={(e) => setConfirmarSenha(e.target.value)}
@@ -501,10 +540,8 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             <label className="portal-login__label" htmlFor="portal-reset-pass">
               Nova senha
             </label>
-            <input
+            <PasswordField
               id="portal-reset-pass"
-              type="password"
-              className="portal-login__input"
               autoComplete="new-password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
@@ -514,10 +551,8 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             <label className="portal-login__label" htmlFor="portal-reset-pass2">
               Confirmar nova senha
             </label>
-            <input
+            <PasswordField
               id="portal-reset-pass2"
-              type="password"
-              className="portal-login__input"
               autoComplete="new-password"
               value={confirmarSenha}
               onChange={(e) => setConfirmarSenha(e.target.value)}
