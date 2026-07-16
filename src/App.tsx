@@ -304,7 +304,14 @@ export default function App() {
   })
   const [ssoBootstrapping, setSsoBootstrapping] = useState(() => enteredViaSso)
   const [ssoError, setSsoError] = useState<string | null>(null)
-  const [hubErro, setHubErro] = useState<string | null>(null)
+  const [hubErro, setHubErro] = useState<string | null>(() => {
+    try {
+      const raw = new URLSearchParams(window.location.search).get('sso_erro')
+      return raw ? decodeURIComponent(raw) : null
+    } catch {
+      return null
+    }
+  })
   const [hubBusy, setHubBusy] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -3560,12 +3567,14 @@ export default function App() {
       setHubErro(null)
       if (id === 'plus') {
         markPortalEntry()
+        setHubReady(true)
         setSelectedSystemId('plus')
         return
       }
       const hub = loadHubSession()
       if (!hub?.hubToken) {
         setHubReady(false)
+        setSelectedSystemId(null)
         setHubErro('Faça login novamente.')
         return
       }
@@ -3599,13 +3608,23 @@ export default function App() {
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
-      if (params.get('sair') !== '1') return
-      clearHubSession()
-      clearPortalEntryMarker()
-      setPortalUsuario('')
-      setHubReady(false)
-      setSelectedSystemId(null)
-      params.delete('sair')
+      let dirty = false
+      if (params.get('sair') === '1') {
+        clearHubSession()
+        clearPortalEntryMarker()
+        setPortalUsuario('')
+        setHubReady(false)
+        setSelectedSystemId(null)
+        params.delete('sair')
+        dirty = true
+      }
+      if (params.has('sso_erro')) {
+        const raw = params.get('sso_erro') || ''
+        if (raw) setHubErro(decodeURIComponent(raw))
+        params.delete('sso_erro')
+        dirty = true
+      }
+      if (!dirty) return
       const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`
       window.history.replaceState({}, document.title, next || '/')
     } catch {
