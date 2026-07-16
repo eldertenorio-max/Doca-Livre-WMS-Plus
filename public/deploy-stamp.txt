@@ -1,2 +1,2 @@
-# Deploy stamp — forçar rebuild no Render (produção + homolog).
-DEPLOY_STAMP=2026-07-15-22-23-subir-atualizacoes
+# Deploy stamp - forcar rebuild no Render (producao + homolog).
+DEPLOY_STAMP=2026-07-15-22-30-suba-sempre-tudo
