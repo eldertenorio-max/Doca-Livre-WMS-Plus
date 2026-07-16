@@ -7,7 +7,6 @@ import { VoiceAssistantHUD } from './components/VoiceAssistantHUD'
 import type { SidebarSectionId } from './components/CollapsibleSidebarSection'
 import { DetailModal } from './components/DetailModal'
 import { ManualNfModal, type ManualNfModalResult } from './components/ManualNfModal'
-import { PortalBackButton } from './components/PortalBackButton'
 import CompanySplash from './components/CompanySplash'
 import SystemSelectorScreen from './pages/SystemSelectorScreen'
 import SystemEntryScreen from './pages/SystemEntryScreen'
@@ -3809,7 +3808,6 @@ export default function App() {
     <div
       className={`app-shell${sidebarMode === 'fullscreen' ? ' app-shell--menu-fullscreen' : ''}`}
     >
-      <PortalBackButton onClick={handleBackToSystemSelector} label="Sistemas" />
       <PwaInstallBanner />
       <AmbienteBanner />
       {savingImportante && (
