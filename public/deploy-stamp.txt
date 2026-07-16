@@ -1,2 +1,2 @@
-# Deploy stamp — atualize este arquivo para forçar rebuild no Render.
-DEPLOY_STAMP=2026-07-15-22-20-hub-back-hard-nav
+# Deploy stamp — forçar rebuild no Render (produção + homolog).
+DEPLOY_STAMP=2026-07-15-22-23-subir-atualizacoes
