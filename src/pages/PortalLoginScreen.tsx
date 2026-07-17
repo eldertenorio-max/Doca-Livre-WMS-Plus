@@ -11,8 +11,14 @@ import {
 } from '../lib/portalApi'
 import './PortalLoginScreen.css'
 
+export type PortalLoginSuccess = {
+  usuario: string
+  isSuperuser?: boolean
+  permissoes?: Record<string, { pode_acessar?: boolean; modulos?: string[] | null }> | null
+}
+
 type Props = {
-  onSuccess: (usuario: string) => void
+  onSuccess: (result: PortalLoginSuccess) => void
 }
 
 type Mode = 'login' | 'cadastro' | 'senha'
@@ -101,7 +107,11 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
         setErro(result.erro)
         return
       }
-      onSuccess(result.usuario)
+      onSuccess({
+        usuario: result.usuario,
+        isSuperuser: result.isSuperuser,
+        permissoes: result.permissoes,
+      })
     } finally {
       setLoading(false)
     }

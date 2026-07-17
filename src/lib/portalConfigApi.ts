@@ -148,8 +148,38 @@ export function nextOrgChildType(tipoPai: string | null | undefined): OrgTipo | 
 export function isLocalSuperUser(usuario: string): boolean {
   const u = (usuario || '').trim().toLowerCase()
   if (!u) return false
-  const locals = ['diego', 'elder', 'diego.isidoro', 'elder.tenorio']
+  const locals = ['diego', 'elder', 'diego.isidoro', 'elder.tenorio', 'eldertenorio', 'diegoisidoro']
   if (locals.includes(u)) return true
-  const local = u.split('@')[0]
-  return locals.includes(local) || locals.some((s) => u.startsWith(`${s}.`) || u.startsWith(`${s}@`))
+  const local = u.split('@')[0] || ''
+  if (locals.includes(local)) return true
+  // Prefixo: diego.*, elder.*, diego@..., elder@...
+  if (locals.some((s) => u === s || u.startsWith(`${s}.`) || u.startsWith(`${s}@`))) return true
+  if (local.startsWith('diego') || local.startsWith('elder')) return true
+  return false
+}
+
+const PORTAL_CONFIG_SEEN_KEY = 'doca_portal_config_seen_v1'
+
+export function clearPortalConfigSeen(): void {
+  try {
+    sessionStorage.removeItem(PORTAL_CONFIG_SEEN_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function markPortalConfigSeen(): void {
+  try {
+    sessionStorage.setItem(PORTAL_CONFIG_SEEN_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+export function hasPortalConfigSeen(): boolean {
+  try {
+    return sessionStorage.getItem(PORTAL_CONFIG_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
 }

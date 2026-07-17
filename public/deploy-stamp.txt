@@ -1,2 +1,2 @@
 # Deploy stamp - forcar rebuild no Render (producao + homolog).
-DEPLOY_STAMP=2026-07-17-01-55-fix-um-botao-sistemas
+DEPLOY_STAMP=2026-07-17-01-58-config-apos-login
