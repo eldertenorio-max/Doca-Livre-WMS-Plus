@@ -4,10 +4,44 @@ import { getProApiBase, loadHubSession } from './portalApi'
 
 export type SistemaId = 'light' | 'plus' | 'pro'
 
+/** Nível de acesso por tela/módulo. */
+export type ModuloAcesso = 'visualizar' | 'editar'
+
 export type SistemaPermissao = {
   pode_acessar: boolean
-  /** null = todas as telas; [] = nenhuma; lista = ids liberados */
-  modulos: string[] | null
+  /**
+   * null = todas as telas com editar;
+   * {} = nenhuma;
+   * mapa id → visualizar | editar
+   * (legado: string[] ainda é aceito na leitura)
+   */
+  modulos: Record<string, ModuloAcesso> | null
+}
+
+/** Normaliza resposta da API (lista legado → mapa editar). */
+export function normalizeModulosMap(
+  raw: Record<string, ModuloAcesso> | string[] | null | undefined,
+): Record<string, ModuloAcesso> | null {
+  if (raw == null) return null
+  if (Array.isArray(raw)) {
+    const out: Record<string, ModuloAcesso> = {}
+    for (const id of raw) {
+      const k = String(id || '').trim()
+      if (k) out[k] = 'editar'
+    }
+    return out
+  }
+  if (typeof raw === 'object') {
+    const out: Record<string, ModuloAcesso> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      const id = String(k || '').trim()
+      if (!id) continue
+      const acesso = String(v || '').toLowerCase()
+      out[id] = acesso === 'visualizar' ? 'visualizar' : 'editar'
+    }
+    return out
+  }
+  return {}
 }
 
 export type PortalUsuarioRow = {

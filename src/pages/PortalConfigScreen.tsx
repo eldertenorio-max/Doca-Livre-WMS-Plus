@@ -3,7 +3,9 @@ import PortalHierarchyTree from '../components/PortalHierarchyTree'
 import {
   fetchPortalConfigOverview,
   isLocalSuperUser,
+  normalizeModulosMap,
   savePortalPermissoes,
+  type ModuloAcesso,
   type PortalConfigOverview,
   type PortalUsuarioRow,
   type SistemaId,
@@ -68,6 +70,25 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
       return
     }
     setData(res)
+    // Normaliza mapas de módulos (legado lista → editar).
+    const matrizNorm: PortalConfigOverview['matriz'] = {}
+    for (const [user, sisMap] of Object.entries(res.matriz || {})) {
+      matrizNorm[user] = {
+        light: {
+          pode_acessar: sisMap.light?.pode_acessar !== false,
+          modulos: normalizeModulosMap(sisMap.light?.modulos as never),
+        },
+        plus: {
+          pode_acessar: sisMap.plus?.pode_acessar !== false,
+          modulos: normalizeModulosMap(sisMap.plus?.modulos as never),
+        },
+        pro: {
+          pode_acessar: sisMap.pro?.pode_acessar !== false,
+          modulos: normalizeModulosMap(sisMap.pro?.modulos as never),
+        },
+      }
+    }
+    setData({ ...res, matriz: matrizNorm })
     const editaveis = res.usuarios.filter((u) => !isHiddenConfigUser(u))
     setSelected((prev) => {
       if (prev && editaveis.some((u) => u.usuario === prev)) return prev
@@ -137,27 +158,53 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
     })
   }
 
-  function toggleModulo(sistema: SistemaId, modId: string) {
+  function acessoModulo(sistema: SistemaId, modId: string): ModuloAcesso | 'bloqueado' {
+    if (!perms) return 'bloqueado'
+    const bloco = perms[sistema] || { pode_acessar: true, modulos: null }
+    const map = normalizeModulosMap(bloco.modulos as never)
+    if (map == null) return 'editar'
+    return map[modId] || 'bloqueado'
+  }
+
+  function setModuloAcesso(sistema: SistemaId, modId: string, acesso: ModuloAcesso | 'bloqueado') {
     if (!data || !selected || !perms) return
     const bloco = perms[sistema] || { pode_acessar: true, modulos: null }
-    const mods = data.modulos[sistema] || []
-    const allIds = mods.map((m) => m.id)
-    let selectedMods = bloco.modulos == null ? [...allIds] : [...bloco.modulos]
-    if (selectedMods.includes(modId)) {
-      selectedMods = selectedMods.filter((id) => id !== modId)
+    const modsCat = data.modulos[sistema] || []
+    const allIds = modsCat.map((m) => m.id)
+    let map = normalizeModulosMap(bloco.modulos as never)
+    if (map == null) {
+      map = Object.fromEntries(allIds.map((id) => [id, 'editar' as ModuloAcesso]))
     } else {
-      selectedMods.push(modId)
+      map = { ...map }
+    }
+    if (acesso === 'bloqueado') {
+      delete map[modId]
+    } else {
+      map[modId] = acesso
     }
     const next =
-      selectedMods.length === allIds.length && allIds.every((id) => selectedMods.includes(id))
+      allIds.length > 0 &&
+      allIds.every((id) => map![id] === 'editar') &&
+      Object.keys(map).length === allIds.length
         ? null
-        : selectedMods
+        : map
     patchSistema(sistema, { modulos: next })
   }
 
-  function setAllModulos(sistema: SistemaId, liberar: boolean) {
+  function setAllModulos(sistema: SistemaId, modo: 'editar' | 'visualizar' | 'nenhuma') {
     if (!data) return
-    patchSistema(sistema, { modulos: liberar ? null : [] })
+    if (modo === 'nenhuma') {
+      patchSistema(sistema, { modulos: {} })
+      return
+    }
+    if (modo === 'editar') {
+      patchSistema(sistema, { modulos: null })
+      return
+    }
+    const mods = data.modulos[sistema] || []
+    const map: Record<string, ModuloAcesso> = {}
+    for (const m of mods) map[m.id] = 'visualizar'
+    patchSistema(sistema, { modulos: map })
   }
 
   if (loading && !data) {
@@ -297,19 +344,23 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
                     </div>
                   </div>
                   <p className="portal-config__perms-hint">
-                    Escolha quais sistemas a pessoa pode abrir e quais telas liberar em cada um. Sem
-                    restrição de módulos = acesso a tudo do sistema.
+                    Escolha os sistemas liberados e, em cada tela, se a pessoa pode só{' '}
+                    <strong>visualizar</strong> ou também <strong>editar</strong>.
                   </p>
 
                   <div className="portal-config__sistemas">
                     {(['light', 'plus', 'pro'] as SistemaId[]).map((sistema) => {
                       const bloco = perms?.[sistema] || { pode_acessar: true, modulos: null }
                       const mods = data.modulos[sistema] || []
-                      const selectedMods = bloco.modulos
+                      const map = normalizeModulosMap(bloco.modulos as never)
                       const liberados =
-                        selectedMods == null
+                        map == null ? mods.length : Object.keys(map).filter((id) => mods.some((m) => m.id === id)).length
+                      const nEdit =
+                        map == null
                           ? mods.length
-                          : mods.filter((m) => selectedMods.includes(m.id)).length
+                          : Object.values(map).filter((a) => a === 'editar').length
+                      const nView =
+                        map == null ? 0 : Object.values(map).filter((a) => a === 'visualizar').length
                       return (
                         <article
                           key={sistema}
@@ -342,41 +393,65 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
                             <>
                               <div className="portal-config__mods-toolbar">
                                 <span className="portal-config__mods-count">
-                                  Telas · {liberados}/{mods.length}
-                                  {selectedMods == null ? ' · todas' : ''}
+                                  {liberados}/{mods.length} telas
+                                  {map == null
+                                    ? ' · todas editar'
+                                    : ` · ${nEdit} editar · ${nView} visualizar`}
                                 </span>
                                 <div className="portal-config__mods-actions">
                                   <button
                                     type="button"
                                     className="portal-config__link-btn"
-                                    onClick={() => setAllModulos(sistema, true)}
+                                    onClick={() => setAllModulos(sistema, 'editar')}
                                   >
-                                    Todas
+                                    Todas editar
                                   </button>
                                   <button
                                     type="button"
                                     className="portal-config__link-btn"
-                                    onClick={() => setAllModulos(sistema, false)}
+                                    onClick={() => setAllModulos(sistema, 'visualizar')}
+                                  >
+                                    Todas visualizar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="portal-config__link-btn"
+                                    onClick={() => setAllModulos(sistema, 'nenhuma')}
                                   >
                                     Nenhuma
                                   </button>
                                 </div>
                               </div>
-                              <div className="portal-config__mods">
+                              <div className="portal-config__mod-rows">
                                 {mods.map((m) => {
-                                  const checked = selectedMods == null || selectedMods.includes(m.id)
+                                  const acesso = acessoModulo(sistema, m.id)
                                   return (
-                                    <label
-                                      key={m.id}
-                                      className={`portal-config__chip${checked ? ' portal-config__chip--on' : ''}`}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() => toggleModulo(sistema, m.id)}
-                                      />
-                                      <span>{m.label}</span>
-                                    </label>
+                                    <div key={m.id} className="portal-config__mod-row">
+                                      <span className="portal-config__mod-name">{m.label}</span>
+                                      <div
+                                        className="portal-config__seg"
+                                        role="group"
+                                        aria-label={`Acesso a ${m.label}`}
+                                      >
+                                        {(
+                                          [
+                                            ['bloqueado', 'Sem acesso'],
+                                            ['visualizar', 'Visualizar'],
+                                            ['editar', 'Editar'],
+                                          ] as const
+                                        ).map(([val, label]) => (
+                                          <button
+                                            key={val}
+                                            type="button"
+                                            className={`portal-config__seg-btn${acesso === val ? ` portal-config__seg-btn--${val}` : ''}`}
+                                            aria-pressed={acesso === val}
+                                            onClick={() => setModuloAcesso(sistema, m.id, val)}
+                                          >
+                                            {label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
                                   )
                                 })}
                               </div>
