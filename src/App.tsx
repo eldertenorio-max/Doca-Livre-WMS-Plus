@@ -37,6 +37,16 @@ import {
   issueSystemSsoUrl,
   loadHubSession,
 } from './lib/portalApi'
+import {
+  canEditSection,
+  canOpenSection,
+  clearPlusModulosSession,
+  guardMutations,
+  loadPlusModulosSession,
+  normalizePlusModulos,
+  savePlusModulosSession,
+  type PlusModulosMap,
+} from './lib/portalModuleAccess'
 import { LayoutPanel } from './components/LayoutPanel'
 import { StageModal } from './components/StageModal'
 import { EntradaDestinoModal } from './components/EntradaDestinoModal'
@@ -320,6 +330,11 @@ export default function App() {
     return !hasPortalConfigSeen()
   })
   const [allowedSystemIds, setAllowedSystemIds] = useState<SystemId[] | null>(null)
+  const [plusModulos, setPlusModulos] = useState<PlusModulosMap>(() => {
+    const cached = loadPlusModulosSession()
+    return cached === undefined ? null : cached
+  })
+  const [viewOnlyToast, setViewOnlyToast] = useState<string | null>(null)
   const alreadyInsidePlus = Boolean(initialHub && hasPortalEntryMarker()) && !forceSystemsHub
   const resumeHub =
     Boolean(initialHub) && !enteredViaSso && (!alreadyInsidePlus || forceSystemsHub)
@@ -835,13 +850,16 @@ export default function App() {
       : editMode
         ? editPendingSelection
         : saidaPendingSelection
+  const sectionReadOnly = openSection != null && !canEditSection(plusModulos, openSection)
+
   const panelAllocateMode =
-    (openSection === 'entrada' && allocateMode) ||
-    (openSection === 'editar' && (editMode || nfEmEdicao)) ||
-    (openSection === 'saida' &&
-      saidaModoPalete &&
-      (saidaQtdPaletesAlvo != null || saidaSelecaoConcluida)) ||
-    (openSection === 'consulta' && consultaAguardandoEndereco)
+    !sectionReadOnly &&
+    ((openSection === 'entrada' && allocateMode) ||
+      (openSection === 'editar' && (editMode || nfEmEdicao)) ||
+      (openSection === 'saida' &&
+        saidaModoPalete &&
+        (saidaQtdPaletesAlvo != null || saidaSelecaoConcluida)) ||
+      (openSection === 'consulta' && consultaAguardandoEndereco))
   const panelActiveNfNumero = nfEmEdicao ? nfEditar?.numero ?? null : activeNf?.numero ?? null
 
   const activeAllocateItem = allocateMode ? activeEntradaItem : null
@@ -1196,6 +1214,10 @@ export default function App() {
   }
 
   function handleCellPaint(addressId: AddressId, mode: 'add' | 'remove', canInteract: boolean) {
+    if (openSection != null && !canEditSection(plusModulos, openSection) && canInteract) {
+      setViewOnlyToast('Modo visualização — alterações bloqueadas nesta aba.')
+      return
+    }
     const occ = occupancy.get(addressId)
     if (!canInteract) {
       if (occ && !mapaEmOperacaoAtiva) {
@@ -3320,6 +3342,10 @@ export default function App() {
 
   const handleOpenSection = useCallback(
     (id: SidebarSectionId | null) => {
+      if (id != null && !canOpenSection(plusModulos, id)) {
+        setViewOnlyToast('Sem acesso a esta aba.')
+        return
+      }
       const apply = () => {
         if (id === 'painel') {
           setSidebarMode('fullscreen')
@@ -3336,7 +3362,13 @@ export default function App() {
         apply()
       }
     },
-    [trySairEntradaIncompleta, trySairMovimentacaoIncompleta, setSidebarMode, sidebarMode],
+    [
+      trySairEntradaIncompleta,
+      trySairMovimentacaoIncompleta,
+      setSidebarMode,
+      sidebarMode,
+      plusModulos,
+    ],
   )
 
   const handleVoicePrefsChange = useCallback((patch: Partial<VoicePrefs>) => {
@@ -3692,15 +3724,26 @@ export default function App() {
         >
       | null
       | undefined,
+    opts?: { isSuperuser?: boolean },
   ) {
     if (!permissoes) {
       setAllowedSystemIds(null)
+      if (opts?.isSuperuser) {
+        setPlusModulos(null)
+        savePlusModulosSession(null)
+      }
       return
     }
     const ids = (['light', 'plus', 'pro'] as const).filter(
       (s) => permissoes[s]?.pode_acessar !== false,
     )
     setAllowedSystemIds([...ids])
+    // Super user: acesso total (editar) em todas as telas do Plus.
+    const map = opts?.isSuperuser
+      ? null
+      : normalizePlusModulos(permissoes.plus?.modulos ?? null)
+    setPlusModulos(map)
+    savePlusModulosSession(map)
   }
 
   function refreshPortalMe(opts?: { openConfigIfSuper?: boolean; usuarioHint?: string }) {
@@ -3716,7 +3759,7 @@ export default function App() {
       const superU = Boolean(me.is_superuser) || isLocalSuperUser(me.usuario)
       setIsSuperUser(superU)
       setPortalUsuario(me.usuario || opts?.usuarioHint || portalUsuario)
-      applyPortalPermissoes(me.permissoes)
+      applyPortalPermissoes(me.permissoes, { isSuperuser: superU })
       if (opts?.openConfigIfSuper && superU) {
         setShowPortalConfig(true)
       }
@@ -3727,12 +3770,14 @@ export default function App() {
     clearHubSession()
     clearPortalEntryMarker()
     clearPortalConfigSeen()
+    clearPlusModulosSession()
     setPortalUsuario('')
     setHubReady(false)
     setSelectedSystemId(null)
     setShowPortalConfig(false)
     setIsSuperUser(false)
     setAllowedSystemIds(null)
+    setPlusModulos(null)
     goToPublicPortal(true)
   }
 
@@ -3764,6 +3809,30 @@ export default function App() {
     }
     refreshPortalMe({ openConfigIfSuper: true, usuarioHint: portalUsuario })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só no boot do hub
+  }, [])
+
+  // Dentro do Plus: recarrega mapa de módulos (Visualizar / Editar / Sem acesso).
+  useEffect(() => {
+    if (selectedSystemId !== 'plus') return
+    refreshPortalMe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSystemId])
+
+  // Fecha aba aberta se permissão deixar de permitir.
+  useEffect(() => {
+    if (openSection && !canOpenSection(plusModulos, openSection)) {
+      setOpenSection(null)
+    }
+  }, [plusModulos, openSection])
+
+  useEffect(() => {
+    if (!viewOnlyToast) return
+    const t = window.setTimeout(() => setViewOnlyToast(null), 3200)
+    return () => window.clearTimeout(t)
+  }, [viewOnlyToast])
+
+  const notifyViewOnly = useCallback(() => {
+    setViewOnlyToast('Modo visualização — só é possível consultar. Alterações bloqueadas.')
   }, [])
 
   useEffect(() => {
@@ -3872,7 +3941,7 @@ export default function App() {
           setSelectedSystemId(null)
           const superU = Boolean(result.isSuperuser) || isLocalSuperUser(usuario)
           setIsSuperUser(superU)
-          applyPortalPermissoes(result.permissoes)
+          applyPortalPermissoes(result.permissoes, { isSuperuser: superU })
           // Super Usuário: Configuração (Hierarquia / Permissões) antes do hub.
           setShowPortalConfig(superU)
           refreshPortalMe({ openConfigIfSuper: true, usuarioHint: usuario })
@@ -4008,13 +4077,20 @@ export default function App() {
         zerandoBancoHomolog={zerandoBancoHomolog}
       />
       <div className="app-workspace">
+      {viewOnlyToast ? (
+        <div className="portal-view-only-toast" role="status">
+          {viewOnlyToast}
+        </div>
+      ) : null}
       <AppSidebar
         sidebarMode={sidebarMode}
         onSidebarModeChange={setSidebarMode}
         openSection={openSection}
         onOpenSectionChange={handleOpenSection}
+        plusModulos={plusModulos}
         onBeforeLeaveEntrada={trySairEntradaIncompleta}
-        entrada={{
+        entrada={guardMutations(
+          {
           notas: state.notas,
           activeNfId: state.activeNfId,
           selectedNfIds: selectedEntradaIds,
@@ -4042,8 +4118,27 @@ export default function App() {
             })
           },
           uploadError,
-        }}
-        saida={{
+        },
+          sectionReadOnly && openSection === 'entrada',
+          [
+            'onUpload',
+            'onUpdateNfDataArmazenagem',
+            'onUpdateItemCampos',
+            'onUpdateItemQuantidade',
+            'onUpdateItemPaletes',
+            'onUpdateItemLocalizacao',
+            'onDesmembrarItem',
+            'onConfirmItem',
+            'onFinishEntrada',
+            'onDeixarPendente',
+            'onCancelarEntrada',
+            'onLimparSelecao',
+            'onCadastrarManual',
+          ],
+          notifyViewOnly,
+        )}
+        saida={guardMutations(
+          {
           origemEstoque: saidaOrigemEstoque,
           modoBusca: saidaModoBusca,
           onModoBuscaChange: handleModoBuscaSaidaChange,
@@ -4091,7 +4186,27 @@ export default function App() {
           buscaErro,
           uploadXmlErro: saidaUploadXmlErro,
           selecaoErro: saidaSelecaoErro,
-        }}
+        },
+          sectionReadOnly && openSection === 'saida',
+          [
+            'onVincularOrigem',
+            'onUploadXml',
+            'onIniciarSelecao',
+            'onConfirmarSelecaoPaletes',
+            'onConfirmarPalete',
+            'onRemoverPalete',
+            'onFinalizarSaida',
+            'onCancelarSaida',
+            'onConfirmarItemStage',
+            'onRemoverItemStage',
+            'onFinalizarSaidaStage',
+            'onQtdPaletesChange',
+            'onCaixasPaleteChange',
+            'onStageQtdChange',
+            'onDataSaidaChange',
+          ],
+          notifyViewOnly,
+        )}
         historico={{
           movimentos: movimentosHistorico,
           canceladas: state.notasCanceladas,
@@ -4106,7 +4221,8 @@ export default function App() {
           notas: state.notas,
           onFiltrosChange: handlePainelFiltrosChange,
         }}
-        canceladas={{
+        canceladas={guardMutations(
+          {
           canceladas: canceladasAtivas,
           notas: state.notas,
           onUpload: handleUploadCancelada,
@@ -4116,8 +4232,13 @@ export default function App() {
           onCancelarCancelada: handleCancelarCancelada,
           canceladaPendenteId,
           uploadError: uploadCanceladaError,
-        }}
-        editar={{
+        },
+          sectionReadOnly && openSection === 'canceladas',
+          ['onUpload', 'onVincular', 'onDesvincular', 'onExcluir', 'onCancelarCancelada'],
+          notifyViewOnly,
+        )}
+        editar={guardMutations(
+          {
           nfBusca: nfEditar,
           itemIndex: editItemIndex,
           pendingCount: editPendingSelection.size,
@@ -4150,8 +4271,24 @@ export default function App() {
           onConfirmarAdicionarPosicoes: handleConfirmarAdicionarPosicoes,
           onCancelarAdicionarPosicoes: handleCancelarAdicionarPosicoes,
           buscaErro: buscaEditarErro,
-        }}
-        consulta={{
+        },
+          sectionReadOnly && openSection === 'editar',
+          [
+            'onModoMovimentacaoChange',
+            'onSelectVozOrigem',
+            'onVozDestino',
+            'onAdicionarEnderecoDestino',
+            'onSalvar',
+            'onRemoverDoEstoque',
+            'onCancelarEditar',
+            'onIniciarAdicionarPosicoes',
+            'onConfirmarAdicionarPosicoes',
+            'onCancelarAdicionarPosicoes',
+          ],
+          notifyViewOnly,
+        )}
+        consulta={guardMutations(
+          {
           notas: state.notas,
           emitentesSugeridos,
           resultados: consultaResultados,
@@ -4174,8 +4311,21 @@ export default function App() {
           onConfirmarEnderecos: handleConfirmItem,
           onCancelarEnderecos: handleCancelarEnderecoConsulta,
           onLimparNfAdicionar: handleLimparNfAdicionar,
-        }}
-        imprimir={{
+        },
+          sectionReadOnly && openSection === 'consulta',
+          [
+            'onReplicarItem',
+            'onExcluirItem',
+            'onAdicionarItemManual',
+            'onConfirmarEnderecos',
+            'onCancelarEnderecos',
+            'onBuscarNfAdicionar',
+            'onLimparNfAdicionar',
+          ],
+          notifyViewOnly,
+        )}
+        imprimir={guardMutations(
+          {
           selectedCamaras: printCamaras,
           onToggleCamara: (id) =>
             setPrintCamaras((prev) =>
@@ -4184,8 +4334,13 @@ export default function App() {
           onSelectAll: () => setPrintCamaras(CAMARAS.map((c) => c.id)),
           onClearAll: () => setPrintCamaras([]),
           onPrint: schedulePrint,
-        }}
-        cadastroVoz={{
+        },
+          sectionReadOnly && openSection === 'imprimir',
+          ['onPrint'],
+          notifyViewOnly,
+        )}
+        cadastroVoz={guardMutations(
+          {
           prefs: voicePrefs,
           voiceRegistry,
           supported: voiceAssistant.supported,
@@ -4197,8 +4352,13 @@ export default function App() {
           onRefreshVoiceRegistry: refreshVoiceRegistry,
           onTestWakePhrase: voiceAssistant.testPhrase,
           sectionOpen: openSection === 'cadastroVoz',
-        }}
-        financeiro={{
+        },
+          sectionReadOnly && openSection === 'cadastroVoz',
+          ['onPrefsChange', 'onVoiceRegistryChange', 'onTestWakePhrase'],
+          notifyViewOnly,
+        )}
+        financeiro={guardMutations(
+          {
           data: financeiro.data,
           notas: state.notas,
           movimentos: movimentosHistorico,
@@ -4208,7 +4368,11 @@ export default function App() {
           onUpdate: financeiro.updateData,
           onSaveNow: financeiro.saveNow,
           onUpdateNotaDataArmazenagem: handleUpdateNfDataArmazenagem,
-        }}
+        },
+          sectionReadOnly && openSection === 'financeiro',
+          ['onUpdate', 'onSaveNow', 'onUpdateNotaDataArmazenagem'],
+          notifyViewOnly,
+        )}
       />
 
       <main className="main-panel">

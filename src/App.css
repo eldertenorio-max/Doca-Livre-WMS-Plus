@@ -4500,6 +4500,46 @@ html.scroll-locked .sidebar.sidebar--wide {
   overflow: hidden;
 }
 
+.portal-view-only__banner {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.portal-view-only__body .btn.primary,
+.portal-view-only__body .btn.danger,
+.portal-view-only__body .btn.success,
+.portal-view-only__body input[type='file'],
+.portal-view-only__body label.file-btn,
+.portal-view-only__body button.btn.full {
+  pointer-events: none !important;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.portal-view-only-toast {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #1e3a8a;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.28);
+  max-width: min(92vw, 420px);
+  text-align: center;
+}
+
 .sidebar-section--open .sidebar-section-body {
   grid-template-rows: 1fr;
 }

@@ -10,15 +10,23 @@ import { ImprimirPanel } from './ImprimirPanel'
 import { PainelPanel } from './PainelPanel'
 import { RelatorioPanel } from './RelatorioPanel'
 import { SaidaPanel } from './SaidaPanel'
+import { ViewOnlyShell } from './ViewOnlyShell'
 import { useSidebarExpand } from '../hooks/useSidebarExpand'
 import type { SidebarMode } from '../lib/sidebarMode'
-import { type ComponentProps, type CSSProperties, type PointerEvent, useMemo, useState } from 'react'
+import {
+  canOpenSection,
+  isSectionReadOnly,
+  type PlusModulosMap,
+} from '../lib/portalModuleAccess'
+import { type ComponentProps, type CSSProperties, type PointerEvent, type ReactNode, useMemo, useState } from 'react'
 
 type Props = {
   sidebarMode: SidebarMode
   onSidebarModeChange: (mode: SidebarMode) => void
   openSection: SidebarSectionId | null
   onOpenSectionChange: (id: SidebarSectionId | null) => void
+  /** null = todas as telas com editar; mapa = restrições do portal */
+  plusModulos?: PlusModulosMap
   entrada: ComponentProps<typeof EntradaPanel>
   saida: ComponentProps<typeof SaidaPanel>
   editar: ComponentProps<typeof EditarPosicaoPanel>
@@ -67,6 +75,7 @@ export function AppSidebar({
   onSidebarModeChange,
   openSection,
   onOpenSectionChange,
+  plusModulos = null,
   entrada,
   saida,
   editar,
@@ -81,10 +90,19 @@ export function AppSidebar({
   onBeforeLeaveEntrada,
 }: Props) {
   function sectionOpenChange(id: SidebarSectionId, open: boolean) {
+    if (open && !canOpenSection(plusModulos, id)) return
     if (open && id === 'painel') {
       onSidebarModeChange('fullscreen')
     }
     onOpenSectionChange(open ? id : null)
+  }
+
+  function show(id: SidebarSectionId) {
+    return canOpenSection(plusModulos, id)
+  }
+
+  function wrap(id: SidebarSectionId, node: ReactNode) {
+    return <ViewOnlyShell active={isSectionReadOnly(plusModulos, id)}>{node}</ViewOnlyShell>
   }
 
   const guardOtherSection = (nextOpen: boolean, proceed: () => void) => {
@@ -182,6 +200,7 @@ export function AppSidebar({
       )}
       <div className="sidebar-layout">
       <div className="sidebar-body">
+      {show('consulta') ? (
       <CollapsibleSidebarSection
         id="consulta"
         title="Consulta estoque"
@@ -189,9 +208,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('consulta', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <ConsultaEstoquePanel {...consulta} />
+        {wrap('consulta', <ConsultaEstoquePanel {...consulta} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('entrada') ? (
       <CollapsibleSidebarSection
         id="entrada"
         title="Entrada"
@@ -199,9 +220,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('entrada', open)}
         onBeforeToggle={guardEntradaSection}
       >
-        <EntradaPanel {...entrada} />
+        {wrap('entrada', <EntradaPanel {...entrada} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('saida') ? (
       <CollapsibleSidebarSection
         id="saida"
         title="Saída"
@@ -209,9 +232,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('saida', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <SaidaPanel {...saida} />
+        {wrap('saida', <SaidaPanel {...saida} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('editar') ? (
       <CollapsibleSidebarSection
         id="editar"
         title="Movimentação"
@@ -219,9 +244,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('editar', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <EditarPosicaoPanel {...editar} />
+        {wrap('editar', <EditarPosicaoPanel {...editar} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('canceladas') ? (
       <CollapsibleSidebarSection
         id="canceladas"
         title="NF cancelada"
@@ -229,9 +256,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('canceladas', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <CanceladasPanel {...canceladas} />
+        {wrap('canceladas', <CanceladasPanel {...canceladas} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('historico') ? (
       <CollapsibleSidebarSection
         id="historico"
         title="Histórico"
@@ -239,9 +268,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('historico', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <HistoricoPanel {...historico} />
+        {wrap('historico', <HistoricoPanel {...historico} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('relatorio') ? (
       <CollapsibleSidebarSection
         id="relatorio"
         title="Relatório"
@@ -249,9 +280,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('relatorio', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <RelatorioPanel {...relatorio} />
+        {wrap('relatorio', <RelatorioPanel {...relatorio} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('painel') ? (
       <CollapsibleSidebarSection
         id="painel"
         title="Painel"
@@ -259,9 +292,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('painel', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <PainelPanel {...painel} />
+        {wrap('painel', <PainelPanel {...painel} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('financeiro') ? (
       <CollapsibleSidebarSection
         id="financeiro"
         title="Financeiro"
@@ -269,9 +304,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('financeiro', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <FinanceiroPanel {...financeiro} />
+        {wrap('financeiro', <FinanceiroPanel {...financeiro} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('cadastroVoz') ? (
       <CollapsibleSidebarSection
         id="cadastroVoz"
         title="Comando de voz"
@@ -279,9 +316,11 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('cadastroVoz', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <CadastroVozPanel {...cadastroVoz} />
+        {wrap('cadastroVoz', <CadastroVozPanel {...cadastroVoz} />)}
       </CollapsibleSidebarSection>
+      ) : null}
 
+      {show('imprimir') ? (
       <CollapsibleSidebarSection
         id="imprimir"
         title="Mapa"
@@ -289,8 +328,9 @@ export function AppSidebar({
         onOpenChange={(open) => sectionOpenChange('imprimir', open)}
         onBeforeToggle={guardOtherSection}
       >
-        <ImprimirPanel {...imprimir} />
+        {wrap('imprimir', <ImprimirPanel {...imprimir} />)}
       </CollapsibleSidebarSection>
+      ) : null}
       </div>
       </div>
     </aside>
