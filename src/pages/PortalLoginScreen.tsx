@@ -95,6 +95,10 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
     setConfirmarSenha('')
     setErro(null)
     setInfo(null)
+    // Cadastro: campo usuário sempre em branco (não herda login/autofill).
+    if (next === 'cadastro') {
+      setUsuario('')
+    }
   }
 
   async function handleLogin(e: FormEvent) {
@@ -146,6 +150,9 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
       }
       setVerifyToken(result.verify_token)
       setInfo(result.mensagem || 'E-mail confirmado. Defina usuário e senha.')
+      setUsuario('')
+      setSenha('')
+      setConfirmarSenha('')
       setStep('dados')
       setCodigo('')
     } finally {
@@ -428,12 +435,17 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             </label>
             <input
               id="portal-new-user"
+              name="portal_cadastro_usuario"
               className="portal-login__input"
-              autoComplete="username"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
               required
               minLength={2}
+              placeholder="Escolha um nome de usuário"
             />
             <label className="portal-login__label" htmlFor="portal-new-pass">
               Senha
