@@ -41,8 +41,16 @@
   color: #5c6670;
 }
 
-.system-selector__sair {
+.system-selector__header-actions {
   margin-top: 12px;
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.system-selector__config,
+.system-selector__sair {
   border: 0;
   background: transparent;
   color: #64748b;
@@ -51,6 +59,10 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+.system-selector__config {
+  color: #0f172a;
 }
 
 .system-selector__erro {

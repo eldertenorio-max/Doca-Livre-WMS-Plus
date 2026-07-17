@@ -1,0 +1,242 @@
+.portal-config {
+  min-height: 100dvh;
+  background: #eef1f4;
+  padding: 24px 20px 40px;
+  box-sizing: border-box;
+}
+
+.portal-config__shell {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.portal-config__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.portal-config__title {
+  margin: 0 0 4px;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.portal-config__sub {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.portal-config__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.portal-config__btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.portal-config__btn--primary {
+  border-color: #e6c200;
+  background: #fffbea;
+}
+
+.portal-config__btn--primary:hover {
+  background: #fff3a8;
+}
+
+.portal-config__tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #dde3ea;
+  padding-bottom: 2px;
+}
+
+.portal-config__tab {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -3px;
+}
+
+.portal-config__tab--active {
+  color: #0f172a;
+  border-bottom-color: #f9db00;
+}
+
+.portal-config__body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  min-height: 420px;
+}
+
+@media (max-width: 800px) {
+  .portal-config__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.portal-config__list {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px;
+  overflow: auto;
+  max-height: min(70vh, 640px);
+}
+
+.portal-config__user {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: #0f172a;
+}
+
+.portal-config__user:hover {
+  background: #f8fafc;
+}
+
+.portal-config__user--active {
+  background: #fffbea;
+  border-color: #f0d000;
+}
+
+.portal-config__user-name {
+  display: block;
+  font-weight: 700;
+}
+
+.portal-config__user-meta {
+  display: block;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.portal-config__panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.portal-config__panel h2 {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+}
+
+.portal-config__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: flex-end;
+}
+
+.portal-config__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+  flex: 1;
+}
+
+.portal-config__field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.portal-config__field select,
+.portal-config__field input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  background: #fff;
+}
+
+.portal-config__sistema {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.portal-config__sistema-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.portal-config__sistema-head strong {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.portal-config__mods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 10px;
+}
+
+.portal-config__mod {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.portal-config__mod input {
+  width: 16px;
+  height: 16px;
+}
+
+.portal-config__msg {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #0f766e;
+}
+
+.portal-config__erro {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #b91c1c;
+}
+
+.portal-config__loading {
+  padding: 48px;
+  text-align: center;
+  color: #64748b;
+}

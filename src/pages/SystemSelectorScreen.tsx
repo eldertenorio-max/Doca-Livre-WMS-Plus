@@ -9,6 +9,9 @@ type Props = {
   onSair?: () => void
   /** Volta ao login do portal (tela anterior ao hub). */
   onVoltar?: () => void
+  /** Se definido, só mostra esses sistemas no hub. */
+  allowedSystemIds?: SystemId[] | null
+  onAbrirConfig?: () => void
   erro?: string | null
   busy?: boolean
 }
@@ -18,10 +21,16 @@ export default function SystemSelectorScreen({
   usuario,
   onSair,
   onVoltar,
+  allowedSystemIds,
+  onAbrirConfig,
   erro,
   busy,
 }: Props) {
-  const systems = getHubSystemOptions()
+  const systems = getHubSystemOptions().filter((s) =>
+    !allowedSystemIds || allowedSystemIds.length === 0
+      ? true
+      : allowedSystemIds.includes(s.id),
+  )
 
   return (
     <div className="system-selector" role="main">
@@ -36,11 +45,18 @@ export default function SystemSelectorScreen({
               ? `Olá, ${usuario} — selecione Light, Plus ou Pro`
               : 'Selecione Light, Plus ou Pro'}
           </p>
-          {onSair ? (
-            <button type="button" className="system-selector__sair" onClick={onSair}>
-              Sair
-            </button>
-          ) : null}
+          <div className="system-selector__header-actions">
+            {onAbrirConfig ? (
+              <button type="button" className="system-selector__config" onClick={onAbrirConfig}>
+                Configuração
+              </button>
+            ) : null}
+            {onSair ? (
+              <button type="button" className="system-selector__sair" onClick={onSair}>
+                Sair
+              </button>
+            ) : null}
+          </div>
         </header>
 
         {erro ? (

@@ -63,7 +63,16 @@ export function clearHubSession(): void {
 export async function portalLogin(
   usuario: string,
   senha: string,
-): Promise<{ ok: true; usuario: string; hubToken: string } | { ok: false; erro: string }> {
+): Promise<
+  | {
+      ok: true
+      usuario: string
+      hubToken: string
+      isSuperuser?: boolean
+      permissoes?: Record<string, { pode_acessar?: boolean; modulos?: string[] | null }> | null
+    }
+  | { ok: false; erro: string }
+> {
   try {
     const res = await fetch(`${getProApiBase()}api/portal/login`, {
       method: 'POST',
@@ -74,13 +83,21 @@ export async function portalLogin(
       ok?: boolean
       usuario?: string
       hub_token?: string
+      is_superuser?: boolean
+      permissoes?: Record<string, { pode_acessar?: boolean; modulos?: string[] | null }> | null
       erro?: string
     }
     if (!res.ok || !data.ok || !data.hub_token || !data.usuario) {
       return { ok: false, erro: data.erro || 'Usuário ou senha incorretos.' }
     }
     saveHubSession(data.usuario, data.hub_token)
-    return { ok: true, usuario: data.usuario, hubToken: data.hub_token }
+    return {
+      ok: true,
+      usuario: data.usuario,
+      hubToken: data.hub_token,
+      isSuperuser: Boolean(data.is_superuser),
+      permissoes: data.permissoes ?? null,
+    }
   } catch {
     return { ok: false, erro: 'Falha de conexão com o portal.' }
   }

@@ -11,7 +11,9 @@ import CompanySplash from './components/CompanySplash'
 import SystemSelectorScreen from './pages/SystemSelectorScreen'
 import SystemEntryScreen from './pages/SystemEntryScreen'
 import PortalLoginScreen from './pages/PortalLoginScreen'
+import PortalConfigScreen from './pages/PortalConfigScreen'
 import { getSystemById, type SystemId } from './lib/systemPortal'
+import { fetchPortalMe, isLocalSuperUser } from './lib/portalConfigApi'
 import {
   clearPortalSsoTokenFromUrl,
   readPortalSsoTokenFromLocation,
@@ -302,6 +304,9 @@ export default function App() {
   }
   // Entrada pública: intro → login → hub. Com hub_token válido (voltar dos sistemas) abre o hub.
   const [portalUsuario, setPortalUsuario] = useState(() => initialHub?.usuario || '')
+  const [isSuperUser, setIsSuperUser] = useState(() => isLocalSuperUser(initialHub?.usuario || ''))
+  const [showPortalConfig, setShowPortalConfig] = useState(false)
+  const [allowedSystemIds, setAllowedSystemIds] = useState<SystemId[] | null>(null)
   const alreadyInsidePlus = Boolean(initialHub && hasPortalEntryMarker()) && !forceSystemsHub
   const resumeHub =
     Boolean(initialHub) && !enteredViaSso && (!alreadyInsidePlus || forceSystemsHub)
@@ -3626,12 +3631,51 @@ export default function App() {
     window.location.assign('/?hub=1')
   }
 
+  function applyPortalPermissoes(
+    permissoes: Record<string, { pode_acessar?: boolean; modulos?: string[] | null }> | null | undefined,
+  ) {
+    if (!permissoes) {
+      setAllowedSystemIds(null)
+      return
+    }
+    const ids = (['light', 'plus', 'pro'] as const).filter(
+      (s) => permissoes[s]?.pode_acessar !== false,
+    )
+    setAllowedSystemIds([...ids])
+  }
+
+  function refreshPortalMe(opts?: { openConfigIfSuper?: boolean }) {
+    void fetchPortalMe().then((me) => {
+      if (!me.ok) {
+        if (opts?.openConfigIfSuper && isLocalSuperUser(portalUsuario)) {
+          setIsSuperUser(true)
+          setShowPortalConfig(true)
+        }
+        return
+      }
+      const superU = Boolean(me.is_superuser) || isLocalSuperUser(me.usuario)
+      setIsSuperUser(superU)
+      applyPortalPermissoes(me.permissoes)
+      if (opts?.openConfigIfSuper && superU) {
+        setShowPortalConfig(true)
+      }
+    })
+  }
+
   function handlePortalSair() {
     clearHubSession()
     clearPortalEntryMarker()
     setPortalUsuario('')
     setHubReady(false)
     setSelectedSystemId(null)
+    setShowPortalConfig(false)
+    setIsSuperUser(false)
+    setAllowedSystemIds(null)
+    try {
+      sessionStorage.removeItem('doca_portal_config_seen_v1')
+    } catch {
+      /* ignore */
+    }
     goToPublicPortal(true)
   }
 
@@ -3640,6 +3684,7 @@ export default function App() {
     clearPortalEntryMarker()
     setSelectedSystemId(null)
     setHubReady(false)
+    setShowPortalConfig(false)
     setHubErro(null)
     setCompanyIntroDone(true)
     try {
@@ -3669,10 +3714,15 @@ export default function App() {
       if (params.get('hub') === '1' || params.get('sistemas') === '1') {
         clearPortalEntryMarker()
         const hub = loadHubSession()
-        if (hub?.usuario) setPortalUsuario(hub.usuario)
+        if (hub?.usuario) {
+          setPortalUsuario(hub.usuario)
+          setIsSuperUser(isLocalSuperUser(hub.usuario))
+        }
         setSelectedSystemId(null)
+        setShowPortalConfig(false)
         setHubReady(Boolean(hub?.hubToken))
         setCompanyIntroDone(true)
+        if (hub?.hubToken) refreshPortalMe()
         params.delete('hub')
         params.delete('sistemas')
         dirty = true
@@ -3747,6 +3797,11 @@ export default function App() {
         onSuccess={(usuario) => {
           setPortalUsuario(usuario)
           setHubReady(true)
+          const superU = isLocalSuperUser(usuario)
+          setIsSuperUser(superU)
+          // Super Usuário: configuração antes do hub dos sistemas.
+          setShowPortalConfig(superU)
+          refreshPortalMe({ openConfigIfSuper: true })
         }}
       />
     )
@@ -3780,6 +3835,24 @@ export default function App() {
     )
   }
 
+  if (hubReady && !selectedSystemId && showPortalConfig && isSuperUser) {
+    return (
+      <PortalConfigScreen
+        usuario={portalUsuario}
+        onSair={handlePortalSair}
+        onContinuar={() => {
+          try {
+            sessionStorage.setItem('doca_portal_config_seen_v1', '1')
+          } catch {
+            /* ignore */
+          }
+          setShowPortalConfig(false)
+          refreshPortalMe()
+        }}
+      />
+    )
+  }
+
   if (hubReady && !selectedSystemId) {
     return (
       <SystemSelectorScreen
@@ -3787,6 +3860,14 @@ export default function App() {
         onSelect={handleSystemSelect}
         onSair={handlePortalSair}
         onVoltar={handleVoltarDoHub}
+        allowedSystemIds={allowedSystemIds}
+        onAbrirConfig={
+          isSuperUser
+            ? () => {
+                setShowPortalConfig(true)
+              }
+            : undefined
+        }
         erro={hubErro}
         busy={hubBusy}
       />
