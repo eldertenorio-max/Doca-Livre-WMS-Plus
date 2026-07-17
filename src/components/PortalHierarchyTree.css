@@ -2,6 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Não prende scroll aqui — rola a página da Configuração. */
+  overflow: visible;
+  padding-bottom: 8px;
 }
 
 .ph-tree__top {

@@ -1,7 +1,13 @@
 .portal-config {
-  min-height: 100dvh;
+  /* html/body/#root têm overflow:hidden (shell do Plus) — esta tela precisa rolar. */
+  height: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   background: #eef1f4;
-  padding: 24px 20px 40px;
+  padding: 24px 20px 48px;
   box-sizing: border-box;
 }
 
@@ -11,6 +17,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding-bottom: 24px;
 }
 
 .portal-config__shell--wide {
@@ -19,6 +26,7 @@
 
 .portal-config__panel--full {
   width: 100%;
+  overflow: visible;
 }
 
 .portal-config__header {
