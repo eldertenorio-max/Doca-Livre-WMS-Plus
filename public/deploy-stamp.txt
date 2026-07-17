@@ -1,2 +1,2 @@
 # Deploy stamp - forcar rebuild no Render (producao + homolog).
-DEPLOY_STAMP=2026-07-17-01-40-portal-config-superuser
+DEPLOY_STAMP=2026-07-17-01-50-hierarquia-arvore

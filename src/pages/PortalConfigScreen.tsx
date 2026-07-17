@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import PortalHierarchyTree from '../components/PortalHierarchyTree'
 import {
   fetchPortalConfigOverview,
-  savePortalHierarquia,
   savePortalPermissoes,
   type PortalConfigOverview,
   type SistemaId,
@@ -22,7 +22,7 @@ const SISTEMA_LABEL: Record<SistemaId, string> = {
 }
 
 export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Props) {
-  const [tab, setTab] = useState<'hierarquia' | 'permissoes'>('permissoes')
+  const [tab, setTab] = useState<'hierarquia' | 'permissoes'>('hierarquia')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -57,25 +57,6 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
     return data.matriz[selected] || null
   }, [data, selected])
 
-  async function handleSaveHierarquia() {
-    if (!selectedUser || !data) return
-    setSaving(true)
-    setErro(null)
-    setOkMsg(null)
-    const res = await savePortalHierarquia({
-      usuario: selectedUser.usuario,
-      nivel: selectedUser.nivel || '',
-      superior: selectedUser.superior || '',
-    })
-    setSaving(false)
-    if (!res.ok) {
-      setErro(res.erro)
-      return
-    }
-    setOkMsg('Hierarquia salva.')
-    void load()
-  }
-
   async function handleSavePermissoes() {
     if (!selected || !perms) return
     setSaving(true)
@@ -89,14 +70,6 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
     }
     setOkMsg('Permissões salvas.')
     void load()
-  }
-
-  function patchUser(patch: Partial<{ nivel: string; superior: string }>) {
-    if (!data || !selected) return
-    setData({
-      ...data,
-      usuarios: data.usuarios.map((u) => (u.usuario === selected ? { ...u, ...patch } : u)),
-    })
   }
 
   function patchSistema(sistema: SistemaId, patch: Partial<SistemaPermissao>) {
@@ -119,20 +92,28 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
   function toggleModulo(sistema: SistemaId, modId: string) {
     if (!data || !selected || !perms) return
     const bloco = perms[sistema] || { pode_acessar: true, modulos: null }
-    const allIds = (data.modulos[sistema] || []).map((m) => m.id)
-    const current = bloco.modulos == null ? [...allIds] : [...bloco.modulos]
-    const next = current.includes(modId) ? current.filter((x) => x !== modId) : [...current, modId]
-    const isAll = allIds.length > 0 && allIds.every((id) => next.includes(id))
-    patchSistema(sistema, { modulos: isAll ? null : next })
+    const mods = data.modulos[sistema] || []
+    const allIds = mods.map((m) => m.id)
+    let selectedMods = bloco.modulos == null ? [...allIds] : [...bloco.modulos]
+    if (selectedMods.includes(modId)) {
+      selectedMods = selectedMods.filter((id) => id !== modId)
+    } else {
+      selectedMods.push(modId)
+    }
+    const next =
+      selectedMods.length === allIds.length && allIds.every((id) => selectedMods.includes(id))
+        ? null
+        : selectedMods
+    patchSistema(sistema, { modulos: next })
   }
 
-  if (loading) {
+  if (loading && !data) {
     return <div className="portal-config__loading">Carregando configuração do portal…</div>
   }
 
   return (
     <div className="portal-config" role="main">
-      <div className="portal-config__shell">
+      <div className={`portal-config__shell${tab === 'hierarquia' ? ' portal-config__shell--wide' : ''}`}>
         <header className="portal-config__header">
           <div>
             <h1 className="portal-config__title">Configuração do portal</h1>
@@ -175,6 +156,10 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
 
         {!data ? (
           <p className="portal-config__erro">Não foi possível carregar os dados.</p>
+        ) : tab === 'hierarquia' ? (
+          <section className="portal-config__panel portal-config__panel--full">
+            <PortalHierarchyTree arvore={data.arvore || []} onChanged={() => void load()} />
+          </section>
         ) : (
           <div className="portal-config__body">
             <aside className="portal-config__list" aria-label="Usuários">
@@ -201,52 +186,6 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
             <section className="portal-config__panel">
               {!selectedUser ? (
                 <p>Selecione um usuário.</p>
-              ) : tab === 'hierarquia' ? (
-                <>
-                  <h2>Hierarquia — {selectedUser.usuario}</h2>
-                  <div className="portal-config__row">
-                    <div className="portal-config__field">
-                      <label htmlFor="cfg-nivel">Nível</label>
-                      <select
-                        id="cfg-nivel"
-                        value={selectedUser.nivel || ''}
-                        onChange={(e) => patchUser({ nivel: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        {data.niveis.map((n) => (
-                          <option key={n.id} value={n.id}>
-                            {n.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="portal-config__field">
-                      <label htmlFor="cfg-superior">Superior</label>
-                      <select
-                        id="cfg-superior"
-                        value={selectedUser.superior || ''}
-                        onChange={(e) => patchUser({ superior: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        {data.usuarios
-                          .filter((u) => u.usuario !== selectedUser.usuario)
-                          .map((u) => (
-                            <option key={u.usuario} value={u.usuario}>
-                              {u.usuario}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="portal-config__btn portal-config__btn--primary"
-                    disabled={saving}
-                    onClick={() => void handleSaveHierarquia()}
-                  >
-                    {saving ? 'Salvando…' : 'Salvar hierarquia'}
-                  </button>
-                </>
               ) : (
                 <>
                   <h2>Permissões — {selectedUser.usuario}</h2>

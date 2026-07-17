@@ -1,0 +1,271 @@
+import { useMemo, useState } from 'react'
+import {
+  deletePortalOrgNo,
+  nextOrgChildType,
+  savePortalOrgNo,
+  type OrgNo,
+} from '../lib/portalConfigApi'
+import './PortalHierarchyTree.css'
+
+type Props = {
+  arvore: OrgNo[]
+  onChanged: () => void
+}
+
+type ModalState =
+  | null
+  | { mode: 'create'; parent: OrgNo | null; tipo: string }
+  | { mode: 'edit'; no: OrgNo }
+
+const LEGENDA = [
+  { tipo: 'operador_logistico', label: 'Operador Logístico' },
+  { tipo: 'filial_operador', label: 'Filial Operador' },
+  { tipo: 'embarcador', label: 'Embarcador' },
+  { tipo: 'unidade', label: 'Unidade' },
+  { tipo: 'transportadora', label: 'Transportadora' },
+] as const
+
+function NodeRow({
+  no,
+  depth,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  no: OrgNo
+  depth: number
+  onAdd: (parent: OrgNo) => void
+  onEdit: (no: OrgNo) => void
+  onDelete: (no: OrgNo) => void
+}) {
+  const [open, setOpen] = useState(true)
+  const children = no.children || []
+  const canAdd = Boolean(nextOrgChildType(no.tipo))
+  const tipo = String(no.tipo || '')
+
+  return (
+    <div className="ph-node" style={{ marginLeft: depth === 0 ? 0 : 0 }}>
+      <div className={`ph-node__row ph-node__row--${tipo}`}>
+        {children.length > 0 ? (
+          <button type="button" className="ph-node__toggle" onClick={() => setOpen((v) => !v)} aria-label="Expandir">
+            {open ? '▼' : '▶'}
+          </button>
+        ) : (
+          <span className="ph-node__toggle" aria-hidden />
+        )}
+        <div className="ph-node__main">
+          <div className="ph-node__name">{no.nome}</div>
+          <div className="ph-node__meta">
+            <span className={`ph-node__badge ph-node__badge--${tipo}`}>{no.label_tipo || tipo}</span>
+            {no.cnpj ? <span>CNPJ: {no.cnpj}</span> : null}
+            {typeof no.usuarios_count === 'number' ? <span>👥 {no.usuarios_count}</span> : null}
+          </div>
+        </div>
+        <div className="ph-node__actions">
+          <button type="button" className="ph-tree__btn ph-tree__btn--icon" title="Editar" onClick={() => onEdit(no)}>
+            ✎
+          </button>
+          {canAdd ? (
+            <button type="button" className="ph-tree__btn ph-tree__btn--icon" title="Adicionar" onClick={() => onAdd(no)}>
+              +
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ph-tree__btn ph-tree__btn--icon ph-tree__btn--danger"
+            title="Excluir"
+            onClick={() => onDelete(no)}
+          >
+            −
+          </button>
+        </div>
+      </div>
+      {open && children.length > 0 ? (
+        <div className="ph-node__children">
+          {children.map((child) => (
+            <NodeRow
+              key={child.id}
+              no={child}
+              depth={depth + 1}
+              onAdd={onAdd}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export default function PortalHierarchyTree({ arvore, onChanged }: Props) {
+  const [modal, setModal] = useState<ModalState>(null)
+  const [nome, setNome] = useState('')
+  const [cnpj, setCnpj] = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [okMsg, setOkMsg] = useState<string | null>(null)
+
+  const rootTitle = useMemo(() => arvore[0]?.nome || 'Hierarquia organizacional', [arvore])
+
+  function openCreate(parent: OrgNo | null) {
+    const tipo = nextOrgChildType(parent?.tipo || null)
+    if (!tipo) return
+    setNome('')
+    setCnpj('')
+    setCodigo('')
+    setErro(null)
+    setOkMsg(null)
+    setModal({ mode: 'create', parent, tipo })
+  }
+
+  function openEdit(no: OrgNo) {
+    setNome(no.nome || '')
+    setCnpj(no.cnpj || '')
+    setCodigo(no.codigo || '')
+    setErro(null)
+    setOkMsg(null)
+    setModal({ mode: 'edit', no })
+  }
+
+  async function handleSave() {
+    if (!modal) return
+    setSaving(true)
+    setErro(null)
+    setOkMsg(null)
+    if (modal.mode === 'create') {
+      const res = await savePortalOrgNo({
+        parent_id: modal.parent?.id || null,
+        tipo: modal.tipo,
+        nome,
+        cnpj,
+        codigo,
+      })
+      setSaving(false)
+      if (!res.ok) {
+        setErro(res.erro)
+        return
+      }
+      setOkMsg('Empresa adicionada.')
+      setModal(null)
+      onChanged()
+      return
+    }
+    const res = await savePortalOrgNo({
+      id: modal.no.id,
+      nome,
+      cnpj,
+      codigo,
+    })
+    setSaving(false)
+    if (!res.ok) {
+      setErro(res.erro)
+      return
+    }
+    setOkMsg('Empresa atualizada.')
+    setModal(null)
+    onChanged()
+  }
+
+  async function handleDelete(no: OrgNo) {
+    if (!window.confirm(`Excluir "${no.nome}"?`)) return
+    setErro(null)
+    setOkMsg(null)
+    const res = await deletePortalOrgNo(no.id)
+    if (!res.ok) {
+      setErro(res.erro)
+      return
+    }
+    setOkMsg('Empresa removida.')
+    onChanged()
+  }
+
+  return (
+    <div className="ph-tree">
+      <div className="ph-tree__top">
+        <h2 className="ph-tree__title">{rootTitle} — Operador Logístico</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {arvore[0] ? (
+            <button type="button" className="ph-tree__btn" onClick={() => openEdit(arvore[0])}>
+              Renomear
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ph-tree__btn ph-tree__btn--primary"
+            onClick={() => openCreate(arvore[0] || null)}
+          >
+            + Adicionar Empresa
+          </button>
+        </div>
+      </div>
+
+      <div className="ph-tree__legend">
+        {LEGENDA.map((l) => (
+          <span key={l.tipo}>
+            <i className={`ph-dot ph-dot--${l.tipo}`} /> {l.label}
+          </span>
+        ))}
+      </div>
+
+      {erro ? <p className="ph-tree__erro">{erro}</p> : null}
+      {okMsg ? <p className="ph-tree__ok">{okMsg}</p> : null}
+
+      {arvore.length === 0 ? (
+        <p>Nenhuma empresa cadastrada. Clique em “Adicionar Empresa”.</p>
+      ) : (
+        arvore.map((no) => (
+          <NodeRow
+            key={no.id}
+            no={no}
+            depth={0}
+            onAdd={openCreate}
+            onEdit={openEdit}
+            onDelete={(n) => void handleDelete(n)}
+          />
+        ))
+      )}
+
+      {modal ? (
+        <div className="ph-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="ph-modal">
+            <h3>{modal.mode === 'create' ? 'Adicionar empresa' : 'Editar empresa'}</h3>
+            {modal.mode === 'create' ? (
+              <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                Tipo: <strong>{LEGENDA.find((l) => l.tipo === modal.tipo)?.label || modal.tipo}</strong>
+                {modal.parent ? ` · sob ${modal.parent.nome}` : ' · raiz'}
+              </p>
+            ) : null}
+            <label>
+              Nome
+              <input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
+            </label>
+            <label>
+              CNPJ
+              <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+            </label>
+            <label>
+              Código (opcional)
+              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+            </label>
+            {erro ? <p className="ph-tree__erro">{erro}</p> : null}
+            <div className="ph-modal__actions">
+              <button type="button" className="ph-tree__btn" onClick={() => setModal(null)} disabled={saving}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="ph-tree__btn ph-tree__btn--primary"
+                onClick={() => void handleSave()}
+                disabled={saving || !nome.trim()}
+              >
+                {saving ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}

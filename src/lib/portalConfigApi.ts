@@ -19,6 +19,26 @@ export type PortalUsuarioRow = {
   is_superuser?: boolean
 }
 
+export type OrgTipo =
+  | 'operador_logistico'
+  | 'filial_operador'
+  | 'embarcador'
+  | 'unidade'
+  | 'transportadora'
+
+export type OrgNo = {
+  id: string
+  parent_id: string | null
+  tipo: OrgTipo | string
+  nome: string
+  cnpj?: string | null
+  codigo?: string | null
+  ordem?: number
+  label_tipo?: string
+  usuarios_count?: number
+  children?: OrgNo[]
+}
+
 export type PortalConfigOverview = {
   ok: true
   actor: string
@@ -27,6 +47,8 @@ export type PortalConfigOverview = {
   matriz: Record<string, Record<SistemaId, SistemaPermissao>>
   sistemas: SistemaId[]
   modulos: Record<SistemaId, { id: string; label: string }[]>
+  arvore?: OrgNo[]
+  tipos_org?: { id: string; label: string }[]
 }
 
 async function authFetch<T extends { ok?: boolean; erro?: string }>(
@@ -85,6 +107,41 @@ export async function savePortalHierarquia(input: {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export async function savePortalOrgNo(input: {
+  id?: string
+  parent_id?: string | null
+  tipo?: string
+  nome: string
+  cnpj?: string
+  codigo?: string
+}): Promise<{ ok: true; no?: OrgNo; id?: string } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/org', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deletePortalOrgNo(id: string): Promise<{ ok: true } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/org/delete', {
+    method: 'POST',
+    body: JSON.stringify({ id }),
+  })
+}
+
+/** Próximo tipo filho permitido na árvore. */
+export function nextOrgChildType(tipoPai: string | null | undefined): OrgTipo | null {
+  const map: Record<string, OrgTipo | null> = {
+    '': 'operador_logistico',
+    operador_logistico: 'filial_operador',
+    filial_operador: 'embarcador',
+    embarcador: 'unidade',
+    unidade: 'transportadora',
+    transportadora: null,
+  }
+  if (!tipoPai) return 'operador_logistico'
+  return map[tipoPai] ?? null
 }
 
 /** Super usuários conhecidos (fallback se API antiga não devolver is_superuser). */

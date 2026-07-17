@@ -13,6 +13,14 @@
   gap: 16px;
 }
 
+.portal-config__shell--wide {
+  width: min(1200px, 100%);
+}
+
+.portal-config__panel--full {
+  width: 100%;
+}
+
 .portal-config__header {
   display: flex;
   flex-wrap: wrap;
