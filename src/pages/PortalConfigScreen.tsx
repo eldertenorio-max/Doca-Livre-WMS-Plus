@@ -9,11 +9,6 @@ import {
   type SistemaId,
   type SistemaPermissao,
 } from '../lib/portalConfigApi'
-
-function isHiddenConfigUser(u: PortalUsuarioRow): boolean {
-  // Super Usuários (Diego/Elder) não entram na lista — gerenciam os demais.
-  return Boolean(u.is_superuser) || isLocalSuperUser(u.usuario) || isLocalSuperUser(u.email || '')
-}
 import './PortalConfigScreen.css'
 
 type Props = {
@@ -28,6 +23,31 @@ const SISTEMA_LABEL: Record<SistemaId, string> = {
   pro: 'WMS Pro',
 }
 
+const SISTEMA_HINT: Record<SistemaId, string> = {
+  light: 'Estoque · inventário · endereçamento',
+  plus: 'Entrada · saída · consulta · financeiro',
+  pro: 'Carga · retorno · descarga · WMS',
+}
+
+function isHiddenConfigUser(u: PortalUsuarioRow): boolean {
+  return Boolean(u.is_superuser) || isLocalSuperUser(u.usuario) || isLocalSuperUser(u.email || '')
+}
+
+function userInitials(nome: string): string {
+  const parts = (nome || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
+}
+
+function countSistemasLiberados(
+  matriz: Record<SistemaId, SistemaPermissao> | null | undefined,
+): number {
+  if (!matriz) return 0
+  return (['light', 'plus', 'pro'] as SistemaId[]).filter((s) => matriz[s]?.pode_acessar !== false)
+    .length
+}
+
 export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Props) {
   const [tab, setTab] = useState<'hierarquia' | 'permissoes'>('hierarquia')
   const [loading, setLoading] = useState(true)
@@ -36,6 +56,7 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
   const [okMsg, setOkMsg] = useState<string | null>(null)
   const [data, setData] = useState<PortalConfigOverview | null>(null)
   const [selected, setSelected] = useState<string>('')
+  const [filtroUser, setFiltroUser] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -62,6 +83,17 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
     () => (data?.usuarios || []).filter((u) => !isHiddenConfigUser(u)),
     [data],
   )
+
+  const usuariosFiltrados = useMemo(() => {
+    const q = filtroUser.trim().toLowerCase()
+    if (!q) return usuariosEditaveis
+    return usuariosEditaveis.filter(
+      (u) =>
+        u.usuario.toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.nivel || '').toLowerCase().includes(q),
+    )
+  }, [usuariosEditaveis, filtroUser])
 
   const selectedUser = useMemo(
     () => usuariosEditaveis.find((u) => u.usuario === selected) || null,
@@ -123,6 +155,11 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
     patchSistema(sistema, { modulos: next })
   }
 
+  function setAllModulos(sistema: SistemaId, liberar: boolean) {
+    if (!data) return
+    patchSistema(sistema, { modulos: liberar ? null : [] })
+  }
+
   if (loading && !data) {
     return <div className="portal-config__loading">Carregando configuração do portal…</div>
   }
@@ -177,91 +214,193 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
             <PortalHierarchyTree arvore={data.arvore || []} onChanged={() => void load()} />
           </section>
         ) : (
-          <div className="portal-config__body">
+          <div className="portal-config__body portal-config__body--perms">
             <aside className="portal-config__list" aria-label="Usuários">
-              {usuariosEditaveis.length === 0 ? (
-                <p className="portal-config__sub" style={{ padding: 10, margin: 0 }}>
-                  Nenhum usuário para configurar ainda.
+              <div className="portal-config__list-head">
+                <div className="portal-config__list-title">
+                  <strong>Usuários</strong>
+                  <span className="portal-config__list-count">{usuariosEditaveis.length}</span>
+                </div>
+                <input
+                  type="search"
+                  className="portal-config__search"
+                  placeholder="Buscar nome ou e-mail…"
+                  value={filtroUser}
+                  onChange={(e) => setFiltroUser(e.target.value)}
+                  aria-label="Buscar usuário"
+                />
+              </div>
+              {usuariosFiltrados.length === 0 ? (
+                <p className="portal-config__empty">
+                  {usuariosEditaveis.length === 0
+                    ? 'Nenhum usuário para configurar ainda.'
+                    : 'Nenhum resultado na busca.'}
                 </p>
               ) : (
-                usuariosEditaveis.map((u) => (
-                  <button
-                    key={u.usuario}
-                    type="button"
-                    className={`portal-config__user${selected === u.usuario ? ' portal-config__user--active' : ''}`}
-                    onClick={() => {
-                      setSelected(u.usuario)
-                      setOkMsg(null)
-                      setErro(null)
-                    }}
-                  >
-                    <span className="portal-config__user-name">{u.usuario}</span>
-                    <span className="portal-config__user-meta">
-                      {u.nivel || 'Sem nível'}
-                      {u.email ? ` · ${u.email}` : ''}
-                    </span>
-                  </button>
-                ))
+                <div className="portal-config__user-scroll">
+                  {usuariosFiltrados.map((u) => {
+                    const nSis = countSistemasLiberados(data.matriz[u.usuario])
+                    return (
+                      <button
+                        key={u.usuario}
+                        type="button"
+                        className={`portal-config__user${selected === u.usuario ? ' portal-config__user--active' : ''}`}
+                        onClick={() => {
+                          setSelected(u.usuario)
+                          setOkMsg(null)
+                          setErro(null)
+                        }}
+                      >
+                        <span className="portal-config__avatar" aria-hidden>
+                          {userInitials(u.usuario)}
+                        </span>
+                        <span className="portal-config__user-text">
+                          <span className="portal-config__user-name">{u.usuario}</span>
+                          <span className="portal-config__user-meta">
+                            {u.email || u.nivel || 'Sem e-mail'}
+                          </span>
+                        </span>
+                        <span
+                          className={`portal-config__user-badge${nSis === 0 ? ' portal-config__user-badge--off' : ''}`}
+                          title={`${nSis} sistema(s) liberado(s)`}
+                        >
+                          {nSis}/3
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
               )}
             </aside>
 
-            <section className="portal-config__panel">
+            <section className="portal-config__panel portal-config__panel--perms">
               {!selectedUser ? (
-                <p>{usuariosEditaveis.length === 0 ? 'Cadastre outros usuários no portal para definir permissões.' : 'Selecione um usuário.'}</p>
+                <div className="portal-config__empty-panel">
+                  <p>
+                    {usuariosEditaveis.length === 0
+                      ? 'Cadastre outros usuários no portal para definir permissões.'
+                      : 'Selecione um usuário à esquerda.'}
+                  </p>
+                </div>
               ) : (
                 <>
-                  <h2>Permissões — {selectedUser.usuario}</h2>
-                  <p className="portal-config__sub" style={{ marginBottom: 14 }}>
-                    Marque quais sistemas a pessoa pode abrir e quais telas/módulos pode ver em cada um.
-                    Sem restrição de módulos = acesso a tudo do sistema.
+                  <div className="portal-config__perms-hero">
+                    <span className="portal-config__avatar portal-config__avatar--lg" aria-hidden>
+                      {userInitials(selectedUser.usuario)}
+                    </span>
+                    <div>
+                      <h2 className="portal-config__perms-title">{selectedUser.usuario}</h2>
+                      <p className="portal-config__sub">
+                        {selectedUser.email ? selectedUser.email : 'Sem e-mail'}
+                        {selectedUser.nivel ? ` · ${selectedUser.nivel}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="portal-config__perms-hint">
+                    Escolha quais sistemas a pessoa pode abrir e quais telas liberar em cada um. Sem
+                    restrição de módulos = acesso a tudo do sistema.
                   </p>
-                  {(['light', 'plus', 'pro'] as SistemaId[]).map((sistema) => {
-                    const bloco = perms?.[sistema] || { pode_acessar: true, modulos: null }
-                    const mods = data.modulos[sistema] || []
-                    const selectedMods = bloco.modulos
-                    return (
-                      <div key={sistema} className="portal-config__sistema">
-                        <div className="portal-config__sistema-head">
-                          <strong>{SISTEMA_LABEL[sistema]}</strong>
-                          <label className="portal-config__mod">
-                            <input
-                              type="checkbox"
-                              checked={bloco.pode_acessar}
-                              onChange={(e) => patchSistema(sistema, { pode_acessar: e.target.checked })}
-                            />
-                            Pode acessar este sistema
-                          </label>
-                        </div>
-                        {bloco.pode_acessar ? (
-                          <div className="portal-config__mods">
-                            {mods.map((m) => {
-                              const checked = selectedMods == null || selectedMods.includes(m.id)
-                              return (
-                                <label key={m.id} className="portal-config__mod">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModulo(sistema, m.id)}
-                                  />
-                                  {m.label}
-                                </label>
-                              )
-                            })}
+
+                  <div className="portal-config__sistemas">
+                    {(['light', 'plus', 'pro'] as SistemaId[]).map((sistema) => {
+                      const bloco = perms?.[sistema] || { pode_acessar: true, modulos: null }
+                      const mods = data.modulos[sistema] || []
+                      const selectedMods = bloco.modulos
+                      const liberados =
+                        selectedMods == null
+                          ? mods.length
+                          : mods.filter((m) => selectedMods.includes(m.id)).length
+                      return (
+                        <article
+                          key={sistema}
+                          className={`portal-config__sistema portal-config__sistema--${sistema}${bloco.pode_acessar ? '' : ' portal-config__sistema--off'}`}
+                        >
+                          <div className="portal-config__sistema-head">
+                            <div className="portal-config__sistema-titles">
+                              <span className={`portal-config__sis-pill portal-config__sis-pill--${sistema}`}>
+                                {sistema}
+                              </span>
+                              <div>
+                                <strong>{SISTEMA_LABEL[sistema]}</strong>
+                                <p className="portal-config__sis-hint">{SISTEMA_HINT[sistema]}</p>
+                              </div>
+                            </div>
+                            <label className="portal-config__switch">
+                              <input
+                                type="checkbox"
+                                checked={bloco.pode_acessar}
+                                onChange={(e) => patchSistema(sistema, { pode_acessar: e.target.checked })}
+                              />
+                              <span className="portal-config__switch-ui" aria-hidden />
+                              <span className="portal-config__switch-label">
+                                {bloco.pode_acessar ? 'Acesso liberado' : 'Bloqueado'}
+                              </span>
+                            </label>
                           </div>
-                        ) : (
-                          <p className="portal-config__sub">Sistema bloqueado no hub.</p>
-                        )}
-                      </div>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    className="portal-config__btn portal-config__btn--primary"
-                    disabled={saving}
-                    onClick={() => void handleSavePermissoes()}
-                  >
-                    {saving ? 'Salvando…' : 'Salvar permissões'}
-                  </button>
+
+                          {bloco.pode_acessar ? (
+                            <>
+                              <div className="portal-config__mods-toolbar">
+                                <span className="portal-config__mods-count">
+                                  Telas · {liberados}/{mods.length}
+                                  {selectedMods == null ? ' · todas' : ''}
+                                </span>
+                                <div className="portal-config__mods-actions">
+                                  <button
+                                    type="button"
+                                    className="portal-config__link-btn"
+                                    onClick={() => setAllModulos(sistema, true)}
+                                  >
+                                    Todas
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="portal-config__link-btn"
+                                    onClick={() => setAllModulos(sistema, false)}
+                                  >
+                                    Nenhuma
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="portal-config__mods">
+                                {mods.map((m) => {
+                                  const checked = selectedMods == null || selectedMods.includes(m.id)
+                                  return (
+                                    <label
+                                      key={m.id}
+                                      className={`portal-config__chip${checked ? ' portal-config__chip--on' : ''}`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleModulo(sistema, m.id)}
+                                      />
+                                      <span>{m.label}</span>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="portal-config__blocked">
+                              Sistema oculto no hub. Ative o acesso acima para liberar as telas.
+                            </p>
+                          )}
+                        </article>
+                      )
+                    })}
+                  </div>
+
+                  <div className="portal-config__save-bar">
+                    <button
+                      type="button"
+                      className="portal-config__btn portal-config__btn--primary portal-config__btn--save"
+                      disabled={saving}
+                      onClick={() => void handleSavePermissoes()}
+                    >
+                      {saving ? 'Salvando…' : 'Salvar permissões'}
+                    </button>
+                  </div>
                 </>
               )}
             </section>
