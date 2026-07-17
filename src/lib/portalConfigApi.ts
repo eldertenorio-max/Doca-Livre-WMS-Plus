@@ -57,8 +57,9 @@ async function authFetch<T extends { ok?: boolean; erro?: string }>(
 ): Promise<T | { ok: false; erro: string }> {
   const hub = loadHubSession()
   if (!hub?.hubToken) return { ok: false, erro: 'Sessão do portal expirada. Faça login de novo.' }
+  const url = `${getProApiBase()}${path.replace(/^\//, '')}`
   try {
-    const res = await fetch(`${getProApiBase()}${path.replace(/^\//, '')}`, {
+    const res = await fetch(url, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -69,11 +70,19 @@ async function authFetch<T extends { ok?: boolean; erro?: string }>(
     })
     const data = (await res.json().catch(() => ({}))) as T
     if (!res.ok || !data.ok) {
-      return { ok: false, erro: (data as { erro?: string }).erro || 'Falha na configuração do portal.' }
+      return {
+        ok: false,
+        erro:
+          (data as { erro?: string }).erro ||
+          `Falha na configuração do portal (${res.status}).`,
+      }
     }
     return data
   } catch {
-    return { ok: false, erro: 'Falha de conexão com o portal.' }
+    return {
+      ok: false,
+      erro: `Falha de conexão com o portal (${getProApiBase()}). Se o Pro estiver “acordando”, aguarde 1 min e recarregue.`,
+    }
   }
 }
 

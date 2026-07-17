@@ -5,7 +5,17 @@ const HUB_USER_KEY = 'doca_hub_user_v1'
 
 export function getProApiBase(): string {
   const fromEnv = (import.meta.env.VITE_WMS_PRO_URL as string | undefined)?.trim()
-  return (fromEnv || 'https://doca-livre-wms-pro.onrender.com/').replace(/\/?$/, '/')
+  if (fromEnv) return fromEnv.replace(/\/?$/, '/')
+  // Homolog Plus → Pro homolog; produção → Pro produção.
+  try {
+    const h = (typeof window !== 'undefined' ? window.location.hostname : '').toLowerCase()
+    if (h.includes('homolog') || h.includes('homologacao')) {
+      return 'https://doca-livre-wms-pro-homologacao.onrender.com/'
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'https://doca-livre-wms-pro.onrender.com/'
 }
 
 async function portalPost<T extends { ok?: boolean; erro?: string }>(
