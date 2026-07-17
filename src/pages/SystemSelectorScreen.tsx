@@ -1,4 +1,5 @@
 import { PortalBackButton } from '../components/PortalBackButton'
+import { PortalLoadingOverlay } from '../components/PortalLoadingOverlay'
 import { SystemProductMark } from '../components/SystemProductMark'
 import { getHubSystemOptions, type SystemId } from '../lib/systemPortal'
 import './SystemSelectorScreen.css'
@@ -98,16 +99,7 @@ export default function SystemSelectorScreen({
         </div>
       </div>
 
-      {busy ? (
-        <div className="system-selector__loading" role="status" aria-live="polite">
-          <div className="system-selector__loading-card">
-            <p className="system-selector__loading-text">{busyLabel || 'Carregando'}</p>
-            <div className="system-selector__loading-track" aria-hidden>
-              <div className="system-selector__loading-bar" />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {busy ? <PortalLoadingOverlay label={busyLabel || 'Carregando'} /> : null}
     </div>
   )
 }

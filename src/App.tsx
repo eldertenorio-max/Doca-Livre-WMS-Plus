@@ -12,6 +12,7 @@ import SystemSelectorScreen from './pages/SystemSelectorScreen'
 import SystemEntryScreen from './pages/SystemEntryScreen'
 import PortalLoginScreen from './pages/PortalLoginScreen'
 import PortalConfigScreen from './pages/PortalConfigScreen'
+import { PortalLoadingOverlay } from './components/PortalLoadingOverlay'
 import { getSystemById, type SystemId } from './lib/systemPortal'
 import {
   clearPortalConfigSeen,
@@ -3593,6 +3594,36 @@ export default function App() {
   const detailOcc = detailAddress ? occupancy.get(detailAddress) : null
   const detailNota = detailOcc ? state.notas.find((n) => n.id === detailOcc.nfId) : null
 
+  // Plus: mantém “Carregando” até o store do app ficar pronto (mín. ~0,5s).
+  useEffect(() => {
+    if (!hubBusy || selectedSystemId !== 'plus') return
+    const started = Date.now()
+    let cancelled = false
+    const finish = () => {
+      if (cancelled) return
+      const wait = Math.max(0, 500 - (Date.now() - started))
+      window.setTimeout(() => {
+        if (cancelled) return
+        setHubBusy(false)
+        setHubBusyLabel(null)
+      }, wait)
+    }
+    if (!loading) {
+      finish()
+      return
+    }
+    const id = window.setInterval(() => {
+      if (!loading) {
+        window.clearInterval(id)
+        finish()
+      }
+    }, 80)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [hubBusy, selectedSystemId, loading])
+
   function handleSystemSelect(id: SystemId) {
     void (async () => {
       setHubErro(null)
@@ -3602,7 +3633,6 @@ export default function App() {
         markPortalEntry()
         setHubReady(true)
         setSelectedSystemId('plus')
-        // Mantém o overlay até o painel Plus montar.
         return
       }
       if (id !== 'light' && id !== 'pro') {
@@ -3918,6 +3948,11 @@ export default function App() {
         onEnter={() => window.location.assign(selectedSystem.url!)}
       />
     )
+  }
+
+  // Entrada no Plus: tela cheia “Carregando” até o painel ficar pronto.
+  if (selectedSystemId === 'plus' && hubBusy) {
+    return <PortalLoadingOverlay label={hubBusyLabel || 'Carregando'} />
   }
 
   return (
