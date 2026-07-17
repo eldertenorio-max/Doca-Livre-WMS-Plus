@@ -343,6 +343,7 @@ export default function App() {
     }
   })
   const [hubBusy, setHubBusy] = useState(false)
+  const [hubBusyLabel, setHubBusyLabel] = useState<string | null>(null)
   const [pendingSelection, setPendingSelection] = useState<Set<AddressId>>(new Set())
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [detailAddress, setDetailAddress] = useState<AddressId | null>(null)
@@ -3595,25 +3596,32 @@ export default function App() {
   function handleSystemSelect(id: SystemId) {
     void (async () => {
       setHubErro(null)
+      setHubBusyLabel('Carregando')
+      setHubBusy(true)
       if (id === 'plus') {
         markPortalEntry()
         setHubReady(true)
         setSelectedSystemId('plus')
+        // Mantém o overlay até o painel Plus montar.
         return
       }
       if (id !== 'light' && id !== 'pro') {
+        setHubBusy(false)
+        setHubBusyLabel(null)
         setHubErro('Sistema inválido.')
         return
       }
       const hub = loadHubSession()
       if (!hub?.hubToken) {
+        setHubBusy(false)
+        setHubBusyLabel(null)
         setHubErro('Sessão do portal expirada. Clique em Sair e faça login de novo.')
         return
       }
-      setHubBusy(true)
       const result = await issueSystemSsoUrl(id, hub.hubToken)
-      setHubBusy(false)
       if (!result.ok) {
+        setHubBusy(false)
+        setHubBusyLabel(null)
         setHubErro(result.erro || `Não foi possível abrir o WMS ${id === 'light' ? 'Light' : 'Pro'}.`)
         return
       }
@@ -3625,6 +3633,8 @@ export default function App() {
       try {
         const host = new URL(result.url).hostname.toLowerCase()
         if (!host.includes(expectedHost) && !host.includes(id)) {
+          setHubBusy(false)
+          setHubBusyLabel(null)
           setHubErro(
             `URL SSO inesperada para ${id}: ${host}. Verifique SYSTEM_URL_${id.toUpperCase()} no Pro.`,
           )
@@ -3633,6 +3643,7 @@ export default function App() {
       } catch {
         /* segue com o redirect */
       }
+      // Mantém "Carregando" até a navegação sair desta página.
       window.location.assign(result.url)
     })()
   }
@@ -3893,6 +3904,7 @@ export default function App() {
         }
         erro={hubErro}
         busy={hubBusy}
+        busyLabel={hubBusyLabel}
       />
     )
   }

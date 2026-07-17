@@ -14,6 +14,7 @@ type Props = {
   onAbrirConfig?: () => void
   erro?: string | null
   busy?: boolean
+  busyLabel?: string | null
 }
 
 export default function SystemSelectorScreen({
@@ -25,6 +26,7 @@ export default function SystemSelectorScreen({
   onAbrirConfig,
   erro,
   busy,
+  busyLabel,
 }: Props) {
   const systems = getHubSystemOptions().filter((s) =>
     !allowedSystemIds || allowedSystemIds.length === 0
@@ -33,8 +35,8 @@ export default function SystemSelectorScreen({
   )
 
   return (
-    <div className="system-selector" role="main">
-      {onVoltar ? (
+    <div className="system-selector" role="main" aria-busy={busy || undefined}>
+      {onVoltar && !busy ? (
         <PortalBackButton onClick={onVoltar} label="Voltar" />
       ) : null}
       <div className="system-selector__inner">
@@ -47,12 +49,22 @@ export default function SystemSelectorScreen({
           </p>
           <div className="system-selector__header-actions">
             {onAbrirConfig ? (
-              <button type="button" className="system-selector__config" onClick={onAbrirConfig}>
+              <button
+                type="button"
+                className="system-selector__config"
+                onClick={onAbrirConfig}
+                disabled={busy}
+              >
                 Configuração
               </button>
             ) : null}
             {onSair ? (
-              <button type="button" className="system-selector__sair" onClick={onSair}>
+              <button
+                type="button"
+                className="system-selector__sair"
+                onClick={onSair}
+                disabled={busy}
+              >
                 Sair
               </button>
             ) : null}
@@ -85,6 +97,17 @@ export default function SystemSelectorScreen({
           ))}
         </div>
       </div>
+
+      {busy ? (
+        <div className="system-selector__loading" role="status" aria-live="polite">
+          <div className="system-selector__loading-card">
+            <p className="system-selector__loading-text">{busyLabel || 'Carregando'}</p>
+            <div className="system-selector__loading-track" aria-hidden>
+              <div className="system-selector__loading-bar" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
