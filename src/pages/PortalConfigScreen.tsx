@@ -1,17 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import PortalHierarchyGroups from '../components/PortalHierarchyGroups'
 import PortalHierarchyTree from '../components/PortalHierarchyTree'
 import {
   fetchPortalConfigOverview,
   isLocalSuperUser,
   normalizeModulosMap,
+  savePortalHierarquiaUsuario,
   savePortalPermissoes,
   type ModuloAcesso,
+  type OrgNo,
   type PortalConfigOverview,
   type PortalUsuarioRow,
   type SistemaId,
   type SistemaPermissao,
 } from '../lib/portalConfigApi'
 import './PortalConfigScreen.css'
+
+function flattenOrg(nodes: OrgNo[], acc: OrgNo[] = []): OrgNo[] {
+  for (const n of nodes) {
+    acc.push(n)
+    if (n.children?.length) flattenOrg(n.children, acc)
+  }
+  return acc
+}
 
 type Props = {
   usuario: string
@@ -292,6 +303,15 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
               }
               onChanged={() => void load()}
             />
+            <PortalHierarchyGroups
+              sistema={hierSistema}
+              grupos={data.grupos?.[hierSistema] || []}
+              empresas={
+                data.arvores?.[hierSistema] ||
+                (hierSistema === 'plus' ? data.arvore || [] : [])
+              }
+              onChanged={() => void load()}
+            />
           </section>
         ) : (
           <div className="portal-config__body portal-config__body--perms">
@@ -380,6 +400,45 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
                     Escolha os sistemas liberados e, em cada tela, se a pessoa pode só{' '}
                     <strong>visualizar</strong> ou também <strong>editar</strong>.
                   </p>
+
+                  <div className="portal-config__empresa-org">
+                    <label>
+                      Empresa na hierarquia (ponto de partida da visibilidade)
+                      <select
+                        value={selectedUser.empresa_org_id || ''}
+                        onChange={(e) => {
+                          const empresa_org_id = e.target.value || null
+                          void (async () => {
+                            setErro(null)
+                            setOkMsg(null)
+                            const res = await savePortalHierarquiaUsuario({
+                              usuario: selectedUser.usuario,
+                              empresa_org_id,
+                            })
+                            if (!res.ok) {
+                              setErro(res.erro)
+                              return
+                            }
+                            setOkMsg('Empresa organizacional vinculada.')
+                            void load()
+                          })()
+                        }}
+                      >
+                        <option value="">Sem vínculo</option>
+                        {flattenOrg(
+                          data.arvores?.plus ||
+                            data.arvore ||
+                            data.arvores?.light ||
+                            data.arvores?.pro ||
+                            [],
+                        ).map((n) => (
+                          <option key={n.id} value={n.id}>
+                            {n.nome} ({n.label_tipo || n.tipo})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
 
                   <div className="portal-config__sistemas">
                     {(['light', 'plus', 'pro'] as SistemaId[]).map((sistema) => {

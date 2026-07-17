@@ -365,6 +365,29 @@
   color: #0f172a;
 }
 
+.portal-config__empresa-org {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.portal-config__empresa-org label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.86rem;
+  color: #475569;
+}
+
+.portal-config__empresa-org select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  background: #fff;
+}
+
 .portal-config__perms-hint {
   margin: 0 0 18px;
   color: #64748b;

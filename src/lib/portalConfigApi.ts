@@ -50,6 +50,7 @@ export type PortalUsuarioRow = {
   ativo?: boolean
   nivel?: string
   superior?: string
+  empresa_org_id?: string | null
   is_superuser?: boolean
 }
 
@@ -69,9 +70,30 @@ export type OrgNo = {
   codigo?: string | null
   ordem?: number
   sistema?: SistemaId | string
+  is_fornecedor?: boolean
   label_tipo?: string
   usuarios_count?: number
   children?: OrgNo[]
+}
+
+export type OrgGrupoMembro = {
+  id: string
+  grupo_id: string
+  empresa_id: string
+  parent_empresa_id?: string | null
+  posicao?: number
+  sistema?: string
+  empresa_nome?: string | null
+  empresa_tipo?: string | null
+}
+
+export type OrgGrupo = {
+  id: string
+  nome: string
+  descricao?: string | null
+  sistema?: SistemaId | string
+  empresa_id?: string | null
+  membros?: OrgGrupoMembro[]
 }
 
 export type PortalConfigOverview = {
@@ -84,7 +106,13 @@ export type PortalConfigOverview = {
   modulos: Record<SistemaId, { id: string; label: string }[]>
   arvore?: OrgNo[]
   arvores?: Partial<Record<SistemaId, OrgNo[]>>
-  tipos_org?: { id: string; label: string }[]
+  grupos?: Partial<Record<SistemaId, OrgGrupo[]>>
+  tipos_org?: {
+    id: string
+    label: string
+    valid_parents?: string[]
+    allowed_children?: string[]
+  }[]
   sistemas_org?: { id: string; label: string }[]
 }
 
@@ -178,6 +206,7 @@ export async function savePortalOrgNo(input: {
   cnpj?: string
   codigo?: string
   sistema?: SistemaId | string
+  is_fornecedor?: boolean
 }): Promise<{ ok: true; no?: OrgNo; id?: string } | { ok: false; erro: string }> {
   return authFetch('api/portal/config/org', {
     method: 'POST',
@@ -192,18 +221,79 @@ export async function deletePortalOrgNo(id: string): Promise<{ ok: true } | { ok
   })
 }
 
-/** Próximo tipo filho permitido na árvore. */
-export function nextOrgChildType(tipoPai: string | null | undefined): OrgTipo | null {
-  const map: Record<string, OrgTipo | null> = {
-    '': 'operador_logistico',
-    operador_logistico: 'filial_operador',
-    filial_operador: 'embarcador',
-    embarcador: 'unidade',
-    unidade: 'transportadora',
-    transportadora: null,
+export async function savePortalHierarquiaUsuario(input: {
+  usuario: string
+  nivel?: string
+  superior?: string
+  empresa_org_id?: string | null
+}): Promise<{ ok: true } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/hierarquia', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function savePortalGrupo(input: {
+  id?: string
+  nome: string
+  descricao?: string
+  sistema?: SistemaId | string
+  empresa_id?: string | null
+}): Promise<{ ok: true; grupo?: OrgGrupo; id?: string } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/grupos', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deletePortalGrupo(id: string): Promise<{ ok: true } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/grupos/delete', {
+    method: 'POST',
+    body: JSON.stringify({ id }),
+  })
+}
+
+export async function addPortalGrupoMembro(input: {
+  grupo_id: string
+  empresa_id: string
+  parent_empresa_id?: string | null
+  posicao?: number
+}): Promise<{ ok: true; membro?: OrgGrupoMembro } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/grupos/membros', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deletePortalGrupoMembro(input: {
+  id?: string
+  grupo_id?: string
+  empresa_id?: string
+}): Promise<{ ok: true } | { ok: false; erro: string }> {
+  return authFetch('api/portal/config/grupos/membros/delete', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+/** Filhos permitidos sob um tipo de pai (parentesco flexível Docalivre). */
+export function allowedOrgChildTypes(tipoPai: string | null | undefined): OrgTipo[] {
+  const map: Record<string, OrgTipo[]> = {
+    '': ['operador_logistico'],
+    operador_logistico: ['filial_operador', 'embarcador'],
+    filial_operador: ['embarcador', 'unidade', 'transportadora'],
+    embarcador: ['unidade'],
+    unidade: ['transportadora'],
+    transportadora: [],
   }
-  if (!tipoPai) return 'operador_logistico'
-  return map[tipoPai] ?? null
+  if (!tipoPai) return ['operador_logistico']
+  return map[tipoPai] ?? []
+}
+
+/** Próximo tipo filho sugerido (primeiro permitido). */
+export function nextOrgChildType(tipoPai: string | null | undefined): OrgTipo | null {
+  const list = allowedOrgChildTypes(tipoPai)
+  return list[0] ?? null
 }
 
 /** Super usuários conhecidos (fallback se API antiga não devolver is_superuser). */

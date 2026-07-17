@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import {
+  allowedOrgChildTypes,
   deletePortalOrgNo,
-  nextOrgChildType,
   savePortalOrgNo,
   type OrgNo,
+  type OrgTipo,
   type SistemaId,
 } from '../lib/portalConfigApi'
 import './PortalHierarchyTree.css'
@@ -17,7 +18,7 @@ type Props = {
 
 type ModalState =
   | null
-  | { mode: 'create'; parent: OrgNo | null; tipo: string }
+  | { mode: 'create'; parent: OrgNo | null; tipos: OrgTipo[]; tipo: OrgTipo }
   | { mode: 'edit'; no: OrgNo }
 
 const LEGENDA = [
@@ -27,6 +28,10 @@ const LEGENDA = [
   { tipo: 'unidade', label: 'Unidade' },
   { tipo: 'transportadora', label: 'Transportadora' },
 ] as const
+
+function labelTipo(tipo: string) {
+  return LEGENDA.find((l) => l.tipo === tipo)?.label || tipo
+}
 
 function NodeRow({
   no,
@@ -41,7 +46,7 @@ function NodeRow({
 }) {
   const [open, setOpen] = useState(true)
   const children = no.children || []
-  const canAdd = Boolean(nextOrgChildType(no.tipo))
+  const canAdd = allowedOrgChildTypes(no.tipo).length > 0
   const tipo = String(no.tipo || '')
 
   return (
@@ -58,6 +63,7 @@ function NodeRow({
           <div className="ph-node__name">{no.nome}</div>
           <div className="ph-node__meta">
             <span className={`ph-node__badge ph-node__badge--${tipo}`}>{no.label_tipo || tipo}</span>
+            {no.is_fornecedor ? <span className="ph-node__badge ph-node__badge--fornecedor">Fornecedor</span> : null}
             {no.cnpj ? <span>CNPJ: {no.cnpj}</span> : null}
             {typeof no.usuarios_count === 'number' ? <span>👥 {no.usuarios_count}</span> : null}
           </div>
@@ -97,6 +103,8 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
   const [nome, setNome] = useState('')
   const [cnpj, setCnpj] = useState('')
   const [codigo, setCodigo] = useState('')
+  const [tipoSel, setTipoSel] = useState<OrgTipo>('filial_operador')
+  const [isFornecedor, setIsFornecedor] = useState(false)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
@@ -105,20 +113,23 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
   const labelSis = sistemaLabel || `WMS ${sistema}`
 
   function openCreate(parent: OrgNo | null) {
-    const tipo = nextOrgChildType(parent?.tipo || null)
-    if (!tipo) return
+    const tipos = allowedOrgChildTypes(parent?.tipo || null)
+    if (!tipos.length) return
     setNome('')
     setCnpj('')
     setCodigo('')
+    setTipoSel(tipos[0])
+    setIsFornecedor(false)
     setErro(null)
     setOkMsg(null)
-    setModal({ mode: 'create', parent, tipo })
+    setModal({ mode: 'create', parent, tipos, tipo: tipos[0] })
   }
 
   function openEdit(no: OrgNo) {
     setNome(no.nome || '')
     setCnpj(no.cnpj || '')
     setCodigo(no.codigo || '')
+    setIsFornecedor(Boolean(no.is_fornecedor))
     setErro(null)
     setOkMsg(null)
     setModal({ mode: 'edit', no })
@@ -130,13 +141,15 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
     setErro(null)
     setOkMsg(null)
     if (modal.mode === 'create') {
+      const tipo = tipoSel
       const res = await savePortalOrgNo({
         parent_id: modal.parent?.id || null,
-        tipo: modal.tipo,
+        tipo,
         nome,
         cnpj,
         codigo,
         sistema,
+        is_fornecedor: tipo === 'embarcador' ? isFornecedor : false,
       })
       setSaving(false)
       if (!res.ok) {
@@ -154,6 +167,7 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
       cnpj,
       codigo,
       sistema,
+      is_fornecedor: modal.no.tipo === 'embarcador' ? isFornecedor : false,
     })
     setSaving(false)
     if (!res.ok) {
@@ -177,6 +191,10 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
     setOkMsg('Empresa removida.')
     onChanged()
   }
+
+  const showFornecedor =
+    (modal?.mode === 'create' && tipoSel === 'embarcador') ||
+    (modal?.mode === 'edit' && modal.no.tipo === 'embarcador')
 
   return (
     <div className={`ph-tree ph-tree--${sistema}`}>
@@ -231,11 +249,35 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
           <div className="ph-modal">
             <h3>{modal.mode === 'create' ? 'Adicionar empresa' : 'Editar empresa'}</h3>
             {modal.mode === 'create' ? (
-              <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
-                {labelSis} · Tipo:{' '}
-                <strong>{LEGENDA.find((l) => l.tipo === modal.tipo)?.label || modal.tipo}</strong>
-                {modal.parent ? ` · sob ${modal.parent.nome}` : ' · raiz'}
-              </p>
+              <>
+                <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                  {labelSis}
+                  {modal.parent ? ` · sob ${modal.parent.nome}` : ' · raiz'}
+                </p>
+                {modal.tipos.length > 1 ? (
+                  <label>
+                    Tipo
+                    <select
+                      value={tipoSel}
+                      onChange={(e) => {
+                        const t = e.target.value as OrgTipo
+                        setTipoSel(t)
+                        if (t !== 'embarcador') setIsFornecedor(false)
+                      }}
+                    >
+                      {modal.tipos.map((t) => (
+                        <option key={t} value={t}>
+                          {labelTipo(t)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                    Tipo: <strong>{labelTipo(tipoSel)}</strong>
+                  </p>
+                )}
+              </>
             ) : null}
             <label>
               Nome
@@ -249,6 +291,16 @@ export default function PortalHierarchyTree({ arvore, sistema, sistemaLabel, onC
               Código (opcional)
               <input value={codigo} onChange={(e) => setCodigo(e.target.value)} />
             </label>
+            {showFornecedor ? (
+              <label className="ph-modal__check">
+                <input
+                  type="checkbox"
+                  checked={isFornecedor}
+                  onChange={(e) => setIsFornecedor(e.target.checked)}
+                />
+                Marcar como fornecedor
+              </label>
+            ) : null}
             {erro ? <p className="ph-tree__erro">{erro}</p> : null}
             <div className="ph-modal__actions">
               <button type="button" className="ph-tree__btn" onClick={() => setModal(null)} disabled={saving}>
