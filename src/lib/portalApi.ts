@@ -86,11 +86,14 @@ export async function portalLogin(
     }
   | { ok: false; erro: string }
 > {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 12000)
   try {
     const res = await fetch(`${getProApiBase()}api/portal/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usuario, senha }),
+      signal: controller.signal,
     })
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean
@@ -114,8 +117,16 @@ export async function portalLogin(
       isSuperuser: Boolean(data.is_superuser),
       permissoes: data.permissoes ?? null,
     }
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return {
+        ok: false,
+        erro: 'O servidor demorou para responder. Tente novamente em alguns segundos.',
+      }
+    }
     return { ok: false, erro: 'Falha de conexão com o portal.' }
+  } finally {
+    window.clearTimeout(timer)
   }
 }
 
