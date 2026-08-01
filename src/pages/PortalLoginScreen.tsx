@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type InputHTMLAttributes } from 'react'
+import { useEffect, useState, type FormEvent, type InputHTMLAttributes } from 'react'
 import { LOGO_DOCA_LIVRE_SRC } from '../lib/brandAssets'
 import {
   portalCadastroConcluir,
@@ -8,6 +8,7 @@ import {
   portalSenhaEnviarCodigo,
   portalSenhaRedefinir,
   portalSenhaVerificarCodigo,
+  wakeProApi,
 } from '../lib/portalApi'
 import './PortalLoginScreen.css'
 
@@ -83,6 +84,12 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
   const [erro, setErro] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingLabel, setLoadingLabel] = useState('Entrando…')
+
+  // Acorda o Pro (Render free) enquanto o usuário digita — login fica bem mais rápido.
+  useEffect(() => {
+    void wakeProApi(45000)
+  }, [])
 
   function resetMessages() {
     setErro(null)
@@ -108,8 +115,13 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
     e.preventDefault()
     resetMessages()
     setLoading(true)
+    setLoadingLabel('Acordando servidor…')
     try {
-      const result = await portalLogin(usuario.trim(), senha)
+      const result = await portalLogin(usuario.trim(), senha, {
+        onPhase: (phase) => {
+          setLoadingLabel(phase === 'wake' ? 'Acordando servidor…' : 'Entrando…')
+        },
+      })
       if (!result.ok) {
         setErro(result.erro)
         return
@@ -121,6 +133,7 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
       })
     } finally {
       setLoading(false)
+      setLoadingLabel('Entrando…')
     }
   }
 
@@ -336,7 +349,7 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
             ) : null}
             {info ? <p className="portal-login__info">{info}</p> : null}
             <button type="submit" className="portal-login__submit" disabled={loading}>
-              {loading ? 'Entrando…' : 'Entrar'}
+              {loading ? loadingLabel : 'Entrar'}
             </button>
             <div className="portal-login__links">
               <button type="button" className="portal-login__link" onClick={() => goMode('cadastro')}>

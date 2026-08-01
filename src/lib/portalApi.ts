@@ -70,9 +70,28 @@ export function clearHubSession(): void {
   }
 }
 
+/** Acorda o Pro no Render free (cold start) antes do login — evita travar em "Entrando…". */
+export async function wakeProApi(timeoutMs = 45000): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${getProApiBase()}api/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
+
 export async function portalLogin(
   usuario: string,
   senha: string,
+  opts?: { onPhase?: (phase: 'wake' | 'login') => void },
 ): Promise<
   | {
       ok: true
@@ -86,8 +105,13 @@ export async function portalLogin(
     }
   | { ok: false; erro: string }
 > {
+  opts?.onPhase?.('wake')
+  await wakeProApi(45000)
+  opts?.onPhase?.('login')
+
   const controller = new AbortController()
-  const timer = window.setTimeout(() => controller.abort(), 12000)
+  // Após wake, o login em si deve ser rápido; margem para banco acordando.
+  const timer = window.setTimeout(() => controller.abort(), 20000)
   try {
     const res = await fetch(`${getProApiBase()}api/portal/login`, {
       method: 'POST',
@@ -121,7 +145,7 @@ export async function portalLogin(
     if (err instanceof DOMException && err.name === 'AbortError') {
       return {
         ok: false,
-        erro: 'O servidor demorou para responder. Tente novamente em alguns segundos.',
+        erro: 'O servidor demorou para responder. Aguarde ~30s (plano free) e tente de novo.',
       }
     }
     return { ok: false, erro: 'Falha de conexão com o portal.' }
