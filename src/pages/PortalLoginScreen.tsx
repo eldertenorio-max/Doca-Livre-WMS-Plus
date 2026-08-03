@@ -88,7 +88,7 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
 
   // Acorda o Pro (Render free) enquanto o usuário digita — login fica bem mais rápido.
   useEffect(() => {
-    void wakeProApi(45000)
+    void wakeProApi(90000)
   }, [])
 
   function resetMessages() {
@@ -118,8 +118,17 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
     setLoadingLabel('Acordando servidor…')
     try {
       const result = await portalLogin(usuario.trim(), senha, {
-        onPhase: (phase) => {
-          setLoadingLabel(phase === 'wake' ? 'Acordando servidor…' : 'Entrando…')
+        onPhase: (phase, detail) => {
+          if (phase === 'wake') {
+            const sec = Math.max(1, Math.round((detail?.elapsedMs || 0) / 1000))
+            setLoadingLabel(
+              sec <= 2
+                ? 'Acordando servidor (plano free)…'
+                : `Acordando servidor… ${sec}s`,
+            )
+          } else {
+            setLoadingLabel('Validando usuário…')
+          }
         },
       })
       if (!result.ok) {

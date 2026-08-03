@@ -70,28 +70,49 @@ export function clearHubSession(): void {
   }
 }
 
-/** Acorda o Pro no Render free (cold start) antes do login — evita travar em "Entrando…". */
-export async function wakeProApi(timeoutMs = 45000): Promise<boolean> {
-  const controller = new AbortController()
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(`${getProApiBase()}api/health`, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-    return res.ok
-  } catch {
-    return false
-  } finally {
-    window.clearTimeout(timer)
+/**
+ * Acorda o Pro (Render free) com retries.
+ * Cold start costuma fechar a conexão na 1ª tentativa e só responde após ~20–50s.
+ */
+export async function wakeProApi(
+  timeoutMs = 90000,
+  onAttempt?: (info: { attempt: number; elapsedMs: number }) => void,
+): Promise<boolean> {
+  const base = getProApiBase()
+  const deadline = Date.now() + timeoutMs
+  let attempt = 0
+  while (Date.now() < deadline) {
+    attempt += 1
+    onAttempt?.({ attempt, elapsedMs: Date.now() - (deadline - timeoutMs) })
+    const remaining = Math.max(1000, deadline - Date.now())
+    const perTry = Math.min(25000, remaining)
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), perTry)
+    try {
+      const res = await fetch(`${base}api/health`, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      if (res.ok) return true
+    } catch {
+      /* cold start: connection closed / abort → tenta de novo */
+    } finally {
+      window.clearTimeout(timer)
+    }
+    // Pausa curta entre tentativas (Render solta o socket ao acordar).
+    const pause = Math.min(1500, Math.max(400, deadline - Date.now()))
+    if (pause > 0) await new Promise((r) => setTimeout(r, pause))
   }
+  return false
 }
 
 export async function portalLogin(
   usuario: string,
   senha: string,
-  opts?: { onPhase?: (phase: 'wake' | 'login') => void },
+  opts?: {
+    onPhase?: (phase: 'wake' | 'login', detail?: { attempt?: number; elapsedMs?: number }) => void
+  },
 ): Promise<
   | {
       ok: true
@@ -105,53 +126,72 @@ export async function portalLogin(
     }
   | { ok: false; erro: string }
 > {
-  opts?.onPhase?.('wake')
-  await wakeProApi(45000)
+  opts?.onPhase?.('wake', { attempt: 1, elapsedMs: 0 })
+  const awake = await wakeProApi(90000, (info) => {
+    opts?.onPhase?.('wake', info)
+  })
+  if (!awake) {
+    return {
+      ok: false,
+      erro: 'O servidor ainda está acordando (plano free). Aguarde ~1 minuto e clique em Entrar de novo.',
+    }
+  }
   opts?.onPhase?.('login')
 
-  const controller = new AbortController()
-  // Após wake, o login em si deve ser rápido; margem para banco acordando.
-  const timer = window.setTimeout(() => controller.abort(), 20000)
-  try {
-    const res = await fetch(`${getProApiBase()}api/portal/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario, senha }),
-      signal: controller.signal,
-    })
-    const data = (await res.json().catch(() => ({}))) as {
-      ok?: boolean
-      usuario?: string
-      hub_token?: string
-      is_superuser?: boolean
-      permissoes?: Record<
-        string,
-        { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
-      > | null
-      erro?: string
-    }
-    if (!res.ok || !data.ok || !data.hub_token || !data.usuario) {
-      return { ok: false, erro: data.erro || 'Usuário ou senha incorretos.' }
-    }
-    saveHubSession(data.usuario, data.hub_token)
-    return {
-      ok: true,
-      usuario: data.usuario,
-      hubToken: data.hub_token,
-      isSuperuser: Boolean(data.is_superuser),
-      permissoes: data.permissoes ?? null,
-    }
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return {
-        ok: false,
-        erro: 'O servidor demorou para responder. Aguarde ~30s (plano free) e tente de novo.',
+  // Até 2 tentativas: após cold start o 1º login pode falhar se o worker ainda sobe o schema.
+  let lastErro = 'Falha de conexão com o portal.'
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), 25000)
+    try {
+      const res = await fetch(`${getProApiBase()}api/portal/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, senha }),
+        signal: controller.signal,
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        usuario?: string
+        hub_token?: string
+        is_superuser?: boolean
+        permissoes?: Record<
+          string,
+          { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
+        > | null
+        erro?: string
       }
+      if (res.status === 503 && attempt < 2) {
+        lastErro = data.erro || lastErro
+        await new Promise((r) => setTimeout(r, 1500))
+        continue
+      }
+      if (!res.ok || !data.ok || !data.hub_token || !data.usuario) {
+        return { ok: false, erro: data.erro || 'Usuário ou senha incorretos.' }
+      }
+      saveHubSession(data.usuario, data.hub_token)
+      return {
+        ok: true,
+        usuario: data.usuario,
+        hubToken: data.hub_token,
+        isSuperuser: Boolean(data.is_superuser),
+        permissoes: data.permissoes ?? null,
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        lastErro = 'O servidor demorou para responder. Aguarde ~30s e tente de novo.'
+      } else {
+        lastErro = 'Falha de conexão com o portal.'
+      }
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1200))
+        continue
+      }
+    } finally {
+      window.clearTimeout(timer)
     }
-    return { ok: false, erro: 'Falha de conexão com o portal.' }
-  } finally {
-    window.clearTimeout(timer)
   }
+  return { ok: false, erro: lastErro }
 }
 
 export async function portalCadastroEnviarCodigo(email: string) {
