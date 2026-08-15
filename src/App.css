@@ -4372,8 +4372,6 @@ html.scroll-locked .sidebar.sidebar--wide {
   opacity: 0.45;
   cursor: not-allowed;
 }
-  color: var(--accent);
-}
 
 /* HUD assistente global */
 .voice-assistant-hud {
