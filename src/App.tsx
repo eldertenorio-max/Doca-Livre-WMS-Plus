@@ -132,6 +132,7 @@ import {
   type VoiceCommand,
 } from './lib/parseVoiceCommand'
 import { resolveVoiceCommandAsync, resolveVoiceTurnAsync } from './lib/voiceAiInterpret'
+import { prepareVoiceCommandText } from './lib/voiceNormalize'
 import { resetWmsGeminiHistory } from './lib/wmsGeminiAgent'
 import {
   createConversationState,

@@ -20,6 +20,7 @@ type Props = {
 export function IaDocaLivrePanel({ prefs, messages, sending, onPrefsChange, onSend }: Props) {
   const [draft, setDraft] = useState('')
   const [micErro, setMicErro] = useState<string | null>(null)
+  const [showCfg, setShowCfg] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const { listening, supported, start, stop, interimTranscript } = useSpeechRecognition()
 
