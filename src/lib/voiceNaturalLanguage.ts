@@ -73,6 +73,11 @@ const SECTIONS: SectionDef[] = [
     label: 'Comando de voz',
     terms: [/\bcomando de voz\b/, /\bcadastro de voz\b/, /\bconfigurac.* voz\b/],
   },
+  {
+    section: 'financeiro',
+    label: 'Financeiro',
+    terms: [/\bfinanceiro\b/, /\bfaturamento\b/, /\bcobranca\b/],
+  },
 ]
 
 const FILLER_RE =

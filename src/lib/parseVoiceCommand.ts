@@ -27,6 +27,7 @@ export type VoiceCommand =
   | { type: 'close_section'; section: SidebarSectionId | null; label: string }
   | { type: 'close_current_section'; label: string }
   | { type: 'buscar_nota'; numero: string }
+  | { type: 'buscar_saida'; numero: string }
   | { type: 'consultar'; filtros: Partial<ConsultaEstoqueFiltros> }
   | { type: 'limpar_consulta' }
   | { type: 'painel_periodo'; dias: number; label: string }
@@ -34,6 +35,7 @@ export type VoiceCommand =
   | { type: 'sidebar_mode'; mode: SidebarMode; label: string }
   | { type: 'toggle_theme'; theme: 'light' | 'dark' | 'auto'; label: string }
   | { type: 'endereco'; addressId: AddressId }
+  | { type: 'assistente'; message: string }
   | { type: 'parar' }
   | { type: 'blocked'; message: string }
   | { type: 'desconhecido'; raw: string }
@@ -558,6 +560,8 @@ export function describeVoiceCommand(cmd: VoiceCommand): string {
       return 'Fechando aba atual'
     case 'buscar_nota':
       return `Buscando NF ${cmd.numero}`
+    case 'buscar_saida':
+      return `Buscando NF ${cmd.numero} para saída`
     case 'consultar':
       return 'Consultando estoque'
     case 'limpar_consulta':
@@ -572,6 +576,8 @@ export function describeVoiceCommand(cmd: VoiceCommand): string {
       return cmd.label
     case 'endereco':
       return `Endereço ${cmd.addressId}`
+    case 'assistente':
+      return cmd.message
     case 'parar':
       return 'Assistente desarmado'
     case 'blocked':

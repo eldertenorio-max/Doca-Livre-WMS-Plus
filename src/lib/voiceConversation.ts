@@ -59,6 +59,8 @@ function commandLabel(cmd: VoiceCommand): string {
       return 'Fechei a aba atual'
     case 'buscar_nota':
       return `Buscando a nota ${cmd.numero}`
+    case 'buscar_saida':
+      return `Buscando a nota ${cmd.numero} para saída`
     case 'consultar':
       return 'Consultando o estoque'
     case 'limpar_consulta':
@@ -72,6 +74,8 @@ function commandLabel(cmd: VoiceCommand): string {
       return cmd.label
     case 'endereco':
       return `Endereço ${cmd.addressId} selecionado`
+    case 'assistente':
+      return cmd.message
     case 'parar':
       return 'Encerrando'
     case 'blocked':

@@ -254,7 +254,7 @@ export function CadastroVozPanel({
 
         {prefs.aiInterpretation && (
           <label className="cadastro-voz-field">
-            <span>Chave Gemini (opcional, interpretação avançada)</span>
+            <span>Chave Gemini (obrigatória para conversar e executar tarefas)</span>
             <input
               type="password"
               className="input-nf"
@@ -265,7 +265,9 @@ export function CadastroVozPanel({
               autoComplete="off"
             />
             <span className="muted cadastro-voz-field-hint">
-              Sem chave, o sistema já entende frases comuns. Com chave Gemini, fica ainda mais flexível.
+              Cole a chave do Google AI Studio. Com ela, a Gemini executa as funções do WMS
+              (abrir telas, consultar estoque, buscar NF, saída, relatório) conversando, como no
+              app financeiro. Sem chave, só frases locais.
             </span>
           </label>
         )}

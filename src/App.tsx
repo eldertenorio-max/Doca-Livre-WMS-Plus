@@ -131,7 +131,8 @@ import {
   painelFiltrosPorDias,
   type VoiceCommand,
 } from './lib/parseVoiceCommand'
-import { resolveVoiceCommandAsync } from './lib/voiceAiInterpret'
+import { resolveVoiceCommandAsync, resolveVoiceTurnAsync } from './lib/voiceAiInterpret'
+import { resetWmsGeminiHistory } from './lib/wmsGeminiAgent'
 import {
   createConversationState,
   processConversationTurn,
@@ -3400,7 +3401,7 @@ export default function App() {
       }
 
       const msg = describeVoiceCommand(cmd)
-      if (cmd.type !== 'desconhecido') {
+      if (cmd.type !== 'desconhecido' && cmd.type !== 'assistente') {
         setVoiceFeedback(msg)
       }
 
@@ -3436,6 +3437,10 @@ export default function App() {
         case 'buscar_nota':
           handleOpenSection('editar')
           handleBuscarEditar(cmd.numero)
+          break
+        case 'buscar_saida':
+          handleOpenSection('saida')
+          handleBuscarSaida(cmd.numero)
           break
         case 'consultar': {
           handleOpenSection('consulta')
@@ -3485,6 +3490,9 @@ export default function App() {
             )
           }
           break
+        case 'assistente':
+          setVoiceFeedback(cmd.message)
+          break
         case 'desconhecido':
           setVoiceFeedback('Em que posso ajudar?')
           break
@@ -3504,9 +3512,10 @@ export default function App() {
       return resolveVoiceCommandAsync(text, {
         aiEnabled: voicePrefs.aiInterpretation,
         geminiApiKey: voicePrefs.geminiApiKey,
+        notas: state.notas,
       })
     },
-    [voicePrefs.aiInterpretation, voicePrefs.geminiApiKey],
+    [voicePrefs.aiInterpretation, voicePrefs.geminiApiKey, state.notas],
   )
 
   const handleVoiceCommandText = useCallback(
@@ -3525,6 +3534,7 @@ export default function App() {
 
   const handleConversationStart = useCallback(async () => {
     conversationStateRef.current = createConversationState()
+    resetWmsGeminiHistory()
     setConversationLines([{ role: 'assistant', text: VOICE_CONVERSATION_GREETING }])
     setVoiceFeedback(VOICE_CONVERSATION_GREETING)
     await speakText(VOICE_CONVERSATION_GREETING)
@@ -3574,11 +3584,24 @@ export default function App() {
         return true
       }
 
-      const result = await processConversationTurn(
-        prepared,
-        conversationStateRef.current,
-        resolveVoiceCommand,
-      )
+      const geminiTurn = await resolveVoiceTurnAsync(prepared, {
+        aiEnabled: voicePrefs.aiInterpretation,
+        geminiApiKey: voicePrefs.geminiApiKey,
+        notas: state.notas,
+      })
+
+      const result = geminiTurn
+        ? {
+            reply: geminiTurn.reply || 'Pronto.',
+            state: createConversationState(),
+            command: geminiTurn.command,
+            endSession: Boolean(geminiTurn.endSession),
+          }
+        : await processConversationTurn(
+            prepared,
+            conversationStateRef.current,
+            resolveVoiceCommand,
+          )
       conversationStateRef.current = result.state
 
       setConversationLines((prev) => [
@@ -3589,17 +3612,25 @@ export default function App() {
       setVoiceFeedback(result.reply)
       await speakText(result.reply)
 
-      if (result.command) {
+      if (result.command && result.command.type !== 'assistente') {
         executeVoiceCommand(result.command)
       }
 
       if (result.endSession) {
         setConversationLines([])
+        resetWmsGeminiHistory()
       }
 
       return !result.endSession
     },
-    [executeVoiceCommand, resolveVoiceCommand, voicePrefs.wakePhrase],
+    [
+      executeVoiceCommand,
+      resolveVoiceCommand,
+      voicePrefs.wakePhrase,
+      voicePrefs.aiInterpretation,
+      voicePrefs.geminiApiKey,
+      state.notas,
+    ],
   )
 
   const voiceAssistant = useVoiceAssistant({
