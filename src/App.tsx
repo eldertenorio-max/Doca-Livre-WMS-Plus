@@ -146,7 +146,7 @@ import {
   saveSaidaDestinoPendenteId,
 } from './lib/saidaDestinoSession'
 import { loadUiSession, saveUiSession } from './lib/uiSession'
-import { prepareVoiceCommandText } from './lib/voiceNormalize'
+import type { IaChatLine } from './components/IaDocaLivrePanel'
 import { hasRegisteredVoices } from './lib/voiceProfile'
 import {
   CONTA_SISTEMA_ID,
@@ -303,6 +303,8 @@ export default function App() {
   const [conversationLines, setConversationLines] = useState<
     { role: 'user' | 'assistant'; text: string }[]
   >([])
+  const [iaMessages, setIaMessages] = useState<IaChatLine[]>([])
+  const [iaSending, setIaSending] = useState(false)
   const conversationStateRef = useRef(createConversationState())
   const openSectionRef = useRef<SidebarSectionId | null>(null)
   const initialSsoToken = typeof window !== 'undefined' ? readPortalSsoTokenFromLocation() : null
@@ -3577,6 +3579,69 @@ export default function App() {
     )
   }, [])
 
+  const handleIaChatSend = useCallback(
+    async (text: string) => {
+      const prepared = text.trim()
+      if (!prepared || iaSending) return
+
+      const userId = `u-${Date.now()}`
+      const pendingId = `p-${Date.now()}`
+      setIaMessages((prev) => [
+        ...prev,
+        { id: userId, role: 'user', content: prepared },
+        { id: pendingId, role: 'assistant', content: '', pending: true },
+      ])
+      setIaSending(true)
+      handleOpenSection('cadastroVoz')
+
+      try {
+        const geminiTurn = await resolveVoiceTurnAsync(prepared, {
+          aiEnabled: true,
+          geminiApiKey: voicePrefs.geminiApiKey,
+          notas: state.notas,
+        })
+        const result = geminiTurn
+          ? {
+              reply: geminiTurn.reply || 'Pronto.',
+              command: geminiTurn.command,
+            }
+          : await processConversationTurn(
+              prepared,
+              conversationStateRef.current,
+              resolveVoiceCommand,
+            )
+
+        setIaMessages((prev) =>
+          prev.map((m) =>
+            m.id === pendingId ? { ...m, content: result.reply, pending: false } : m,
+          ),
+        )
+        setVoiceFeedback(result.reply)
+        if (result.command && result.command.type !== 'assistente') {
+          executeVoiceCommand(result.command)
+        }
+      } catch {
+        setIaMessages((prev) =>
+          prev.map((m) =>
+            m.id === pendingId
+              ? { ...m, content: 'Não consegui falar com a IA agora. Tente de novo.', pending: false }
+              : m,
+          ),
+        )
+      } finally {
+        setIaSending(false)
+      }
+    },
+    [
+      iaSending,
+      voicePrefs.geminiApiKey,
+      state.notas,
+      resolveVoiceCommand,
+      executeVoiceCommand,
+      handleOpenSection,
+    ],
+  )
+
   const handleConversationUtterance = useCallback(
     async (text: string): Promise<boolean> => {
       const prepared = prepareVoiceCommandText(text, voicePrefs.wakePhrase)
@@ -4373,19 +4438,13 @@ export default function App() {
         cadastroVoz={guardMutations(
           {
           prefs: voicePrefs,
-          voiceRegistry,
-          supported: voiceAssistant.supported,
-          assistantActive: voicePrefs.enabled && voiceAssistant.phase !== 'off',
-          voiceFeedback,
-          voiceSyncError,
+          messages: iaMessages,
+          sending: iaSending,
           onPrefsChange: handleVoicePrefsChange,
-          onVoiceRegistryChange: setVoiceRegistry,
-          onRefreshVoiceRegistry: refreshVoiceRegistry,
-          onTestWakePhrase: voiceAssistant.testPhrase,
-          sectionOpen: openSection === 'cadastroVoz',
+          onSend: handleIaChatSend,
         },
           sectionReadOnly && openSection === 'cadastroVoz',
-          ['onPrefsChange', 'onVoiceRegistryChange', 'onTestWakePhrase'],
+          ['onPrefsChange', 'onSend'],
           notifyViewOnly,
         )}
         financeiro={guardMutations(

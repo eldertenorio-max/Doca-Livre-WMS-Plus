@@ -265,30 +265,15 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
   if (id === 'cadastroVoz') {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <rect
-          className="icon-voz-chip"
-          x="4"
-          y="8"
-          width="8"
-          height="10"
-          rx="4"
+        <path
+          d="M12 3.5 13.2 8l4.8.4-3.7 3.1 1.2 4.7L12 13.8 8.5 16.2l1.2-4.7L6 8.4 10.8 8z"
           stroke="currentColor"
-          strokeWidth="1.75"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
         />
         <path
-          className="icon-voz-wave"
-          d="M14 10c1.5 1 2.5 2.5 2.5 4s-1 3-2.5 4M17 8.5c2.2 1.8 3.5 4.2 3.5 6.5s-1.3 4.7-3.5 6.5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-        />
-        <path
-          className="icon-voz-wave-2"
-          d="M19.5 6c3 2.5 4.5 5.8 4.5 9s-1.5 6.5-4.5 9"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          opacity="0.45"
+          d="M18.5 14.5 19.1 16.4 21 17l-1.9.6-.6 1.9-.6-1.9L16 17l1.9-.6z"
+          fill="currentColor"
         />
       </svg>
     )

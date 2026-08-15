@@ -84,7 +84,7 @@ export function AccountMenuPopover({
         Configurações da conta
       </button>
       <button type="button" className="account-menu-item" role="menuitem" onClick={onComandoVoz}>
-        Comando de voz
+        IA DOCA LIVRE
       </button>
       <button type="button" className="account-menu-item" role="menuitem" onClick={onToggleTheme}>
         Tema {theme === 'dark' ? 'claro' : 'escuro'}

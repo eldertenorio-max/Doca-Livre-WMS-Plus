@@ -167,12 +167,12 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
   },
   {
     section: 'cadastroVoz',
-    label: 'Comando de voz',
-    openExample: 'abrir comando de voz',
-    closeExample: 'fechar comando de voz',
+    label: 'IA DOCA LIVRE',
+    openExample: 'abrir ia',
+    closeExample: 'fechar ia',
     openPatterns: [
-      /\b(abrir|mostrar|ver|ir para)\s+(o\s+)?comando de voz\b/,
-      /\b(abrir|mostrar|ver|ir para)\s+(o\s+)?cadastro de voz\b/,
+      /\b(abrir|mostrar|ver|ir para)\s+(a\s+)?(ia|inteligencia|inteligência)\b/,
+      /\b(abrir|mostrar|ver|ir para)\s+(o\s+)?(comando de voz|chat da ia|ia doca)\b/,
       /\b(abrir|mostrar)\s+(a\s+)?voz\b/,
     ],
     closePatterns: [

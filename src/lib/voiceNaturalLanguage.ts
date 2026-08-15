@@ -70,8 +70,8 @@ const SECTIONS: SectionDef[] = [
   },
   {
     section: 'cadastroVoz',
-    label: 'Comando de voz',
-    terms: [/\bcomando de voz\b/, /\bcadastro de voz\b/, /\bconfigurac.* voz\b/],
+    label: 'IA DOCA LIVRE',
+    terms: [/\bia doca\b/, /\bcomando de voz\b/, /\bchat da ia\b/, /\binteligencia artificial\b/],
   },
   {
     section: 'financeiro',

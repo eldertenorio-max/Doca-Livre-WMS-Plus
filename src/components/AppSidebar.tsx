@@ -1,5 +1,5 @@
 import { CollapsibleSidebarSection, type SidebarSectionId } from './CollapsibleSidebarSection'
-import { CadastroVozPanel } from './CadastroVozPanel'
+import { IaDocaLivrePanel } from './IaDocaLivrePanel'
 import { ConsultaEstoquePanel } from './ConsultaEstoquePanel'
 import { CanceladasPanel } from './CanceladasPanel'
 import { EditarPosicaoPanel } from './EditarPosicaoPanel'
@@ -36,7 +36,7 @@ type Props = {
   painel: ComponentProps<typeof PainelPanel>
   canceladas: ComponentProps<typeof CanceladasPanel>
   imprimir: ComponentProps<typeof ImprimirPanel>
-  cadastroVoz: ComponentProps<typeof CadastroVozPanel>
+  cadastroVoz: ComponentProps<typeof IaDocaLivrePanel>
   financeiro: ComponentProps<typeof FinanceiroPanel>
   onBeforeLeaveEntrada?: (proceed: () => void) => void
 }
@@ -311,12 +311,12 @@ export function AppSidebar({
       {show('cadastroVoz') ? (
       <CollapsibleSidebarSection
         id="cadastroVoz"
-        title="Comando de voz"
+        title="IA DOCA LIVRE"
         open={openSection === 'cadastroVoz'}
         onOpenChange={(open) => sectionOpenChange('cadastroVoz', open)}
         onBeforeToggle={guardOtherSection}
       >
-        {wrap('cadastroVoz', <CadastroVozPanel {...cadastroVoz} />)}
+        {wrap('cadastroVoz', <IaDocaLivrePanel {...cadastroVoz} />)}
       </CollapsibleSidebarSection>
       ) : null}
 

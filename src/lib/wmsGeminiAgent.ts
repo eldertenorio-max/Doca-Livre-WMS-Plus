@@ -51,7 +51,7 @@ const SECTION_LABELS: Record<string, string> = {
   relatorio: 'Relatório',
   imprimir: 'Mapa',
   canceladas: 'NF cancelada',
-  cadastroVoz: 'Comando de voz',
+  cadastroVoz: 'IA DOCA LIVRE',
   financeiro: 'Financeiro',
 }
 
@@ -182,7 +182,7 @@ REGRAS:
 3. NUNCA apague, exclua, zere ou remova dados. Se pedirem isso, recuse.
 4. Se faltar um dado essencial (número da NF, item), PERGUNTE em uma frase curta — não invente.
 5. Confirme em 1–2 frases o que fez. Pode usar emoji com moderação.
-6. Módulos: Painel, Consulta, Entrada (XML), Saída, Movimentação, Histórico, Relatório, Mapa, NF cancelada, Comando de voz, Financeiro.
+6. Módulos: Painel, Consulta, Entrada (XML), Saída, Movimentação, Histórico, Relatório, Mapa, NF cancelada, IA DOCA LIVRE, Financeiro.
 7. "Ok estoque" é só a frase de ativação — ignore-a no conteúdo do pedido.
 
 SITUAÇÃO ATUAL DO ESTOQUE (pode estar levemente desatualizada — use ferramentas para dados exatos):

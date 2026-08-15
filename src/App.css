@@ -4207,6 +4207,171 @@ html.scroll-locked .sidebar.sidebar--wide {
 }
 
 .sidebar-section--cadastroVoz .sidebar-section-icon {
+  color: #0ea5e9;
+}
+
+.ia-doca {
+  display: flex;
+  flex-direction: column;
+  min-height: min(72vh, 640px);
+  max-height: min(78vh, 720px);
+  gap: 10px;
+}
+
+.ia-doca-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ia-doca-title {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.ia-doca-sub {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.ia-doca-cfg-btn,
+.ia-doca-mic,
+.ia-doca-send {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ia-doca-cfg-btn {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.ia-doca-cfg {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.ia-doca-warn {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff8e1;
+  color: #e65100;
+  font-size: 0.8rem;
+}
+
+.ia-doca-thread {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  border: 1px solid var(--border);
+  min-height: 220px;
+}
+
+.ia-doca-welcome {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.ia-doca-welcome ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.ia-doca-bubble {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.ia-doca-bubble--user {
+  align-self: flex-end;
+  background: #0369a1;
+  color: #fff;
+}
+
+.ia-doca-bubble--assistant {
+  align-self: flex-start;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.ia-doca-bubble--interim {
+  opacity: 0.7;
+}
+
+.ia-doca-dots {
+  letter-spacing: 0.2em;
+}
+
+.ia-doca-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ia-doca-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 52px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.ia-doca-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ia-doca-mic {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.ia-doca-mic--on {
+  background: #c62828;
+  color: #fff;
+  border-color: #c62828;
+}
+
+.ia-doca-send {
+  background: #0369a1;
+  color: #fff;
+  min-width: 88px;
+}
+
+.ia-doca-send:disabled,
+.ia-doca-mic:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
   color: var(--accent);
 }
 
