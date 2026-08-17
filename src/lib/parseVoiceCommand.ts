@@ -100,7 +100,13 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
     label: 'Entrada',
     openExample: 'abrir entrada',
     closeExample: 'fechar entrada',
-    openPatterns: [/\b(abrir|mostrar|ver|ir para)\s+(a\s+)?entrada\b/, /^entrada$/],
+    openPatterns: [
+      /\b(abrir|mostrar|ver|ir para)\s+(a\s+)?entrada\b/,
+      /^entrada$/,
+      /\b(subir|lancar|lançar|importar|cadastrar|carregar|anexar)\s+(uma\s+|a\s+|o\s+)?(nf|nota|nfe|xml)\b/,
+      /\bdar entrada\b/,
+      /\breceber\s+(uma\s+|a\s+)?(nf|nota)\b/,
+    ],
     closePatterns: [
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(da\s+)?(a\s+)?entrada\b/,
     ],

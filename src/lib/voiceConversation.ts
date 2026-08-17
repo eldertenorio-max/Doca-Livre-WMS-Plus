@@ -54,7 +54,7 @@ function helpReply(): string {
     '• abrir painel, consulta, entrada, saída, movimentação',
     '• buscar nota, consultar estoque, financeiro, mapa e relatório',
     '',
-    'Exemplos: “abre o painel”, “tem leite no estoque?”, “busca a nota 20835”.',
+    'Exemplos: “abre o painel”, “tem leite no estoque?”, “quero subir uma NF”, “busca a nota 20835”.',
   ].join('\n')
 }
 
@@ -65,7 +65,9 @@ function followUpAfterCommand(label: string): string {
 function commandLabel(cmd: VoiceCommand): string {
   switch (cmd.type) {
     case 'open_section':
-      return `Abri ${cmd.label}`
+      return cmd.section === 'entrada'
+        ? 'Abri a Entrada. Envie o XML da NF ou use Cadastrar NF manual'
+        : `Abri ${cmd.label}`
     case 'close_section':
       return cmd.section ? `Fechei ${cmd.label}` : 'Fechei as seções abertas'
     case 'close_current_section':

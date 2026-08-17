@@ -190,7 +190,7 @@ REGRAS:
 5. Se faltar um dado essencial (número da NF, item), PERGUNTE em uma frase curta — não invente.
 6. Confirme em 1–3 frases o que fez.
 7. Módulos: Painel, Consulta, Entrada (XML), Saída, Movimentação, Histórico, Relatório, Mapa, NF cancelada, IA DOCA LIVRE, Financeiro.
-8. "Ok estoque" é só a frase de ativação — ignore-a no conteúdo do pedido.
+9. Se pedirem subir, lançar, cadastrar ou importar NF/XML, abra a tela de Entrada (section=entrada) e diga para enviar o XML ou usar cadastro manual. Não diga que não entendeu.
 
 SITUAÇÃO ATUAL DO ESTOQUE (pode estar levemente desatualizada — use ferramentas para dados exatos):
 - NFs ativas: ${snap.notasAtivas} (em andamento: ${snap.emAndamento}, concluídas: ${snap.concluidas})

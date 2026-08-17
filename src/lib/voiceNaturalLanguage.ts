@@ -29,7 +29,16 @@ const SECTIONS: SectionDef[] = [
   {
     section: 'entrada',
     label: 'Entrada',
-    terms: [/\bentrada\b/, /\brecebimento\b/, /\breceber nota\b/, /\bsubir xml\b/],
+    terms: [
+      /\bentrada\b/,
+      /\brecebimento\b/,
+      /\breceber nota\b/,
+      /\breceber nf\b/,
+      /\bsubir xml\b/,
+      /\bsubir (uma |a )?(nf|nota|nfe)\b/,
+      /\b(lancar|lançar|importar|cadastrar|carregar|anexar)\s+(uma |a |o )?(nf|nota|nfe|xml)\b/,
+      /\bdar entrada\b/,
+    ],
   },
   {
     section: 'saida',
