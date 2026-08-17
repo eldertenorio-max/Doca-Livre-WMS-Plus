@@ -13,9 +13,14 @@ if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     // Em produção: registra o SW para tornar o app instalável (PWA).
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        /* registro do service worker é best-effort */
-      })
+      navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          void reg.update()
+        })
+        .catch(() => {
+          /* registro do service worker é best-effort */
+        })
     })
   } else {
     // Em dev (Vite/HMR) o SW quebra o carregamento dos módulos — garante remoção.
