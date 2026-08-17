@@ -4438,14 +4438,12 @@ export default function App() {
         )}
         cadastroVoz={guardMutations(
           {
-          prefs: voicePrefs,
           messages: iaMessages,
           sending: iaSending,
-          onPrefsChange: handleVoicePrefsChange,
           onSend: handleIaChatSend,
         },
           sectionReadOnly && openSection === 'cadastroVoz',
-          ['onPrefsChange', 'onSend'],
+          ['onSend'],
           notifyViewOnly,
         )}
         financeiro={guardMutations(

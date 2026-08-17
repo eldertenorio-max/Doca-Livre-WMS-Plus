@@ -37,12 +37,25 @@ function isExitPhrase(norm: string): boolean {
 
 function isHelpPhrase(norm: string): boolean {
   return (
-    /\b(ajuda|help|o que voce faz|oque voce faz|quais comandos|menu|opcoes|opções)\b/.test(norm)
+    /\b(ajuda|help|o que voce faz|oque voce faz|quais comandos|menu|opcoes|opções)\b/.test(norm) ||
+    /\bquais?\s+(sao\s+|são\s+)?(sua|suas)?\s*funcionalidades\b/.test(norm) ||
+    /\bfuncionalidades\b/.test(norm)
   )
 }
 
+function isGreeting(norm: string): boolean {
+  return /^(ola|olá|oi|oie|eai|eae|hey|hello|bom dia|boa tarde|boa noite)([!?. ]|$)/.test(norm)
+}
+
 function helpReply(): string {
-  return 'Em que posso ajudar?'
+  return [
+    'Sou a IA Doca Livre. Posso conversar e executar o WMS Plus por você:',
+    '',
+    '• abrir painel, consulta, entrada, saída, movimentação',
+    '• buscar nota, consultar estoque, financeiro, mapa e relatório',
+    '',
+    'Exemplos: “abre o painel”, “tem leite no estoque?”, “busca a nota 20835”.',
+  ].join('\n')
 }
 
 function followUpAfterCommand(label: string): string {
@@ -224,6 +237,15 @@ export async function processConversationTurn(
     }
   }
 
+  if (isGreeting(norm)) {
+    return {
+      reply: 'Oi. Sou a IA Doca Livre. Posso abrir telas, consultar estoque e executar tarefas do WMS. O que você precisa?',
+      state: { pending: null },
+      command: null,
+      endSession: false,
+    }
+  }
+
   if (state.pending) {
     return resolvePending(trimmed, state.pending, resolveCommand)
   }
@@ -311,7 +333,7 @@ export async function processConversationTurn(
   }
 
   return {
-    reply: helpReply(),
+    reply: `Não entendi “${trimmed}”. Posso abrir telas do WMS, consultar estoque e buscar notas. Diga, por exemplo: “abre o painel” ou “quais suas funcionalidades?”.`,
     state,
     command: null,
     endSession: false,

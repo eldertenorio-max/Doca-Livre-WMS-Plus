@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
-import type { VoicePrefs } from '../lib/voicePrefs'
 
 export type IaChatLine = {
   id: string
@@ -10,28 +9,41 @@ export type IaChatLine = {
 }
 
 type Props = {
-  prefs: VoicePrefs
   messages: IaChatLine[]
   sending: boolean
-  onPrefsChange: (patch: Partial<VoicePrefs>) => void
   onSend: (text: string) => void | Promise<void>
 }
 
-export function IaDocaLivrePanel({ prefs, messages, sending, onPrefsChange, onSend }: Props) {
+const SUGGESTIONS = [
+  'Abre o painel',
+  'Tem leite no estoque?',
+  'Busca a nota 20835',
+  'Mostra o financeiro',
+]
+
+export function IaDocaLivrePanel({ messages, sending, onSend }: Props) {
   const [draft, setDraft] = useState('')
   const [micErro, setMicErro] = useState<string | null>(null)
-  const [showCfg, setShowCfg] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const { listening, supported, start, stop, interimTranscript } = useSpeechRecognition()
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, sending, listening])
+  }, [messages, sending, listening, interimTranscript])
+
+  function resizeDraft() {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }
 
   async function submitText(text: string) {
     const trimmed = text.trim()
     if (!trimmed || sending) return
     setDraft('')
+    if (inputRef.current) inputRef.current.style.height = 'auto'
     await onSend(trimmed)
   }
 
@@ -65,101 +77,114 @@ export function IaDocaLivrePanel({ prefs, messages, sending, onPrefsChange, onSe
     )
   }
 
-  const hasKey = Boolean(prefs.geminiApiKey?.trim())
+  const empty = messages.length === 0 && !listening
 
   return (
     <div className="ia-doca">
-      <header className="ia-doca-head">
-        <div>
-          <h3 className="ia-doca-title">IA DOCA LIVRE</h3>
-          <p className="ia-doca-sub">Digite ou fale. Eu executo as telas e tarefas do WMS Plus.</p>
-        </div>
-        <button
-          type="button"
-          className="ia-doca-cfg-btn"
-          onClick={() => setShowCfg((v) => !v)}
-        >
-          {showCfg ? 'Fechar config' : 'Chave Gemini'}
-        </button>
-      </header>
-
-      {showCfg ? (
-        <div className="ia-doca-cfg">
-          <label className="cadastro-voz-field">
-            <span>Chave Gemini (Google AI Studio)</span>
-            <input
-              type="password"
-              className="input-nf"
-              value={prefs.geminiApiKey}
-              onChange={(e) => onPrefsChange({ geminiApiKey: e.target.value.trim(), aiInterpretation: true })}
-              placeholder="Cole a chave aqui"
-              autoComplete="off"
-            />
-          </label>
-          <p className="muted cadastro-voz-field-hint">
-            Sem a chave a IA só entende frases simples. Com a chave ela conversa e opera o sistema.
-          </p>
-        </div>
-      ) : null}
-
-      {!hasKey && !showCfg ? (
-        <p className="ia-doca-warn">Cole a chave Gemini em “Chave Gemini” para a IA executar as tarefas.</p>
-      ) : null}
-      {micErro ? <p className="ia-doca-warn">{micErro}</p> : null}
-
       <div className="ia-doca-thread" role="log" aria-live="polite">
-        {messages.length === 0 ? (
-          <div className="ia-doca-welcome">
-            Oi. Sou a IA Doca Livre. Peça o que quiser no Plus, por exemplo:
-            <ul>
-              <li>abre o painel</li>
-              <li>tem leite no estoque?</li>
-              <li>busca a nota 20835</li>
-              <li>abre a saída da NF 12345</li>
-              <li>mostra o financeiro</li>
-            </ul>
+        {empty ? (
+          <div className="ia-doca-empty">
+            <div className="ia-doca-mark" aria-hidden>
+              ✦
+            </div>
+            <h3 className="ia-doca-empty-title">IA DOCA LIVRE</h3>
+            <p className="ia-doca-empty-sub">Como posso ajudar no WMS hoje?</p>
+            <div className="ia-doca-chips">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} type="button" className="ia-doca-chip" onClick={() => void submitText(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((m) => (
-            <div
-              key={m.id}
-              className={`ia-doca-bubble ia-doca-bubble--${m.role}${m.pending ? ' ia-doca-bubble--pending' : ''}`}
-            >
-              {m.pending ? <span className="ia-doca-dots" aria-label="Pensando">● ● ●</span> : m.content}
+            <div key={m.id} className={`ia-doca-row ia-doca-row--${m.role}`}>
+              {m.role === 'assistant' ? (
+                <span className="ia-doca-avatar" aria-hidden>
+                  ✦
+                </span>
+              ) : null}
+              <div
+                className={`ia-doca-msg ia-doca-msg--${m.role}${m.pending ? ' ia-doca-msg--pending' : ''}`}
+              >
+                {m.pending ? (
+                  <span className="ia-doca-dots" aria-label="Pensando">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                ) : (
+                  m.content
+                )}
+              </div>
             </div>
           ))
         )}
         {listening && interimTranscript ? (
-          <div className="ia-doca-bubble ia-doca-bubble--user ia-doca-bubble--interim">{interimTranscript}</div>
+          <div className="ia-doca-row ia-doca-row--user">
+            <div className="ia-doca-msg ia-doca-msg--user ia-doca-msg--interim">{interimTranscript}</div>
+          </div>
         ) : null}
         <div ref={bottomRef} />
       </div>
 
+      {micErro ? <p className="ia-doca-warn">{micErro}</p> : null}
+
       <form className="ia-doca-composer" onSubmit={handleSubmit}>
-        <textarea
-          className="ia-doca-input"
-          rows={2}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Digite ou fale o que deseja no WMS…"
-          disabled={sending}
-        />
-        <div className="ia-doca-actions">
+        <div className="ia-doca-bar">
+          <textarea
+            ref={inputRef}
+            className="ia-doca-input"
+            rows={1}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              resizeDraft()
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Pergunte qualquer coisa sobre o WMS…"
+            disabled={sending}
+          />
           <button
             type="button"
-            className={`ia-doca-mic${listening ? ' ia-doca-mic--on' : ''}`}
+            className={`ia-doca-icon-btn${listening ? ' ia-doca-icon-btn--on' : ''}`}
             onClick={toggleMic}
             disabled={!supported || sending}
             title={supported ? (listening ? 'Parar de ouvir' : 'Falar') : 'Áudio não suportado neste navegador'}
+            aria-label={listening ? 'Parar de ouvir' : 'Falar'}
           >
-            {listening ? 'Parar' : 'Falar'}
+            <MicIcon />
           </button>
-          <button type="submit" className="ia-doca-send" disabled={sending || !draft.trim()}>
-            {sending ? '…' : 'Enviar'}
+          <button
+            type="submit"
+            className="ia-doca-send-btn"
+            disabled={sending || !draft.trim()}
+            aria-label="Enviar"
+          >
+            <SendIcon />
           </button>
         </div>
       </form>
     </div>
+  )
+}
+
+function MicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
+      <rect x="9" y="3.5" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 17v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
+      <path d="M12 19V6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M6.5 11.5 12 6l5.5 5.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
