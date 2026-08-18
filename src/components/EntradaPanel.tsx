@@ -4,6 +4,7 @@ import type { EntradaItemCampos } from '../lib/entradaCampos'
 import type { LocalizacaoEstoque, NotaFiscal } from '../types'
 import { itemEnderecamentoCompleto } from '../lib/paletes'
 import { localizacaoItem } from '../layout/stage'
+import { HubPrevisaoEntrada } from './HubPrevisaoEntrada'
 import { NfItensTable } from './NfItensTable'
 import { NfResumoGrid } from './NfResumoGrid'
 
@@ -30,6 +31,8 @@ type Props = {
   onCancelarEntrada: (nfId: string) => void
   onLimparSelecao: () => void
   uploadError: string | null
+  onDarEntradaHubXml?: (previsaoId: number, nfNumero: string | null, files: File[]) => void
+  onDarEntradaHubManual?: (previsaoId: number, nfNumero: string | null) => void
 }
 
 export function EntradaPanel({
@@ -55,6 +58,8 @@ export function EntradaPanel({
   onCancelarEntrada,
   onLimparSelecao,
   uploadError,
+  onDarEntradaHubXml,
+  onDarEntradaHubManual,
 }: Props) {
   const [confirmarCancelar, setConfirmarCancelar] = useState<string | null>(null)
   useBodyScrollLock(confirmarCancelar !== null)
@@ -79,6 +84,14 @@ export function EntradaPanel({
 
   return (
     <>
+      {onDarEntradaHubXml && onDarEntradaHubManual ? (
+        <HubPrevisaoEntrada
+          notas={notas}
+          onDarEntradaXml={(prev, files) => onDarEntradaHubXml(prev.id, prev.nota_fiscal, files)}
+          onDarEntradaManual={(prev) => onDarEntradaHubManual(prev.id, prev.nota_fiscal)}
+          onAbrirNf={(id) => onSelectNf(id)}
+        />
+      ) : null}
       <div className="sidebar-block">
         <label className="upload-btn">
           <input

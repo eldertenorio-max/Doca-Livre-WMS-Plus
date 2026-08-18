@@ -28,6 +28,7 @@ type Props = {
   serverError?: string | null
   /** Abre direto no formulário de nova NF (botão da aba Entrada). */
   startInCreateMode?: boolean
+  initialNumero?: string
   onConfirm: (result: ManualNfModalResult) => void
   onClose: () => void
 }
@@ -61,11 +62,12 @@ export function ManualNfModal({
   emitentesSugeridos,
   serverError,
   startInCreateMode = false,
+  initialNumero = '',
   onConfirm,
   onClose,
 }: Props) {
-  const [numero, setNumero] = useState('')
-  const [numeroCadastro, setNumeroCadastro] = useState('')
+  const [numero, setNumero] = useState(initialNumero)
+  const [numeroCadastro, setNumeroCadastro] = useState(initialNumero)
   const [searched, setSearched] = useState<NotaFiscal | null | undefined>(
     startInCreateMode ? null : undefined,
   )

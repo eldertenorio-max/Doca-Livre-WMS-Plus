@@ -841,6 +841,87 @@
   border-color: var(--btn-surface-border);
 }
 
+.hub-prev-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hub-prev-head h3 {
+  margin: 0;
+}
+
+.hub-prev-hint {
+  margin: 6px 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.hub-prev-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hub-prev-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--bg-elevated);
+}
+
+.hub-prev-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hub-prev-meta {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.hub-prev-badge {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.hub-prev-badge--previsto {
+  background: #fff8e1;
+  color: #e65100;
+}
+
+.hub-prev-badge--pronto {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.hub-prev-badge--em_entrada {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.hub-prev-badge--no_wms {
+  background: #eceff1;
+  color: #455a64;
+}
+
+.hub-prev-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .upload-btn:active {
   background: var(--btn-surface-active-bg);
   border-color: var(--btn-surface-active-border);

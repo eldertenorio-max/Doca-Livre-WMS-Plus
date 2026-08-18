@@ -158,7 +158,7 @@ import {
   type ContaUsuario,
 } from './lib/contaSessao'
 import { useVoiceRegistry } from './hooks/useVoiceRegistry'
-import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada } from './lib/nfDuplicate'
+import { findNotaByNumero, mensagemNfCanceladaDuplicada, mensagemNfDuplicada, normNumero } from './lib/nfDuplicate'
 import { repararNfDuplicadaDoXml, tentarRepararPersistido } from './lib/repararNfEstoque'
 import { parseCanceladaXml } from './lib/parseCanceladaXml'
 import { tituloApp } from './lib/appAmbiente'
@@ -432,6 +432,8 @@ export default function App() {
   const editMoveDestinosRef = useRef<Set<AddressId>>(new Set())
   const [manualNfModalOpen, setManualNfModalOpen] = useState(false)
   const [manualNfError, setManualNfError] = useState<string | null>(null)
+  const [manualNfNumeroInicial, setManualNfNumeroInicial] = useState('')
+  const hubEntradaPendenteRef = useRef<{ id: number; nfNumero: string | null } | null>(null)
   const [selectedEntradaIds, setSelectedEntradaIds] = useState<string[]>([])
   const lastEntradaClickRef = useRef<string | null>(null)
   const stateRef = useRef(state)
@@ -917,6 +919,13 @@ export default function App() {
     setPendingSelection(new Set(item.allocatedAddresses))
   }, [])
 
+  function aplicarVinculoHub(nf: NotaFiscal): NotaFiscal {
+    const pendente = hubEntradaPendenteRef.current
+    if (!pendente) return nf
+    if (pendente.nfNumero && normNumero(pendente.nfNumero) !== normNumero(nf.numero)) return nf
+    return { ...nf, hubAgendamentoId: pendente.id }
+  }
+
   async function handleUpload(files: File[]) {
     setUploadError(null)
     clearError()
@@ -964,7 +973,7 @@ export default function App() {
           skipped.push(`NF ${nf.numero} (${file.name}): ${dup}`)
           continue
         }
-        imported.push(nf)
+        imported.push(aplicarVinculoHub(nf))
         acumulado.unshift(nf)
         movimentos = upsertMovimentoEntrada(movimentos, nf)
         registrarEmitente(nf.emitente)
@@ -1020,7 +1029,9 @@ export default function App() {
     if (!entradaDestinoPendente) return
     const { imported } = entradaDestinoPendente
     const snapshot = stateRef.current
-    const nfsComDestino = imported.map((nf) => aplicarLocalizacaoNf(nf, localizacao))
+    const nfsComDestino = imported.map((nf) =>
+      aplicarVinculoHub(aplicarLocalizacaoNf(nf, localizacao)),
+    )
     let movimentos = snapshot.movimentos
     for (const nf of nfsComDestino) {
       movimentos = upsertMovimentoEntrada(movimentos, nf)
@@ -1043,6 +1054,7 @@ export default function App() {
     for (const nf of nfsComDestino) {
       financeiro.registrarClienteFromNf(nf)
     }
+    hubEntradaPendenteRef.current = null
     await saveNow(nextState)
   }
 
@@ -1824,13 +1836,19 @@ export default function App() {
           return
         }
         registrarEmitente(result.input.emitente ?? '')
+        const nfVinculada = aplicarVinculoHub(added.nf)
+        const notas =
+          nfVinculada.hubAgendamentoId != null
+            ? added.notas.map((n) => (n.id === added.nf.id ? nfVinculada : n))
+            : added.notas
         nextState = {
           ...snapshot,
-          notas: added.notas,
+          notas,
           movimentos: added.movimentos,
           activeNfId: added.nf.id,
           activeItemIndex: 0,
         }
+        hubEntradaPendenteRef.current = null
       }
 
       setState(nextState)
@@ -4211,8 +4229,24 @@ export default function App() {
           onCadastrarManual: () => {
             trySairEntradaIncompleta(() => {
               setManualNfError(null)
+              setManualNfNumeroInicial('')
               setManualNfModalOpen(true)
             })
+          },
+          onDarEntradaHubXml: (_id, _nfNumero, files) => {
+            hubEntradaPendenteRef.current = { id: _id, nfNumero: _nfNumero }
+            void handleUpload(files)
+          },
+          onDarEntradaHubManual: (id, nfNumero) => {
+            const existente = nfNumero ? findNotaByNumero(state.notas, nfNumero) : undefined
+            if (existente) {
+              handleSelectNf(existente.id)
+              return
+            }
+            hubEntradaPendenteRef.current = { id, nfNumero }
+            setManualNfError(null)
+            setManualNfNumeroInicial(nfNumero ?? '')
+            setManualNfModalOpen(true)
           },
           uploadError,
         },
@@ -4231,6 +4265,8 @@ export default function App() {
             'onCancelarEntrada',
             'onLimparSelecao',
             'onCadastrarManual',
+            'onDarEntradaHubXml',
+            'onDarEntradaHubManual',
           ],
           notifyViewOnly,
         )}
@@ -4601,10 +4637,13 @@ export default function App() {
           emitentesSugeridos={emitentesSugeridos}
           serverError={manualNfError}
           startInCreateMode
+          initialNumero={manualNfNumeroInicial}
           onConfirm={handleManualNfConfirm}
           onClose={() => {
             setManualNfModalOpen(false)
             setManualNfError(null)
+            setManualNfNumeroInicial('')
+            hubEntradaPendenteRef.current = null
           }}
         />
       )}

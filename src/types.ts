@@ -46,6 +46,8 @@ export type NotaFiscal = {
   /** NF cancelada vinculada a esta nota (substituição). */
   nfCanceladaOrigemId?: string | null
   nfCanceladaOrigemNumero?: string | null
+  /** Agendamento do Hub de Integração que originou esta entrada. */
+  hubAgendamentoId?: number
 }
 
 /** Documento NF-e de saída (XML) vinculado à NF de origem no estoque. */

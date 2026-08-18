@@ -38,6 +38,8 @@ services:
         value: https://doca-livre-wms-light-homolog.onrender.com/
       - key: VITE_GEMINI_API_KEY
         sync: false
+      - key: VITE_HUB_API_URL
+        sync: false
 
   - type: web
     name: ultrafrio-producao
@@ -68,4 +70,6 @@ services:
       - key: VITE_WMS_LIGHT_URL
         value: https://doca-livre-wms-light.onrender.com/
       - key: VITE_GEMINI_API_KEY
+        sync: false
+      - key: VITE_HUB_API_URL
         sync: false
