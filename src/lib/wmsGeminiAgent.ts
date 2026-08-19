@@ -45,6 +45,7 @@ const SECTION_ENUM = [
   'canceladas',
   'cadastroVoz',
   'financeiro',
+  'agendamentosHub',
 ]
 
 const SECTION_LABELS: Record<string, string> = {
@@ -59,13 +60,14 @@ const SECTION_LABELS: Record<string, string> = {
   canceladas: 'NF cancelada',
   cadastroVoz: 'IA DOCA LIVRE',
   financeiro: 'Financeiro',
+  agendamentosHub: 'Agendamentos',
 }
 
 const TOOLS: ToolDecl[] = [
   {
     name: 'open_section',
     description:
-      'Abre uma tela/módulo do WMS Plus. Use para: painel, consulta estoque, entrada (recebimento XML), saída (expedição), movimentação/endereçamento, histórico, relatório, mapa, NF cancelada, comando de voz, financeiro.',
+      'Abre uma tela/módulo do WMS Plus. Use para: painel, consulta estoque, entrada (recebimento XML), agendamentos do Hub, saída (expedição), movimentação/endereçamento, histórico, relatório, mapa, NF cancelada, comando de voz, financeiro.',
     parameters: {
       type: 'object',
       properties: {

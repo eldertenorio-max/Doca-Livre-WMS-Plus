@@ -4,6 +4,7 @@ import { ConsultaEstoquePanel } from './ConsultaEstoquePanel'
 import { CanceladasPanel } from './CanceladasPanel'
 import { EditarPosicaoPanel } from './EditarPosicaoPanel'
 import { EntradaPanel } from './EntradaPanel'
+import { HubPrevisaoEntrada } from './HubPrevisaoEntrada'
 import { FinanceiroPanel } from './FinanceiroPanel'
 import { HistoricoPanel } from './HistoricoPanel'
 import { ImprimirPanel } from './ImprimirPanel'
@@ -38,6 +39,7 @@ type Props = {
   imprimir: ComponentProps<typeof ImprimirPanel>
   cadastroVoz: ComponentProps<typeof IaDocaLivrePanel>
   financeiro: ComponentProps<typeof FinanceiroPanel>
+  agendamentosHub: ComponentProps<typeof HubPrevisaoEntrada>
   onBeforeLeaveEntrada?: (proceed: () => void) => void
 }
 
@@ -87,6 +89,7 @@ export function AppSidebar({
   imprimir,
   cadastroVoz,
   financeiro,
+  agendamentosHub,
   onBeforeLeaveEntrada,
 }: Props) {
   function sectionOpenChange(id: SidebarSectionId, open: boolean) {
@@ -221,6 +224,18 @@ export function AppSidebar({
         onBeforeToggle={guardEntradaSection}
       >
         {wrap('entrada', <EntradaPanel {...entrada} />)}
+      </CollapsibleSidebarSection>
+      ) : null}
+
+      {show('agendamentosHub') ? (
+      <CollapsibleSidebarSection
+        id="agendamentosHub"
+        title="Agendamentos"
+        open={openSection === 'agendamentosHub'}
+        onOpenChange={(open) => sectionOpenChange('agendamentosHub', open)}
+        onBeforeToggle={guardOtherSection}
+      >
+        {wrap('agendamentosHub', <HubPrevisaoEntrada {...agendamentosHub} />)}
       </CollapsibleSidebarSection>
       ) : null}
 

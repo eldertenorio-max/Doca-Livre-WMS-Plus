@@ -12,6 +12,7 @@ export type SidebarSectionId =
   | 'imprimir'
   | 'cadastroVoz'
   | 'financeiro'
+  | 'agendamentosHub'
 
 type Props = {
   id: SidebarSectionId
@@ -326,6 +327,16 @@ function SectionIcon({ id }: { id: SidebarSectionId }) {
           strokeWidth="1.75"
           strokeLinecap="round"
         />
+      </svg>
+    )
+  }
+
+  if (id === 'agendamentosHub') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+        <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M8 14h3M8 17h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     )
   }

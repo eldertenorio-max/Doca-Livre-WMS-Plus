@@ -4233,21 +4233,6 @@ export default function App() {
               setManualNfModalOpen(true)
             })
           },
-          onDarEntradaHubXml: (_id, _nfNumero, files) => {
-            hubEntradaPendenteRef.current = { id: _id, nfNumero: _nfNumero }
-            void handleUpload(files)
-          },
-          onDarEntradaHubManual: (id, nfNumero) => {
-            const existente = nfNumero ? findNotaByNumero(state.notas, nfNumero) : undefined
-            if (existente) {
-              handleSelectNf(existente.id)
-              return
-            }
-            hubEntradaPendenteRef.current = { id, nfNumero }
-            setManualNfError(null)
-            setManualNfNumeroInicial(nfNumero ?? '')
-            setManualNfModalOpen(true)
-          },
           uploadError,
         },
           sectionReadOnly && openSection === 'entrada',
@@ -4265,9 +4250,31 @@ export default function App() {
             'onCancelarEntrada',
             'onLimparSelecao',
             'onCadastrarManual',
-            'onDarEntradaHubXml',
-            'onDarEntradaHubManual',
           ],
+          notifyViewOnly,
+        )}
+        agendamentosHub={guardMutations(
+          {
+          notas: state.notas,
+          onDarEntradaXml: (prev, files) => {
+            hubEntradaPendenteRef.current = { id: prev.id, nfNumero: prev.nota_fiscal }
+            void handleUpload(files)
+          },
+          onDarEntradaManual: (prev) => {
+            const existente = prev.nota_fiscal ? findNotaByNumero(state.notas, prev.nota_fiscal) : undefined
+            if (existente) {
+              handleSelectNf(existente.id)
+              return
+            }
+            hubEntradaPendenteRef.current = { id: prev.id, nfNumero: prev.nota_fiscal }
+            setManualNfError(null)
+            setManualNfNumeroInicial(prev.nota_fiscal ?? '')
+            setManualNfModalOpen(true)
+          },
+          onAbrirNf: (id) => handleSelectNf(id),
+        },
+          sectionReadOnly && openSection === 'agendamentosHub',
+          ['onDarEntradaXml', 'onDarEntradaManual'],
           notifyViewOnly,
         )}
         saida={guardMutations(

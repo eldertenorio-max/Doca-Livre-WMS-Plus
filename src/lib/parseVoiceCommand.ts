@@ -200,6 +200,21 @@ const VOICE_SECTIONS: SectionVoiceConfig[] = [
       /\b(fechar|ocultar|esconder|recolher|sair)\s+(do\s+)?(o\s+)?financeiro\b/,
     ],
   },
+  {
+    section: 'agendamentosHub',
+    label: 'Agendamentos',
+    openExample: 'abrir agendamentos',
+    closeExample: 'fechar agendamentos',
+    openPatterns: [
+      /\b(abrir|mostrar|ver|ir para)\s+(os\s+)?agendamentos?\b/,
+      /\b(abrir|mostrar|ver)\s+(o\s+)?hub\b/,
+      /\bprevisao de entrada\b/,
+      /\bprevisão de entrada\b/,
+    ],
+    closePatterns: [
+      /\b(fechar|ocultar|esconder|recolher|sair)\s+(dos?\s+)?agendamentos?\b/,
+    ],
+  },
 ]
 
 const DESTRUCTIVE_RULES: { pattern: RegExp; hint: string }[] = [
@@ -391,6 +406,7 @@ function matchCloseSection(norm: string): VoiceCommand | null {
     reposicionar: 'editar',
     voz: 'cadastroVoz',
     financeiro: 'financeiro',
+    agendamentos: 'agendamentosHub',
   }
   const closeDirect = standaloneClose[norm.replace(/^fechar\s+/, '')]
   if (norm.startsWith('fechar ') && closeDirect) {
@@ -423,6 +439,7 @@ function matchOpenSection(norm: string): VoiceCommand | null {
     canceladas: 'canceladas',
     voz: 'cadastroVoz',
     financeiro: 'financeiro',
+    agendamentos: 'agendamentosHub',
   }
   const direct = standalone[norm]
   if (direct) {

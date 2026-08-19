@@ -100,6 +100,7 @@ export function guardMutations<T extends Record<string, unknown>>(
 export const ALL_SIDEBAR_SECTIONS: SidebarSectionId[] = [
   'consulta',
   'entrada',
+  'agendamentosHub',
   'saida',
   'editar',
   'canceladas',

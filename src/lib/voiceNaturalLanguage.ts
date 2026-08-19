@@ -87,6 +87,11 @@ const SECTIONS: SectionDef[] = [
     label: 'Financeiro',
     terms: [/\bfinanceiro\b/, /\bfaturamento\b/, /\bcobranca\b/],
   },
+  {
+    section: 'agendamentosHub',
+    label: 'Agendamentos',
+    terms: [/\bagendamentos?\b/, /\bhub\b/, /\bprevisao de entrada\b/, /\bprevisão de entrada\b/],
+  },
 ]
 
 const FILLER_RE =

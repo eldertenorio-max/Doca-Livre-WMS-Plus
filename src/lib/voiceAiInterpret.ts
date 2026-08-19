@@ -27,6 +27,7 @@ const VALID_SECTIONS = new Set<SidebarSectionId>([
   'canceladas',
   'cadastroVoz',
   'financeiro',
+  'agendamentosHub',
 ])
 
 export function resolveVoiceCommandSync(text: string): VoiceCommand | null {

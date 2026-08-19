@@ -59,19 +59,19 @@ export function HubPrevisaoEntrada({ notas, onDarEntradaXml, onDarEntradaManual,
   return (
     <div className="sidebar-block hub-prev">
       <div className="hub-prev-head">
-        <h3>Previsão de entrada (Hub)</h3>
+        <h3>Agendamentos (Hub)</h3>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => void reload()} disabled={loading}>
           {loading ? 'Atualizando…' : 'Atualizar'}
         </button>
       </div>
       <p className="muted hub-prev-hint">
-        Agendamentos do Hub de Integração. Quando estiver agendado, suba o XML ou cadastre a NF para endereçar os
-        produtos no WMS.
+        Agendamentos do Hub destinados ao <strong>WMS Plus</strong>. Quando estiver agendado, suba o XML ou
+        cadastre a NF para endereçar os produtos.
       </p>
       <input ref={fileRef} type="file" accept=".xml,text/xml,application/xml" hidden onChange={handleFileChange} />
       {error ? <p className="error">{error}</p> : null}
       {!error && !loading && items.length === 0 ? (
-        <p className="muted">Nenhum agendamento ativo no Hub.</p>
+        <p className="muted">Nenhum agendamento destinado ao Plus. No Hub, use a aba Integração WMS.</p>
       ) : null}
       {items.length > 0 ? (
         <ul className="hub-prev-list">

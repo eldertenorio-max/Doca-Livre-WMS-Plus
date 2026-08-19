@@ -12,10 +12,13 @@ export type HubAgendamentoStatus =
   | 'cancelado'
   | 'reagendando'
 
+export type HubWmsDestino = 'light' | 'plus' | 'pro'
+
 export type HubPrevisao = {
   id: number
   status: HubAgendamentoStatus
   pronto_entrada: boolean
+  wms_destino?: HubWmsDestino
   numero_pedido: string | null
   nota_fiscal: string | null
   cliente: string | null
@@ -42,8 +45,11 @@ export function hubApiBase(): string {
   return (fromEnv || DEFAULT_HUB_API).replace(/\/$/, '')
 }
 
-export async function fetchHubPrevisoes(signal?: AbortSignal): Promise<HubPrevisao[]> {
-  const res = await fetch(`${hubApiBase()}/api/public/wms/previsoes`, {
+export async function fetchHubPrevisoes(
+  wms: HubWmsDestino = 'plus',
+  signal?: AbortSignal,
+): Promise<HubPrevisao[]> {
+  const res = await fetch(`${hubApiBase()}/api/public/wms/previsoes?wms=${encodeURIComponent(wms)}`, {
     signal,
     headers: { Accept: 'application/json' },
   })
@@ -87,7 +93,7 @@ export function formatHubDataHora(data: string | null, hora: string | null): str
   return hora ? `${dia} ${hora}` : dia
 }
 
-export function useHubPrevisoes(enabled: boolean) {
+export function useHubPrevisoes(enabled: boolean, wms: HubWmsDestino = 'plus') {
   const [items, setItems] = useState<HubPrevisao[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +103,7 @@ export function useHubPrevisoes(enabled: boolean) {
     setLoading(true)
     setError(null)
     try {
-      setItems(await fetchHubPrevisoes())
+      setItems(await fetchHubPrevisoes(wms))
     } catch (err) {
       setItems([])
       const hint = isHomologacao()
@@ -107,13 +113,13 @@ export function useHubPrevisoes(enabled: boolean) {
     } finally {
       setLoading(false)
     }
-  }, [enabled])
+  }, [enabled, wms])
 
   useEffect(() => {
     if (!enabled) return
     const ctrl = new AbortController()
     setLoading(true)
-    fetchHubPrevisoes(ctrl.signal)
+    fetchHubPrevisoes(wms, ctrl.signal)
       .then(setItems)
       .catch((err) => {
         if (ctrl.signal.aborted) return
@@ -124,13 +130,13 @@ export function useHubPrevisoes(enabled: boolean) {
         if (!ctrl.signal.aborted) setLoading(false)
       })
     const timer = window.setInterval(() => {
-      void fetchHubPrevisoes().then(setItems).catch(() => undefined)
+      void fetchHubPrevisoes(wms).then(setItems).catch(() => undefined)
     }, 60000)
     return () => {
       ctrl.abort()
       window.clearInterval(timer)
     }
-  }, [enabled])
+  }, [enabled, wms])
 
   return { items, loading, error, reload }
 }
