@@ -70,9 +70,20 @@ export function clearHubSession(): void {
   }
 }
 
+function isRenderWakingBody(text: string): boolean {
+  const t = text.toLowerCase()
+  return (
+    t.includes('application loading') ||
+    t.includes('waking up') ||
+    t.includes('service waking') ||
+    t.includes('allocating compute')
+  )
+}
+
 /**
  * Acorda o Pro (Render free) com retries.
  * Cold start costuma fechar a conexão na 1ª tentativa e só responde após ~20–50s.
+ * Exige JSON `{ ok: true }` — a página HTML de loading do Render não conta.
  */
 export async function wakeProApi(
   timeoutMs = 90000,
@@ -94,13 +105,18 @@ export async function wakeProApi(
         cache: 'no-store',
         signal: controller.signal,
       })
-      if (res.ok) return true
+      const text = await res.text()
+      if (isRenderWakingBody(text)) {
+        /* ainda na tela de loading do Render */
+      } else if (res.ok) {
+        const data = JSON.parse(text) as { ok?: boolean }
+        if (data?.ok) return true
+      }
     } catch {
-      /* cold start: connection closed / abort → tenta de novo */
+      /* cold start / CORS antigo / abort → tenta de novo */
     } finally {
       window.clearTimeout(timer)
     }
-    // Pausa curta entre tentativas (Render solta o socket ao acordar).
     const pause = Math.min(1500, Math.max(400, deadline - Date.now()))
     if (pause > 0) await new Promise((r) => setTimeout(r, pause))
   }
@@ -126,21 +142,14 @@ export async function portalLogin(
     }
   | { ok: false; erro: string }
 > {
-  opts?.onPhase?.('wake', { attempt: 1, elapsedMs: 0 })
-  const awake = await wakeProApi(90000, (info) => {
-    opts?.onPhase?.('wake', info)
-  })
-  if (!awake) {
-    return {
-      ok: false,
-      erro: 'O servidor ainda está acordando (plano free). Aguarde ~1 minuto e clique em Entrar de novo.',
-    }
-  }
+  // Health sem CORS travava o Entrar por 90s e nunca chamava /api/portal/login.
+  // Acorda em paralelo; o login (que já tem CORS) é o caminho real.
+  void wakeProApi(20000)
   opts?.onPhase?.('login')
 
-  // Até 2 tentativas: após cold start o 1º login pode falhar se o worker ainda sobe o schema.
   let lastErro = 'Falha de conexão com o portal.'
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    opts?.onPhase?.('login', { attempt, elapsedMs: (attempt - 1) * 8000 })
     const controller = new AbortController()
     const timer = window.setTimeout(() => controller.abort(), 25000)
     try {
@@ -150,23 +159,40 @@ export async function portalLogin(
         body: JSON.stringify({ usuario, senha }),
         signal: controller.signal,
       })
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean
-        usuario?: string
-        hub_token?: string
-        is_superuser?: boolean
-        permissoes?: Record<
-          string,
-          { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
-        > | null
-        erro?: string
+      const text = await res.text()
+      if (isRenderWakingBody(text) && attempt < 4) {
+        lastErro = 'O servidor está iniciando. Tentando de novo…'
+        await new Promise((r) => setTimeout(r, 2500))
+        continue
       }
-      if (res.status === 503 && attempt < 2) {
-        lastErro = data.erro || lastErro
-        await new Promise((r) => setTimeout(r, 1500))
+      const data = (() => {
+        try {
+          return JSON.parse(text) as {
+            ok?: boolean
+            usuario?: string
+            hub_token?: string
+            is_superuser?: boolean
+            permissoes?: Record<
+              string,
+              { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
+            > | null
+            erro?: string
+          }
+        } catch {
+          return {} as { ok?: boolean; erro?: string }
+        }
+      })()
+      if (res.status === 503 && attempt < 4) {
+        lastErro = data.erro || 'Servidor ocupado. Tentando de novo…'
+        await new Promise((r) => setTimeout(r, 2000))
         continue
       }
       if (!res.ok || !data.ok || !data.hub_token || !data.usuario) {
+        if (!data.erro && attempt < 4) {
+          lastErro = 'Servidor iniciando. Tentando de novo…'
+          await new Promise((r) => setTimeout(r, 2000))
+          continue
+        }
         return { ok: false, erro: data.erro || 'Usuário ou senha incorretos.' }
       }
       saveHubSession(data.usuario, data.hub_token)
@@ -183,8 +209,8 @@ export async function portalLogin(
       } else {
         lastErro = 'Falha de conexão com o portal.'
       }
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 1200))
+      if (attempt < 4) {
+        await new Promise((r) => setTimeout(r, 1500))
         continue
       }
     } finally {

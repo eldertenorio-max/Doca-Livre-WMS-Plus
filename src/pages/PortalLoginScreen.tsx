@@ -115,7 +115,7 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
     e.preventDefault()
     resetMessages()
     setLoading(true)
-    setLoadingLabel('Acordando servidor…')
+    setLoadingLabel('Entrando…')
     try {
       const result = await portalLogin(usuario.trim(), senha, {
         onPhase: (phase, detail) => {
@@ -127,7 +127,8 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
                 : `Acordando servidor… ${sec}s`,
             )
           } else {
-            setLoadingLabel('Validando usuário…')
+            const n = detail?.attempt || 1
+            setLoadingLabel(n > 1 ? `Validando usuário… (${n})` : 'Validando usuário…')
           }
         },
       })
