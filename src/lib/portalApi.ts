@@ -70,6 +70,18 @@ export function clearHubSession(): void {
   }
 }
 
+type PortalLoginApiData = {
+  ok?: boolean
+  usuario?: string
+  hub_token?: string
+  is_superuser?: boolean
+  permissoes?: Record<
+    string,
+    { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
+  > | null
+  erro?: string
+}
+
 function isRenderWakingBody(text: string): boolean {
   const t = text.toLowerCase()
   return (
@@ -165,23 +177,12 @@ export async function portalLogin(
         await new Promise((r) => setTimeout(r, 2500))
         continue
       }
-      const data = (() => {
-        try {
-          return JSON.parse(text) as {
-            ok?: boolean
-            usuario?: string
-            hub_token?: string
-            is_superuser?: boolean
-            permissoes?: Record<
-              string,
-              { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
-            > | null
-            erro?: string
-          }
-        } catch {
-          return {} as { ok?: boolean; erro?: string }
-        }
-      })()
+      let data: PortalLoginApiData = {}
+      try {
+        data = JSON.parse(text) as PortalLoginApiData
+      } catch {
+        data = {}
+      }
       if (res.status === 503 && attempt < 4) {
         lastErro = data.erro || 'Servidor ocupado. Tentando de novo…'
         await new Promise((r) => setTimeout(r, 2000))
