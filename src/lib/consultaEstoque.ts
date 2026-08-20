@@ -48,7 +48,12 @@ function nfNumeroCoincide(nfNumero: string, query: string): boolean {
 }
 
 export function temFiltroConsulta(filtros: ConsultaEstoqueFiltros): boolean {
-  return Object.values(filtros).some((v) => v.trim().length > 0)
+  return (
+    filtros.nfNumero.trim().length > 0 ||
+    filtros.item.trim().length > 0 ||
+    filtros.remetente.trim().length > 0 ||
+    filtros.lote.trim().length > 0
+  )
 }
 
 export function buscarEstoque(

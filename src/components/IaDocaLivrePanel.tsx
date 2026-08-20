@@ -17,7 +17,7 @@ type Props = {
 const SUGGESTIONS = [
   'Abre o painel',
   'Tem leite no estoque?',
-  'Busca a nota 20835',
+  'Pesquise a NF 20835',
   'Mostra o financeiro',
 ]
 

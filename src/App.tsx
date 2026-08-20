@@ -131,7 +131,8 @@ import {
   painelFiltrosPorDias,
   type VoiceCommand,
 } from './lib/parseVoiceCommand'
-import { resolveVoiceCommandAsync, resolveVoiceTurnAsync } from './lib/voiceAiInterpret'
+import { resolveVoiceCommandAsync, resolveVoiceCommandSync, resolveVoiceTurnAsync } from './lib/voiceAiInterpret'
+import { commandIsExecutable, enrichCommandReply } from './lib/voiceCommandReply'
 import { prepareVoiceCommandText } from './lib/voiceNormalize'
 import { resetWmsGeminiHistory } from './lib/wmsGeminiAgent'
 import {
@@ -400,6 +401,8 @@ export default function App() {
   const [buscaEditarErro, setBuscaEditarErro] = useState<string | null>(null)
   const [consultaResultados, setConsultaResultados] = useState<ConsultaEstoqueResultado[]>([])
   const [consultaErro, setConsultaErro] = useState<string | null>(null)
+  const [consultaFiltros, setConsultaFiltros] = useState<ConsultaEstoqueFiltros>(CONSULTA_FILTROS_VAZIOS)
+  const [consultaFiltrosTick, setConsultaFiltrosTick] = useState(0)
   const [consultaNfAdicionarId, setConsultaNfAdicionarId] = useState<string | null>(null)
   const [consultaNfAdicionarErro, setConsultaNfAdicionarErro] = useState<string | null>(null)
   const [consultaItemAdicionadoMsg, setConsultaItemAdicionadoMsg] = useState<string | null>(null)
@@ -2127,7 +2130,7 @@ export default function App() {
     setSaidaUploadXmlErro(null)
     setBuscaErro(null)
     setSaidaSelecaoErro(null)
-    const nf = buscarNfPorNumero(state.notas, numero)
+    const nf = buscarNfPorNumero(stateRef.current.notas, numero)
     if (!nf) {
       setBuscaErro('NF não encontrada.')
       setNfBuscaSaidaId(null)
@@ -2588,7 +2591,8 @@ export default function App() {
 
   function handleBuscarEditar(numero: string) {
     setBuscaEditarErro(null)
-    const nf = buscarNfPorNumero(state.notas, numero)
+    const snapshot = stateRef.current
+    const nf = buscarNfPorNumero(snapshot.notas, numero)
     if (!nf) {
       setBuscaEditarErro('NF não encontrada.')
       setNfEditarId(null)
@@ -2598,7 +2602,7 @@ export default function App() {
     const temArmazem = nfTemEstoqueArmazem(nf)
     const temStage = nfTemEstoqueStage(nf)
     if (!temArmazem && !temStage) {
-      setBuscaEditarErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
+      setBuscaEditarErro(mensagemNfSemEstoqueVisivel(nf, snapshot.movimentos))
       setNfEditarId(null)
       limparEstadoMapaEditar()
       return
@@ -3066,12 +3070,15 @@ export default function App() {
 
   function handleBuscarConsulta(filtros: ConsultaEstoqueFiltros) {
     setConsultaErro(null)
+    setConsultaFiltros(filtros)
+    setConsultaFiltrosTick((n) => n + 1)
     if (!temFiltroConsulta(filtros)) {
       setConsultaResultados([])
       setConsultaErro('Informe ao menos um filtro para pesquisar.')
       return
     }
-    const resultados = buscarEstoque(state.notas, filtros)
+    const snapshot = stateRef.current
+    const resultados = buscarEstoque(snapshot.notas, filtros)
     setConsultaResultados(resultados)
     if (resultados.length > 0) {
       setConsultaErro(null)
@@ -3083,9 +3090,9 @@ export default function App() {
     }
     const nfQ = filtros.nfNumero.trim()
     if (nfQ) {
-      const nf = buscarNfPorNumero(state.notas, nfQ)
+      const nf = buscarNfPorNumero(snapshot.notas, nfQ)
       if (nf) {
-        setConsultaErro(mensagemNfSemEstoqueVisivel(nf, state.movimentos))
+        setConsultaErro(mensagemNfSemEstoqueVisivel(nf, snapshot.movimentos))
         return
       }
     }
@@ -3095,6 +3102,8 @@ export default function App() {
   function handleLimparConsulta() {
     setConsultaResultados([])
     setConsultaErro(null)
+    setConsultaFiltros(CONSULTA_FILTROS_VAZIOS)
+    setConsultaFiltrosTick((n) => n + 1)
   }
 
   function handleAlternarDestaqueInventario(resultados: ConsultaEstoqueResultado[]) {
@@ -3410,7 +3419,7 @@ export default function App() {
   }, [voiceRegistry])
 
   const executeVoiceCommand = useCallback(
-    (cmd: VoiceCommand) => {
+    (cmd: VoiceCommand, opts?: { stayOnIa?: boolean }) => {
       if (cmd.type === 'parar') {
         setVoiceFeedback('Assistente desarmado.')
         return
@@ -3425,6 +3434,8 @@ export default function App() {
       if (cmd.type !== 'desconhecido' && cmd.type !== 'assistente') {
         setVoiceFeedback(msg)
       }
+
+      const stayOnIa = Boolean(opts?.stayOnIa)
 
       switch (cmd.type) {
         case 'open_section':
@@ -3456,25 +3467,26 @@ export default function App() {
           break
         }
         case 'buscar_nota':
-          handleOpenSection('editar')
+          if (!stayOnIa) handleOpenSection('editar')
           handleBuscarEditar(cmd.numero)
           break
         case 'buscar_saida':
-          handleOpenSection('saida')
+          if (!stayOnIa) handleOpenSection('saida')
           handleBuscarSaida(cmd.numero)
           break
         case 'consultar': {
-          handleOpenSection('consulta')
+          if (!stayOnIa) handleOpenSection('consulta')
           const filtros: ConsultaEstoqueFiltros = {
             ...CONSULTA_FILTROS_VAZIOS,
+            origem: 'ambos',
             ...cmd.filtros,
           }
           handleBuscarConsulta(filtros)
           break
         }
         case 'limpar_consulta':
-          handleOpenSection('consulta')
-          handleBuscarConsulta({ ...CONSULTA_FILTROS_VAZIOS })
+          if (!stayOnIa) handleOpenSection('consulta')
+          handleLimparConsulta()
           break
         case 'painel_periodo':
           handleOpenSection('painel')
@@ -3614,30 +3626,35 @@ export default function App() {
       handleOpenSection('cadastroVoz')
 
       try {
+        const localTurn = await processConversationTurn(
+          prepared,
+          conversationStateRef.current,
+          async (t) => resolveVoiceCommandSync(t),
+        )
         const geminiTurn = await resolveVoiceTurnAsync(prepared, {
           aiEnabled: true,
           geminiApiKey: voicePrefs.geminiApiKey,
-          notas: state.notas,
+          notas: stateRef.current.notas,
         })
-        const result = geminiTurn
-          ? {
-              reply: geminiTurn.reply || 'Pronto.',
-              command: geminiTurn.command,
-            }
-          : await processConversationTurn(
-              prepared,
-              conversationStateRef.current,
-              resolveVoiceCommand,
-            )
+        const geminiCmd = commandIsExecutable(geminiTurn?.command) ? geminiTurn.command : null
+        const localCmd = commandIsExecutable(localTurn.command) ? localTurn.command : null
+        const command = geminiCmd ?? localCmd
+        const baseReply = geminiCmd
+          ? geminiTurn?.reply || localTurn.reply
+          : localCmd
+            ? localTurn.reply
+            : geminiTurn?.reply || localTurn.reply
+        const reply = enrichCommandReply(command, stateRef.current.notas, baseReply)
+        conversationStateRef.current = command ? createConversationState() : localTurn.state
 
         setIaMessages((prev) =>
           prev.map((m) =>
-            m.id === pendingId ? { ...m, content: result.reply, pending: false } : m,
+            m.id === pendingId ? { ...m, content: reply, pending: false } : m,
           ),
         )
-        setVoiceFeedback(result.reply)
-        if (result.command && result.command.type !== 'assistente') {
-          executeVoiceCommand(result.command)
+        setVoiceFeedback(reply)
+        if (commandIsExecutable(command)) {
+          executeVoiceCommand(command, { stayOnIa: command.type === 'consultar' })
         }
       } catch {
         setIaMessages((prev) =>
@@ -3671,21 +3688,31 @@ export default function App() {
       const geminiTurn = await resolveVoiceTurnAsync(prepared, {
         aiEnabled: voicePrefs.aiInterpretation,
         geminiApiKey: voicePrefs.geminiApiKey,
-        notas: state.notas,
+        notas: stateRef.current.notas,
       })
 
-      const result = geminiTurn
-        ? {
-            reply: geminiTurn.reply || 'Pronto.',
-            state: createConversationState(),
-            command: geminiTurn.command,
-            endSession: Boolean(geminiTurn.endSession),
-          }
-        : await processConversationTurn(
-            prepared,
-            conversationStateRef.current,
-            resolveVoiceCommand,
-          )
+      const localTurn = await processConversationTurn(
+        prepared,
+        conversationStateRef.current,
+        async (t) => resolveVoiceCommandSync(t),
+      )
+      const geminiCmd = commandIsExecutable(geminiTurn?.command) ? geminiTurn.command : null
+      const localCmd = commandIsExecutable(localTurn.command) ? localTurn.command : null
+      const command = geminiCmd ?? localCmd
+      const result = {
+        reply: enrichCommandReply(
+          command,
+          stateRef.current.notas,
+          geminiCmd
+            ? geminiTurn?.reply || localTurn.reply
+            : localCmd
+              ? localTurn.reply
+              : geminiTurn?.reply || localTurn.reply,
+        ),
+        state: command ? createConversationState() : localTurn.state,
+        command,
+        endSession: Boolean(geminiTurn?.endSession) || localTurn.endSession,
+      }
       conversationStateRef.current = result.state
 
       setConversationLines((prev) => [
@@ -3696,7 +3723,7 @@ export default function App() {
       setVoiceFeedback(result.reply)
       await speakText(result.reply)
 
-      if (result.command && result.command.type !== 'assistente') {
+      if (commandIsExecutable(result.command)) {
         executeVoiceCommand(result.command)
       }
 
@@ -4451,6 +4478,8 @@ export default function App() {
           onConfirmarEnderecos: handleConfirmItem,
           onCancelarEnderecos: handleCancelarEnderecoConsulta,
           onLimparNfAdicionar: handleLimparNfAdicionar,
+          filtrosAplicados: consultaFiltros,
+          filtrosAplicadosTick: consultaFiltrosTick,
         },
           sectionReadOnly && openSection === 'consulta',
           [

@@ -81,8 +81,7 @@ export async function resolveVoiceCommandAsync(
       apiKey,
       notas: options.notas ?? [],
     })
-    if (agent?.command) return agent.command
-    if (agent?.reply) return { type: 'assistente', message: agent.reply }
+    if (agent?.command && agent.command.type !== 'assistente') return agent.command
   }
 
   return resolveVoiceCommandSync(text)

@@ -90,7 +90,7 @@ const TOOLS: ToolDecl[] = [
   {
     name: 'consultar_estoque',
     description:
-      'Busca itens no estoque por NF, código/descrição, remetente ou lote e abre a tela de consulta. Use quando o usuário perguntar se tem produto, onde está, ou quiser filtrar o estoque.',
+      'Busca itens no estoque por NF, código/descrição, remetente ou lote e destaca no mapa. Use para: pesquisar NF, onde está a nota, tem produto, consultar estoque. NÃO use buscar_nota_movimentacao para pesquisa.',
     parameters: {
       type: 'object',
       properties: {
@@ -104,7 +104,8 @@ const TOOLS: ToolDecl[] = [
   },
   {
     name: 'buscar_nota_movimentacao',
-    description: 'Abre a movimentação e busca uma NF pelo número (reposicionar paletes).',
+    description:
+      'Abre a movimentação/endereçamento e busca uma NF. Use SOMENTE se o usuário pedir movimentar, reposicionar, endereçar ou transferir paletes — não para pesquisar/consultar onde está a nota.',
     parameters: {
       type: 'object',
       properties: { numero: { type: 'string' } },
@@ -187,11 +188,12 @@ MISSÃO: responder perguntas e executar o sistema — abrir telas, consultar est
 REGRAS:
 1. Cumprimente e explique suas funções quando pedirem “oi”, “o que você faz” ou “funcionalidades”. Não responda só “em que posso ajudar?”.
 2. Sempre que o usuário quiser FAZER algo no sistema, chame a ferramenta correspondente. Não descreva o clique se puder executar.
-3. Para perguntas sobre estoque ("tem X?", "onde está a NF?", "quantas notas?"), use get_resumo_estoque e/ou consultar_estoque ANTES de responder.
+3. Para perguntas sobre estoque ("tem X?", "onde está a NF?", "pesquise a NF", "quantas notas?"), use consultar_estoque (e get_resumo_estoque se precisar de panorama). Nunca responda que está buscando sem chamar a ferramenta.
 4. NUNCA apague, exclua, zere ou remova dados. Se pedirem isso, recuse.
 5. Se faltar um dado essencial (número da NF, item), PERGUNTE em uma frase curta — não invente.
-6. Confirme em 1–3 frases o que fez.
+6. Confirme em 1–3 frases o que fez e, se consultou estoque, cite NF, item e endereço.
 7. Módulos: Painel, Consulta, Entrada (XML), Saída, Movimentação, Histórico, Relatório, Mapa, NF cancelada, IA DOCA LIVRE, Financeiro.
+8. "pesquisar/buscar/consultar/onde está a NF" → consultar_estoque. Só use buscar_nota_movimentacao se pedirem movimentar/reposicionar/endereçar.
 9. Se pedirem subir, lançar, cadastrar ou importar NF/XML, abra a tela de Entrada (section=entrada) e diga para enviar o XML ou usar cadastro manual. Não diga que não entendeu.
 
 SITUAÇÃO ATUAL DO ESTOQUE (pode estar levemente desatualizada — use ferramentas para dados exatos):
@@ -257,6 +259,8 @@ function executeTool(
       if (args.lote) filtros.lote = String(args.lote)
       if (args.origem === 'armazem' || args.origem === 'stage' || args.origem === 'ambos') {
         filtros.origem = args.origem
+      } else {
+        filtros.origem = 'ambos'
       }
       const q = queryEstoqueSnapshot(notas, filtros)
       return {

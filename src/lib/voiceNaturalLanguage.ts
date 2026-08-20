@@ -147,7 +147,7 @@ function extractConsultQuery(norm: string, cleaned: string): string | null {
       .replace(/\b(por favor|no estoque|em estoque|aqui|agora)\b/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-    if (q.length > 1 && !/^(nota|nf|painel|entrada|saida|consulta|mapa)$/.test(q)) {
+    if (q.length > 1 && !/^(nota|nf|painel|entrada|saida|consulta|mapa|estoque)$/.test(q)) {
       return q
     }
   }
@@ -194,6 +194,36 @@ export function interpretVoiceNaturally(text: string): VoiceCommand | null {
     return { type: 'close_section', section: section.section, label: section.label }
   }
 
+  const nota = extractNotaNumero(norm)
+  const wantsMovimentacao =
+    /\b(movimentac|movimentar|movimente|reposicion|editar|enderecar|transferir|realocar)/.test(norm)
+  const wantsSaida = /\b(saida|expedi|retirada)/.test(norm)
+  if (
+    nota &&
+    (/\b(buscar|achar|localizar|procurar|pesquisar|pesquise|abrir|ver|onde|mostrar|consulta)\b/.test(
+      norm,
+    ) ||
+      /\b(nota|nf)\b/.test(norm))
+  ) {
+    if (wantsSaida) return { type: 'buscar_saida', numero: nota }
+    if (wantsMovimentacao) return { type: 'buscar_nota', numero: nota }
+    return { type: 'consultar', filtros: { nfNumero: nota, origem: 'ambos' } }
+  }
+
+  const remetente = extractRemetente(norm)
+  if (remetente) {
+    return { type: 'consultar', filtros: { remetente, origem: 'ambos' } }
+  }
+
+  const consultQuery = extractConsultQuery(norm, cleaned)
+  if (consultQuery) {
+    const digits = consultQuery.replace(/\D/g, '')
+    if (/^\d+$/.test(consultQuery.replace(/\s/g, '')) && digits.length >= 3) {
+      return { type: 'consultar', filtros: { nfNumero: digits, origem: 'ambos' } }
+    }
+    return { type: 'consultar', filtros: { item: consultQuery, origem: 'ambos' } }
+  }
+
   const wantsOpen =
     /\b(abrir|abre|mostrar|mostra|ver|ve|exibir|exiba|ir para|ir ao|ir na|ir no|acessar|entrar|levar|me leva|me mostra|quero ver|preciso ver|vai pra|vamos pra|onde fica|coloca|joga|passa)\b/.test(
       norm,
@@ -201,32 +231,6 @@ export function interpretVoiceNaturally(text: string): VoiceCommand | null {
 
   if (section && wantsOpen) {
     return { type: 'open_section', section: section.section, label: section.label }
-  }
-
-  const nota = extractNotaNumero(norm)
-  if (
-    nota &&
-    (/\b(buscar|achar|localizar|procurar|pesquisar|abrir|ver|onde|mostrar)\b/.test(norm) ||
-      /\b(nota|nf)\b/.test(norm))
-  ) {
-    if (/\b(consulta|consultar|pesquisar|estoque)\b/.test(norm) && !/\bmovimentac/.test(norm)) {
-      return { type: 'consultar', filtros: { nfNumero: nota } }
-    }
-    return { type: 'buscar_nota', numero: nota }
-  }
-
-  const remetente = extractRemetente(norm)
-  if (remetente) {
-    return { type: 'consultar', filtros: { remetente } }
-  }
-
-  const consultQuery = extractConsultQuery(norm, cleaned)
-  if (consultQuery) {
-    const digits = consultQuery.replace(/\D/g, '')
-    if (/^\d+$/.test(consultQuery.replace(/\s/g, '')) && digits.length >= 3) {
-      return { type: 'consultar', filtros: { nfNumero: digits } }
-    }
-    return { type: 'consultar', filtros: { item: consultQuery } }
   }
 
   if (/\b(ultimos|ultimo|ultima)\s+(7|sete)\s+dias\b/.test(norm) || /\bultima semana\b/.test(norm)) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { formatAddressLabel } from '../layout/camaras'
 import { contagemPaletesItem, rotuloPaletes, rotuloPosicoes } from '../lib/paletes'
@@ -39,6 +39,8 @@ type Props = {
   onConfirmarEnderecos: () => void
   onCancelarEnderecos: () => void
   onLimparNfAdicionar: () => void
+  filtrosAplicados?: ConsultaEstoqueFiltros
+  filtrosAplicadosTick?: number
 }
 
 export function ConsultaEstoquePanel({
@@ -64,6 +66,8 @@ export function ConsultaEstoquePanel({
   onConfirmarEnderecos,
   onCancelarEnderecos,
   onLimparNfAdicionar,
+  filtrosAplicados,
+  filtrosAplicadosTick = 0,
 }: Props) {
   const [filtros, setFiltros] = useState<ConsultaEstoqueFiltros>(CONSULTA_FILTROS_VAZIOS)
   const [modo, setModo] = useState<'pesquisa' | 'inventario'>('pesquisa')
@@ -73,6 +77,11 @@ export function ConsultaEstoquePanel({
   const [itemExcluirIndex, setItemExcluirIndex] = useState<number | null>(null)
 
   useBodyScrollLock(itemExcluirIndex != null)
+
+  useEffect(() => {
+    if (!filtrosAplicados) return
+    setFiltros(filtrosAplicados)
+  }, [filtrosAplicados, filtrosAplicadosTick])
 
   const itemExcluir =
     nfAdicionar && itemExcluirIndex != null
@@ -85,7 +94,6 @@ export function ConsultaEstoquePanel({
 
   function handleBuscar() {
     onBuscar(filtros)
-    setFiltros(CONSULTA_FILTROS_VAZIOS)
   }
 
   function handleLimpar() {

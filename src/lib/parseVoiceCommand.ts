@@ -267,7 +267,7 @@ function buildCommandExamples(): { frase: string; descricao: string }[] {
   return [
     { frase: `${wake} quero ver o painel`, descricao: 'Abre o painel (linguagem natural).' },
     { frase: `${wake} tem leite no estoque?`, descricao: 'Consulta item por descrição.' },
-    { frase: `${wake} onde está a nota 20835`, descricao: 'Busca NF na movimentação.' },
+    { frase: `${wake} onde está a nota 20835`, descricao: 'Pesquisa NF no estoque e destaca no mapa.' },
     { frase: `${wake} fecha essa aba`, descricao: 'Fecha a seção aberta.' },
     ...sectionExamples,
     { frase: `${wake} fechar aba`, descricao: 'Fecha a seção aberta no menu.' },
@@ -277,7 +277,8 @@ function buildCommandExamples(): { frase: string; descricao: string }[] {
     { frase: `${wake} voltar ao mapa`, descricao: 'Volta ao mapa com menu aberto.' },
     { frase: `${wake} alternar tema`, descricao: 'Alterna entre tema claro e escuro.' },
     { frase: `${wake} consultar remetente ultrafrio`, descricao: 'Pesquisa por remetente na consulta.' },
-    { frase: `${wake} buscar nota 20835`, descricao: 'Busca NF na movimentação.' },
+    { frase: `${wake} buscar nota 20835`, descricao: 'Pesquisa NF no estoque e destaca no mapa.' },
+    { frase: `${wake} movimentar nota 20835`, descricao: 'Abre a movimentação da NF.' },
     { frase: `${wake} consultar leite`, descricao: 'Pesquisa item no estoque.' },
     { frase: `${wake} consultar nota 20835`, descricao: 'Pesquisa NF na consulta.' },
     { frase: `${wake} últimos sete dias`, descricao: 'Filtra o painel pelos últimos 7 dias.' },
@@ -331,12 +332,30 @@ function parseSpokenDigitSequence(text: string): string {
   return out.join('')
 }
 
+function wantsMovimentacaoNf(norm: string): boolean {
+  return /\b(movimentac|movimentar|movimente|reposicion|editar|enderecar|transferir|realocar)/.test(
+    norm,
+  )
+}
+
+function wantsSaidaNf(norm: string): boolean {
+  return /\b(saida|expedi|retirada)/.test(norm)
+}
+
+function wantsConsultaNf(norm: string): boolean {
+  return (
+    /\b(consultar|consulta|pesquisar|pesquise|procurar|procure|localizar|onde|tem|existe|estoque)\b/.test(
+      norm,
+    ) || /\b(buscar|busca|pesquis)\b/.test(norm)
+  )
+}
+
 function extractNumeroNota(norm: string): string | null {
   const patterns = [
-    /\b(buscar|procurar|pesquisar|abrir|localizar|achar)\s+(a\s+)?(nota|nf)\s+(.+)/,
+    /\b(buscar|procurar|pesquisar|pesquise|abrir|localizar|achar)\s+(a\s+)?(nota|nf)\s+(.+)/,
     /\b(nota|nf)\s+(numero\s+)?(.+)/,
-    /\b(buscar|procurar|pesquisar)\s+(?:a\s+)?(\d[\d\s.-]+)/,
-    /\b(buscar|procurar|pesquisar)\s+(?:a\s+)?(.+)/,
+    /\b(buscar|procurar|pesquisar|pesquise)\s+(?:a\s+)?(\d[\d\s.-]+)/,
+    /\b(buscar|procurar|pesquisar|pesquise)\s+(?:a\s+)?(.+)/,
   ]
 
   for (const re of patterns) {
@@ -511,19 +530,25 @@ export function parseVoiceCommand(text: string): VoiceCommand | null {
   if (closeSection) return closeSection
 
   const notaNum = extractNumeroNota(norm)
-  if (notaNum) {
+  if (notaNum && wantsSaidaNf(norm)) {
+    return { type: 'buscar_saida', numero: notaNum }
+  }
+  if (notaNum && wantsMovimentacaoNf(norm)) {
     return { type: 'buscar_nota', numero: notaNum }
+  }
+  if (notaNum && (wantsConsultaNf(norm) || /\b(nota|nf)\b/.test(norm))) {
+    return { type: 'consultar', filtros: { nfNumero: notaNum, origem: 'ambos' } }
   }
 
   const consultaNota = extractAfter(
     norm,
-    /\b(?:consultar|consulta|pesquisar)\s+(?:a\s+)?(?:nota|nf)\s+(.+)/,
+    /\b(?:consultar|consulta|pesquisar|pesquise|procurar|buscar)\s+(?:a\s+)?(?:nota|nf)\s+(.+)/,
   )
   if (consultaNota) {
     const compact = consultaNota.replace(/\D/g, '')
     const spoken = parseSpokenDigitSequence(consultaNota)
     const numero = compact.length >= 3 ? compact : spoken.length >= 3 ? spoken : ''
-    if (numero) return { type: 'consultar', filtros: { nfNumero: numero } }
+    if (numero) return { type: 'consultar', filtros: { nfNumero: numero, origem: 'ambos' } }
   }
 
   const consultaRemetente = extractAfter(
@@ -542,7 +567,7 @@ export function parseVoiceCommand(text: string): VoiceCommand | null {
     if (/^\d[\d\s.-]*$/.test(q.replace(/\s/g, ''))) {
       return {
         type: 'consultar',
-        filtros: { nfNumero: q.replace(/\D/g, '') },
+        filtros: { nfNumero: q.replace(/\D/g, ''), origem: 'ambos' },
       }
     }
     return { type: 'consultar', filtros: { item: q } }
@@ -585,8 +610,15 @@ export function describeVoiceCommand(cmd: VoiceCommand): string {
       return `Buscando NF ${cmd.numero}`
     case 'buscar_saida':
       return `Buscando NF ${cmd.numero} para saída`
-    case 'consultar':
+    case 'consultar': {
+      const nf = cmd.filtros.nfNumero?.trim()
+      const item = cmd.filtros.item?.trim()
+      const rem = cmd.filtros.remetente?.trim()
+      if (nf) return `Consultando a NF ${nf}`
+      if (item) return `Consultando o item ${item}`
+      if (rem) return `Consultando o remetente ${rem}`
       return 'Consultando estoque'
+    }
     case 'limpar_consulta':
       return 'Limpando filtros da consulta'
     case 'painel_periodo':

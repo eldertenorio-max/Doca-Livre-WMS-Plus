@@ -52,9 +52,9 @@ function helpReply(): string {
     'Sou a IA Doca Livre. Posso conversar e executar o WMS Plus por você:',
     '',
     '• abrir painel, consulta, entrada, saída, movimentação',
-    '• buscar nota, consultar estoque, financeiro, mapa e relatório',
+    '• pesquisar NF no estoque, consultar item, financeiro, mapa e relatório',
     '',
-    'Exemplos: “abre o painel”, “tem leite no estoque?”, “quero subir uma NF”, “busca a nota 20835”.',
+    'Exemplos: “abre o painel”, “tem leite no estoque?”, “quero subir uma NF”, “pesquise a NF 20835”.',
   ].join('\n')
 }
 
@@ -76,8 +76,15 @@ function commandLabel(cmd: VoiceCommand): string {
       return `Buscando a nota ${cmd.numero}`
     case 'buscar_saida':
       return `Buscando a nota ${cmd.numero} para saída`
-    case 'consultar':
+    case 'consultar': {
+      const nf = cmd.filtros.nfNumero?.trim()
+      const item = cmd.filtros.item?.trim()
+      const rem = cmd.filtros.remetente?.trim()
+      if (nf) return `Consultando a NF ${nf}`
+      if (item) return `Consultando o item ${item}`
+      if (rem) return `Consultando o remetente ${rem}`
       return 'Consultando o estoque'
+    }
     case 'limpar_consulta':
       return 'Filtros da consulta limpos'
     case 'painel_periodo':
@@ -102,13 +109,15 @@ function commandLabel(cmd: VoiceCommand): string {
 
 function tryPartialIntent(norm: string): ConversationPending | null {
   if (
-    (/\b(buscar|procurar|achar|localizar|onde)\b/.test(norm) && /\b(nota|nf)\b/.test(norm)) ||
-    /\bonde esta a nota\b/.test(norm)
+    /\b(movimentac|movimentar|movimente|reposicion|editar|enderecar)/.test(norm) &&
+    /\b(nota|nf)\b/.test(norm)
   ) {
     return { kind: 'buscar_nota' }
   }
   if (
-    /\b(consultar|consulta|pesquisar|procurar|tem|existe|quanto)\b/.test(norm) ||
+    /\b(consultar|consulta|pesquisar|pesquise|procurar|buscar|onde|tem|existe|quanto)\b/.test(
+      norm,
+    ) ||
     /\bno estoque\b/.test(norm)
   ) {
     if (/\b(nota|nf)\b/.test(norm)) return { kind: 'consultar', campo: 'nf' }
@@ -159,7 +168,7 @@ async function resolvePending(
 
     const digits = norm.replace(/\D/g, '')
     if ((pending.campo === 'nf' || digits.length >= 3) && digits.length >= 3) {
-      const c: VoiceCommand = { type: 'consultar', filtros: { nfNumero: digits } }
+      const c: VoiceCommand = { type: 'consultar', filtros: { nfNumero: digits, origem: 'ambos' } }
       return {
         reply: followUpAfterCommand(commandLabel(c)),
         state,
