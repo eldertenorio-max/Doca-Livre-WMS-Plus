@@ -3,6 +3,18 @@
 const HUB_TOKEN_KEY = 'doca_hub_token_v1'
 const HUB_USER_KEY = 'doca_hub_user_v1'
 
+type PortalLoginBody = {
+  ok?: boolean
+  usuario?: string
+  hub_token?: string
+  is_superuser?: boolean
+  permissoes?: Record<
+    string,
+    { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
+  > | null
+  erro?: string
+}
+
 export function getProApiBase(): string {
   // Portal API: sempre o Pro do mesmo ambiente do Plus (evita token de um e API do outro).
   try {
@@ -68,18 +80,6 @@ export function clearHubSession(): void {
   } catch {
     /* ignore */
   }
-}
-
-type PortalLoginApiData = {
-  ok?: boolean
-  usuario?: string
-  hub_token?: string
-  is_superuser?: boolean
-  permissoes?: Record<
-    string,
-    { pode_acessar?: boolean; modulos?: string[] | Record<string, string> | null }
-  > | null
-  erro?: string
 }
 
 function isRenderWakingBody(text: string): boolean {
@@ -177,9 +177,9 @@ export async function portalLogin(
         await new Promise((r) => setTimeout(r, 2500))
         continue
       }
-      let data: PortalLoginApiData = {}
+      let data: PortalLoginBody = {}
       try {
-        data = JSON.parse(text) as PortalLoginApiData
+        data = JSON.parse(text) as PortalLoginBody
       } catch {
         data = {}
       }
