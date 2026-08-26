@@ -88,15 +88,45 @@ export function makeAddressId(camara: number, rua: number, nivel: number, col: n
   return `C${camara}-R${rua}-N${nivel}-P${col}`
 }
 
+/** Máscara canônica dos três WMS: 06-1-02-3 (câmara-rua-coluna-nível). */
+export function toCanonicalAddress(camara: number, rua: number, col: number, nivel: number): string {
+  return `${String(camara).padStart(2, '0')}-${rua}-${String(col).padStart(2, '0')}-${nivel}`
+}
+
 export function parseAddressId(id: string): { camara: number; rua: number; nivel: number; col: number } | null {
-  const m = id.match(/^C(\d+)-R(\d+)-N(\d+)-P(\d+)$/)
-  if (!m) return null
-  return {
-    camara: Number(m[1]),
-    rua: Number(m[2]),
-    nivel: Number(m[3]),
-    col: Number(m[4]),
+  const raw = String(id || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+  const base = raw.includes('*') ? raw.slice(0, raw.indexOf('*')) : raw
+  const plus = base.match(/^C(\d+)-R(\d+)-N(\d+)-P(\d+)$/)
+  if (plus) {
+    return {
+      camara: Number(plus[1]),
+      rua: Number(plus[2]),
+      nivel: Number(plus[3]),
+      col: Number(plus[4]),
+    }
   }
+  const voice = base.match(/^C(\d+)-R(\d+)-C(\d+)-N(\d+)$/)
+  if (voice) {
+    return {
+      camara: Number(voice[1]),
+      rua: Number(voice[2]),
+      col: Number(voice[3]),
+      nivel: Number(voice[4]),
+    }
+  }
+  const canon = base.match(/^(\d{1,2})-(\d{1,3})-(\d{1,2})-(\d{1,2})$/)
+  if (canon) {
+    return {
+      camara: Number(canon[1]),
+      rua: Number(canon[2]),
+      col: Number(canon[3]),
+      nivel: Number(canon[4]),
+    }
+  }
+  return null
 }
 
 export function formatAddressLabel(id: string): string {
