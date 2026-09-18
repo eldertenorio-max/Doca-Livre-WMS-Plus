@@ -338,6 +338,7 @@ export default function PortalLoginScreen({ onSuccess }: Props) {
               id="portal-user"
               className="portal-login__input"
               autoComplete="username"
+              placeholder="Usuário ou e-mail (ex.: Diego)"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
               required
