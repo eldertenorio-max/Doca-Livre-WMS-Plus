@@ -116,7 +116,7 @@ export type PortalConfigOverview = {
   sistemas_org?: { id: string; label: string }[]
 }
 
-async function authFetch<T extends { ok?: boolean; erro?: string }>(
+async function authFetchOnce<T extends { ok?: boolean; erro?: string }>(
   path: string,
   init?: RequestInit,
 ): Promise<T | { ok: false; erro: string }> {
@@ -147,6 +147,7 @@ async function authFetch<T extends { ok?: boolean; erro?: string }>(
         ...(init?.headers || {}),
       },
       body,
+      signal: init?.signal,
     })
     const data = (await res.json().catch(() => ({}))) as T
     if (!res.ok || !data.ok) {
@@ -164,6 +165,26 @@ async function authFetch<T extends { ok?: boolean; erro?: string }>(
       erro: `Falha de conexão com o portal (${getProApiBase()}). Se o Pro estiver “acordando”, aguarde 1 min e recarregue.`,
     }
   }
+}
+
+async function authFetch<T extends { ok?: boolean; erro?: string }>(
+  path: string,
+  init?: RequestInit,
+): Promise<T | { ok: false; erro: string }> {
+  let last = await authFetchOnce<T>(path, init)
+  if (last.ok) return last
+  const msg = String((last as { erro?: string }).erro || '')
+  if (!msg.includes('Falha de conexão')) return last
+  try {
+    await fetch(`${getProApiBase()}api/health`, { method: 'GET' })
+  } catch {
+    /* Pro free pode estar acordando */
+  }
+  await new Promise((r) => setTimeout(r, 1600))
+  last = await authFetchOnce<T>(path, init)
+  if (last.ok) return last
+  await new Promise((r) => setTimeout(r, 2500))
+  return authFetchOnce<T>(path, init)
 }
 
 export async function fetchPortalMe(): Promise<

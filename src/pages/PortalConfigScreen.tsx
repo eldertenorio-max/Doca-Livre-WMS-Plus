@@ -271,7 +271,12 @@ export default function PortalConfigScreen({ usuario, onContinuar, onSair }: Pro
         {erro ? <p className="portal-config__erro">{erro}</p> : null}
 
         {!data ? (
-          <p className="portal-config__erro">Não foi possível carregar os dados.</p>
+          <div>
+            <p className="portal-config__erro">Não foi possível carregar os dados.</p>
+            <button type="button" className="portal-config__btn portal-config__btn--primary" onClick={() => void load()}>
+              Recarregar
+            </button>
+          </div>
         ) : tab === 'hierarquia' ? (
           <section className="portal-config__panel portal-config__panel--full">
             <div className="portal-config__hier-tabs" role="tablist" aria-label="Sistema da hierarquia">
